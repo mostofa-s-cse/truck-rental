@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { useSweetAlert } from '@/hooks/useSweetAlert';
@@ -13,23 +13,79 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const router = useRouter();
+  const { login, clearError, loading, error, user } = useAuth();
+  const { successToast, errorToast } = useSweetAlert();
 
-  const { login, clearError } = useAuth();
-  const { successToast, errorToast, loading: showLoading, close } = useSweetAlert();
+  // Redirect if user is already logged in
+  useEffect(() => {
+    if (user && !loading) {
+      const dashboardPath = getDashboardPath(user.role);
+      router.push(dashboardPath);
+    }
+  }, [user, loading, router]);
+
+  // Show error toast when error state changes
+  useEffect(() => {
+    if (error && !isSubmitting) {
+      errorToast(error);
+      clearError();
+    }
+  }, [error, isSubmitting, errorToast, clearError]);
+
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      // Prevent accidental reloads
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault(); // Prevent page refresh
+    console.log('Form submitted'); // Debug log
+    
+    if (!email.trim() || !password.trim()) {
+      console.log('Validation failed'); // Debug log
+      errorToast('Please fill in all fields');
+      return;
+    }
+
+    setIsSubmitting(true);
     clearError();
+    console.log('Starting login process'); // Debug log
 
     try {
-      showLoading('Logging you in...');
-      await login(email, password);
-      close();
+      await login(email.trim(), password);
+      console.log('Login successful'); // Debug log
       successToast('Login successful!');
-    } catch {
-      close();
-      errorToast('Login failed. Please check your credentials.');
+      
+      // Redirect will be handled by useEffect when user state updates
+    } catch (error: unknown) {
+      console.error('Login error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Login failed. Please check your credentials.';
+      console.log('Showing error toast:', errorMessage); // Debug log
+      errorToast(errorMessage);
+    } finally {
+      setIsSubmitting(false);
+      console.log('Login process completed'); // Debug log
+    }
+  };
+
+  const getDashboardPath = (role: string): string => {
+    switch (role) {
+      case 'ADMIN':
+        return '/admin';
+      case 'DRIVER':
+        return '/driver';
+      case 'USER':
+        return '/dashboard';
+      default:
+        return '/dashboard';
     }
   };
 
@@ -54,6 +110,7 @@ export default function LoginPage() {
               </Link>
             </p>
           </div>
+
           <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
             <div className="rounded-md shadow-sm -space-y-px">
               <div>
@@ -66,7 +123,8 @@ export default function LoginPage() {
                   type="email"
                   autoComplete="email"
                   required
-                  className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                  disabled={isSubmitting || loading}
+                  className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                   placeholder="Email address"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -82,14 +140,16 @@ export default function LoginPage() {
                   type={showPassword ? 'text' : 'password'}
                   autoComplete="current-password"
                   required
-                  className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                  disabled={isSubmitting || loading}
+                  className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                   placeholder="Password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
                 <button
                   type="button"
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  disabled={isSubmitting || loading}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center disabled:cursor-not-allowed"
                   onClick={() => setShowPassword(!showPassword)}
                 >
                   {showPassword ? (
@@ -104,10 +164,17 @@ export default function LoginPage() {
             <div>
               <Button
                 type="submit"
-                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-
+                disabled={isSubmitting || loading}
+                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-blue-400 disabled:cursor-not-allowed"
               >
-                Sign in
+                {isSubmitting || loading ? (
+                  <div className="flex items-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Signing in...
+                  </div>
+                ) : (
+                  'Sign in'
+                )}
               </Button>
             </div>
 
@@ -119,6 +186,37 @@ export default function LoginPage() {
                 >
                   Forgot your password?
                 </Link>
+              </div>
+            </div>
+
+            {/* Demo Credentials */}
+            <div className="mt-6 p-4 bg-gray-50 rounded-md">
+              <p className="text-sm text-gray-600 mb-2 font-medium">Demo Credentials:</p>
+              <div className="text-xs text-gray-500 space-y-1">
+                <p><strong>Admin:</strong> admin@truckbook.com / password123</p>
+                <p><strong>Driver:</strong> driver1@truckbook.com / password123</p>
+                <p><strong>User:</strong> user1@example.com / password123</p>
+              </div>
+              
+              {/* Test Toast Button */}
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <p className="text-sm text-gray-600 mb-2 font-medium">Test Toasts:</p>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => successToast('Success toast test!')}
+                    className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
+                  >
+                    Success
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => errorToast('Error toast test!')}
+                    className="px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                  >
+                    Error
+                  </button>
+                </div>
               </div>
             </div>
           </form>

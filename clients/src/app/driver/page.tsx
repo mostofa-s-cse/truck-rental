@@ -1,8 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/ui/DashboardLayout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import { useSweetAlert } from '@/hooks/useSweetAlert';
+import { apiClient } from '@/lib/api';
 import { 
   TruckIcon, 
   CalendarIcon, 
@@ -12,22 +14,73 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   StarIcon,
-  MapPinIcon,
-  PhoneIcon,
   ExclamationTriangleIcon,
   ChartBarIcon,
-  WrenchScrewdriverIcon,
   DocumentTextIcon
 } from '@heroicons/react/24/outline';
 import Chart from '@/components/ui/Chart';
 
 const DriverDashboard = () => {
+  const { errorToast, successToast } = useSweetAlert();
+  const [loading, setLoading] = useState(true);
+  const [dashboardData, setDashboardData] = useState<{
+    todayEarnings: number;
+    activeBookings: number;
+    rating: number;
+    onlineHours: number;
+    recentBookings: Array<{
+      id: string;
+      status: string;
+      fare: number;
+      createdAt: string;
+      user: { name: string };
+    }>;
+    earningsData: Array<{ day: string; amount: number }>;
+    ratingData: Array<{ rating: number; count: number }>;
+  } | null>(null);
   const [isAvailable, setIsAvailable] = useState(true);
 
-  const stats = [
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
+
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true);
+      const response = await apiClient.getDriverDashboardStats();
+      if (response.success && response.data) {
+        setDashboardData(response.data);
+      } else {
+        errorToast('Failed to load dashboard data');
+      }
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+      errorToast('Failed to load dashboard data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAvailabilityToggle = async () => {
+    try {
+      const newAvailability = !isAvailable;
+      const response = await apiClient.updateAvailability(newAvailability);
+      if (response.success) {
+        setIsAvailable(newAvailability);
+        successToast(newAvailability ? 'You are now available for bookings' : 'You are now offline');
+      } else {
+        errorToast('Failed to update availability');
+      }
+    } catch (error) {
+      console.error('Error updating availability:', error);
+      errorToast('Failed to update availability');
+    }
+  };
+
+  const stats = dashboardData ? [
     {
       name: 'Today\'s Earnings',
-      value: '$156.50',
+      value: `$${dashboardData.todayEarnings.toFixed(2)}`,
       change: '+12%',
       changeType: 'positive',
       icon: CurrencyDollarIcon,
@@ -35,7 +88,7 @@ const DriverDashboard = () => {
     },
     {
       name: 'Active Bookings',
-      value: '3',
+      value: dashboardData.activeBookings.toString(),
       change: '2 new',
       changeType: 'neutral',
       icon: CalendarIcon,
@@ -43,7 +96,7 @@ const DriverDashboard = () => {
     },
     {
       name: 'Rating',
-      value: '4.8',
+      value: dashboardData.rating.toFixed(1),
       change: '+0.2',
       changeType: 'positive',
       icon: StarIcon,
@@ -51,84 +104,23 @@ const DriverDashboard = () => {
     },
     {
       name: 'Online Hours',
-      value: '8.5h',
+      value: `${dashboardData.onlineHours}h`,
       change: 'Today',
       changeType: 'neutral',
       icon: ClockIcon,
       color: 'bg-purple-500'
     }
-  ];
-
-  const recentBookings = [
-    {
-      id: 'BK001',
-      customer: 'John Doe',
-      pickup: '123 Main St, Downtown',
-      dropoff: '456 Oak Ave, Uptown',
-      status: 'active',
-      amount: '$45.00',
-      time: '2:30 PM'
-    },
-    {
-      id: 'BK002',
-      customer: 'Jane Smith',
-      pickup: '789 Pine St, Midtown',
-      dropoff: '321 Elm St, Westside',
-      status: 'pending',
-      amount: '$38.50',
-      time: '4:15 PM'
-    },
-    {
-      id: 'BK003',
-      customer: 'Bob Johnson',
-      pickup: '654 Maple Dr, Eastside',
-      dropoff: '987 Cedar Ln, Southside',
-      status: 'completed',
-      amount: '$52.00',
-      time: '1:20 PM'
-    }
-  ];
-
-  const earningsData = [
-    {
-      day: 'Mon',
-      amount: 45.00
-    },
-    {
-      day: 'Tue',
-      amount: 67.50
-    },
-    {
-      day: 'Wed',
-      amount: 38.00
-    },
-    {
-      day: 'Thu',
-      amount: 89.25
-    },
-    {
-      day: 'Fri',
-      amount: 156.50
-    },
-    {
-      day: 'Sat',
-      amount: 0
-    },
-    {
-      day: 'Sun',
-      amount: 0
-    }
-  ];
+  ] : [];
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'completed':
+      case 'COMPLETED':
         return 'bg-green-100 text-green-800';
-      case 'pending':
+      case 'PENDING':
         return 'bg-yellow-100 text-yellow-800';
-      case 'active':
+      case 'IN_PROGRESS':
         return 'bg-blue-100 text-blue-800';
-      case 'cancelled':
+      case 'CANCELLED':
         return 'bg-red-100 text-red-800';
       default:
         return 'bg-gray-100 text-gray-800';
@@ -137,21 +129,49 @@ const DriverDashboard = () => {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'completed':
+      case 'COMPLETED':
         return <CheckCircleIcon className="h-4 w-4" />;
-      case 'pending':
+      case 'PENDING':
         return <ClockIcon className="h-4 w-4" />;
-      case 'active':
+      case 'IN_PROGRESS':
         return <ChartBarIcon className="h-4 w-4" />;
-      case 'cancelled':
+      case 'CANCELLED':
         return <XCircleIcon className="h-4 w-4" />;
       default:
         return <ClockIcon className="h-4 w-4" />;
     }
   };
 
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'COMPLETED':
+        return 'Completed';
+      case 'PENDING':
+        return 'Pending';
+      case 'IN_PROGRESS':
+        return 'Active';
+      case 'CANCELLED':
+        return 'Cancelled';
+      default:
+        return status;
+    }
+  };
+
+  if (loading) {
+    return (
+      <ProtectedRoute allowedRoles={['DRIVER']}>
+        <DashboardLayout title="Driver Dashboard" subtitle="Manage your deliveries">
+          <div className="flex items-center justify-center h-64">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <span className="ml-2 text-gray-600">Loading dashboard...</span>
+          </div>
+        </DashboardLayout>
+      </ProtectedRoute>
+    );
+  }
+
   return (
-    <ProtectedRoute allowedRoles={['driver']}>
+    <ProtectedRoute allowedRoles={['DRIVER']}>
       <DashboardLayout title="Driver Dashboard" subtitle="Manage your deliveries">
         <div className="space-y-6">
           {/* Availability Toggle */}
@@ -169,7 +189,7 @@ const DriverDashboard = () => {
                 </div>
               </div>
               <button
-                onClick={() => setIsAvailable(!isAvailable)}
+                onClick={handleAvailabilityToggle}
                 className={`px-4 py-2 rounded-md text-sm font-medium ${
                   isAvailable 
                     ? 'bg-red-600 text-white hover:bg-red-700' 
@@ -212,11 +232,11 @@ const DriverDashboard = () => {
             <div className="bg-white rounded-lg shadow p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Weekly Earnings</h3>
               <Chart
-                data={earningsData.map(d => ({
+                data={dashboardData?.earningsData?.map(d => ({
                   label: d.day,
                   value: d.amount,
                   color: '#22c55e'
-                }))}
+                })) || []}
                 type="line"
               />
             </div>
@@ -225,13 +245,14 @@ const DriverDashboard = () => {
             <div className="bg-white rounded-lg shadow p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Customer Ratings</h3>
               <Chart
-                data={[
-                  { label: '5★', value: 65, color: '#22c55e' },
-                  { label: '4★', value: 20, color: '#3b82f6' },
-                  { label: '3★', value: 10, color: '#eab308' },
-                  { label: '2★', value: 3, color: '#f97316' },
-                  { label: '1★', value: 2, color: '#ef4444' }
-                ]}
+                data={dashboardData?.ratingData?.map(d => ({
+                  label: `${d.rating}★`,
+                  value: d.count,
+                  color: d.rating === 5 ? '#22c55e' : 
+                         d.rating === 4 ? '#3b82f6' : 
+                         d.rating === 3 ? '#eab308' : 
+                         d.rating === 2 ? '#f97316' : '#ef4444'
+                })) || []}
                 type="pie"
               />
             </div>
@@ -263,31 +284,29 @@ const DriverDashboard = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {recentBookings.map((booking) => (
+                    {dashboardData?.recentBookings?.map((booking) => (
                       <tr key={booking.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div>
                             <div className="text-sm font-medium text-gray-900">{booking.id}</div>
-                            <div className="text-sm text-gray-500">{booking.time}</div>
+                            <div className="text-sm text-gray-500">
+                              {new Date(booking.createdAt).toLocaleDateString()}
+                            </div>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">{booking.customer}</div>
-                            <div className="text-sm text-gray-500">
-                              <MapPinIcon className="h-3 w-3 inline mr-1" />
-                              {booking.pickup}
-                            </div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {booking.user?.name || 'Unknown Customer'}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(booking.status)}`}>
                             {getStatusIcon(booking.status)}
-                            <span className="ml-1">{booking.status}</span>
+                            <span className="ml-1">{getStatusText(booking.status)}</span>
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {booking.amount}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">${booking.fare.toFixed(2)}</div>
                         </td>
                       </tr>
                     ))}
@@ -300,59 +319,22 @@ const DriverDashboard = () => {
             <div className="bg-white rounded-lg shadow p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Actions</h3>
               <div className="space-y-4">
-                <button className="w-full flex items-center justify-center px-4 py-3 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                <button className="w-full flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
                   <MapIcon className="h-5 w-5 mr-2" />
-                  Start Navigation
+                  Update Location
                 </button>
-                <button className="w-full flex items-center justify-center px-4 py-3 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700">
-                  <PhoneIcon className="h-5 w-5 mr-2" />
-                  Contact Customer
+                <button className="w-full flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700">
+                  <TruckIcon className="h-5 w-5 mr-2" />
+                  View Active Trips
                 </button>
-                <button className="w-full flex items-center justify-center px-4 py-3 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700">
+                <button className="w-full flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700">
                   <DocumentTextIcon className="h-5 w-5 mr-2" />
-                  View Documents
+                  View Earnings
                 </button>
-                <button className="w-full flex items-center justify-center px-4 py-3 border border-transparent text-sm font-medium rounded-md text-white bg-yellow-600 hover:bg-yellow-700">
-                  <WrenchScrewdriverIcon className="h-5 w-5 mr-2" />
-                  Report Issue
+                <button className="w-full flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-yellow-600 hover:bg-yellow-700">
+                  <ExclamationTriangleIcon className="h-5 w-5 mr-2" />
+                  Emergency Alert
                 </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Vehicle Status */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Vehicle Status</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="flex items-center p-4 border border-gray-200 rounded-lg">
-                <div className="p-2 bg-green-100 rounded-lg">
-                  <TruckIcon className="h-6 w-6 text-green-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-900">Vehicle</p>
-                  <p className="text-sm text-gray-500">Ford F-150</p>
-                  <p className="text-xs text-green-600">Ready for service</p>
-                </div>
-              </div>
-              <div className="flex items-center p-4 border border-gray-200 rounded-lg">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <MapPinIcon className="h-6 w-6 text-blue-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-900">Location</p>
-                  <p className="text-sm text-gray-500">Downtown Area</p>
-                  <p className="text-xs text-blue-600">GPS Active</p>
-                </div>
-              </div>
-              <div className="flex items-center p-4 border border-gray-200 rounded-lg">
-                <div className="p-2 bg-yellow-100 rounded-lg">
-                  <ExclamationTriangleIcon className="h-6 w-6 text-yellow-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-900">Maintenance</p>
-                  <p className="text-sm text-gray-500">Due in 15 days</p>
-                  <p className="text-xs text-yellow-600">Schedule service</p>
-                </div>
               </div>
             </div>
           </div>

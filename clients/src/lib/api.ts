@@ -1,5 +1,5 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
-import { ApiResponse, RegisterData, LoginData, CreateDriverData, CreateBookingData, SearchDriversParams, SearchFilters, SearchResult, Driver } from '@/types';
+import { ApiResponse, RegisterData, LoginData, CreateDriverData, CreateBookingData, SearchDriversParams, SearchFilters, SearchResult, Driver, Booking } from '@/types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
 
@@ -184,6 +184,46 @@ class ApiClient {
 
   async cancelBooking(bookingId: string): Promise<ApiResponse> {
     const response = await this.client.delete(`/bookings/${bookingId}`);
+    return response.data;
+  }
+
+  // User-specific booking endpoints
+  async getUserBookings(page = 1, limit = 10): Promise<ApiResponse> {
+    const response = await this.client.get('/bookings/user/me', { params: { page, limit } });
+    return response.data;
+  }
+
+  // Driver-specific endpoints
+  async getDriverBookings(page = 1, limit = 10): Promise<ApiResponse> {
+    const response = await this.client.get('/bookings/driver/me', { params: { page, limit } });
+    return response.data;
+  }
+
+  // Dashboard statistics endpoints
+  async getDashboardStats(): Promise<ApiResponse<{
+    totalBookings: number;
+    totalSpent: number;
+    favoriteDrivers: number;
+    averageRating: number;
+    recentBookings: Booking[];
+    nearbyDrivers: Driver[];
+    spendingData: Array<{ month: string; amount: number }>;
+    bookingStatusData: Array<{ status: string; count: number }>;
+  }>> {
+    const response = await this.client.get('/dashboard/stats');
+    return response.data;
+  }
+
+  async getDriverDashboardStats(): Promise<ApiResponse<{
+    todayEarnings: number;
+    activeBookings: number;
+    rating: number;
+    onlineHours: number;
+    recentBookings: Booking[];
+    earningsData: Array<{ day: string; amount: number }>;
+    ratingData: Array<{ rating: number; count: number }>;
+  }>> {
+    const response = await this.client.get('/dashboard/driver/stats');
     return response.data;
   }
 

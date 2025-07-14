@@ -18,9 +18,9 @@ const authRoutes = [
 
 // Define role-based route access
 const roleBasedRoutes = {
-  '/admin': ['admin'],
-  '/driver': ['driver'],
-  '/dashboard': ['user', 'admin', 'driver'] // Allow all authenticated users to access dashboard
+  '/admin': ['ADMIN'],
+  '/driver': ['DRIVER'],
+  '/dashboard': ['USER', 'ADMIN', 'DRIVER'] // Allow all authenticated users to access dashboard
 };
 
 export function middleware(request: NextRequest) {
@@ -56,9 +56,9 @@ export function middleware(request: NextRequest) {
   if (isAuthenticated && isAuthRoute) {
     // Redirect to appropriate dashboard based on role
     let dashboardPath = '/dashboard';
-    if (userRole === 'admin') {
+    if (userRole === 'ADMIN') {
       dashboardPath = '/admin';
-    } else if (userRole === 'driver') {
+    } else if (userRole === 'DRIVER') {
       dashboardPath = '/driver';
     }
     
@@ -71,9 +71,9 @@ export function middleware(request: NextRequest) {
       if (pathname.startsWith(route) && !allowedRoles.includes(userRole)) {
         // User doesn't have permission for this route
         let redirectPath = '/dashboard';
-        if (userRole === 'admin') {
+        if (userRole === 'ADMIN') {
           redirectPath = '/admin';
-        } else if (userRole === 'driver') {
+        } else if (userRole === 'DRIVER') {
           redirectPath = '/driver';
         }
         

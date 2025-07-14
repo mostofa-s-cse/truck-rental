@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
+import 'sweetalert2/dist/sweetalert2.min.css';
 import ReduxProvider from '@/providers/ReduxProvider';
 import Navigation from '@/components/ui/Navigation';
 import Footer from '@/components/ui/Footer';

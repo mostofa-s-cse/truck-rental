@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useSweetAlert } from '@/hooks/useSweetAlert';
 import { 
@@ -15,6 +16,7 @@ const Navigation = () => {
   const { user, logout, loading } = useAuth();
   const { successToast } = useSweetAlert();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const pathname = usePathname();
 
   const handleLogout = () => {
     logout();
@@ -45,6 +47,13 @@ const Navigation = () => {
     // { name: 'SweetAlert Demo', href: '/sweetalert-demo' },
     // { name: 'SweetAlert Examples', href: '/sweetalert-examples' },
   ];
+
+  const isActive = (href: string) => {
+    if (href === '/') {
+      return pathname === '/';
+    }
+    return pathname.startsWith(href);
+  };
 
   // Don't render until auth state is determined to prevent hydration mismatch
   if (loading) {
@@ -83,7 +92,11 @@ const Navigation = () => {
               <Link
                 key={item.name}
                 href={item.href}
-                className="text-gray-700 hover:text-blue-600 px-3 py-2 text-sm font-medium transition-colors"
+                className={`px-3 py-2 text-sm font-medium transition-colors ${
+                  isActive(item.href)
+                    ? 'text-blue-600 border-b-2 border-blue-600'
+                    : 'text-gray-700 hover:text-blue-600'
+                }`}
               >
                 {item.name}
               </Link>
@@ -96,7 +109,11 @@ const Navigation = () => {
               <>
                 <Link
                   href={getDashboardLink()}
-                  className="text-gray-700 hover:text-blue-600 px-3 py-2 text-sm font-medium transition-colors"
+                  className={`px-3 py-2 text-sm font-medium transition-colors ${
+                    isActive(getDashboardLink())
+                      ? 'text-blue-600 border-b-2 border-blue-600'
+                      : 'text-gray-700 hover:text-blue-600'
+                  }`}
                 >
                   Dashboard
                 </Link>
@@ -108,13 +125,17 @@ const Navigation = () => {
                   <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
                     <Link
                       href="/profile"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      className={`block px-4 py-2 text-sm hover:bg-gray-100 ${
+                        isActive('/profile') ? 'text-blue-600 bg-blue-50' : 'text-gray-700'
+                      }`}
                     >
                       Profile
                     </Link>
                     <Link
                       href="/settings"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      className={`block px-4 py-2 text-sm hover:bg-gray-100 ${
+                        isActive('/settings') ? 'text-blue-600 bg-blue-50' : 'text-gray-700'
+                      }`}
                     >
                       Settings
                     </Link>
@@ -131,13 +152,21 @@ const Navigation = () => {
               <>
                 <Link
                   href="/login"
-                  className="text-gray-700 hover:text-blue-600 px-3 py-2 text-sm font-medium transition-colors"
+                  className={`px-3 py-2 text-sm font-medium transition-colors ${
+                    isActive('/login')
+                      ? 'text-blue-600 border-b-2 border-blue-600'
+                      : 'text-gray-700 hover:text-blue-600'
+                  }`}
                 >
                   Sign in
                 </Link>
                 <Link
                   href="/register"
-                  className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    isActive('/register')
+                      ? 'bg-blue-700 text-white'
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                  }`}
                 >
                   Sign up
                 </Link>
@@ -169,7 +198,11 @@ const Navigation = () => {
               <Link
                 key={item.name}
                 href={item.href}
-                className="text-gray-700 hover:text-blue-600 block px-3 py-2 text-base font-medium transition-colors"
+                className={`block px-3 py-2 text-base font-medium transition-colors ${
+                  isActive(item.href)
+                    ? 'text-blue-600 bg-blue-50 border-l-4 border-blue-600'
+                    : 'text-gray-700 hover:text-blue-600'
+                }`}
                 onClick={() => setIsMenuOpen(false)}
               >
                 {item.name}
@@ -180,14 +213,22 @@ const Navigation = () => {
               <>
                 <Link
                   href={getDashboardLink()}
-                  className="text-gray-700 hover:text-blue-600 block px-3 py-2 text-base font-medium transition-colors"
+                  className={`block px-3 py-2 text-base font-medium transition-colors ${
+                    isActive(getDashboardLink())
+                      ? 'text-blue-600 bg-blue-50 border-l-4 border-blue-600'
+                      : 'text-gray-700 hover:text-blue-600'
+                  }`}
                   onClick={() => setIsMenuOpen(false)}
                 >
                   Dashboard
                 </Link>
                 <Link
                   href="/profile"
-                  className="text-gray-700 hover:text-blue-600 block px-3 py-2 text-base font-medium transition-colors"
+                  className={`block px-3 py-2 text-base font-medium transition-colors ${
+                    isActive('/profile')
+                      ? 'text-blue-600 bg-blue-50 border-l-4 border-blue-600'
+                      : 'text-gray-700 hover:text-blue-600'
+                  }`}
                   onClick={() => setIsMenuOpen(false)}
                 >
                   Profile
@@ -206,14 +247,22 @@ const Navigation = () => {
               <>
                 <Link
                   href="/login"
-                  className="text-gray-700 hover:text-blue-600 block px-3 py-2 text-base font-medium transition-colors"
+                  className={`block px-3 py-2 text-base font-medium transition-colors ${
+                    isActive('/login')
+                      ? 'text-blue-600 bg-blue-50 border-l-4 border-blue-600'
+                      : 'text-gray-700 hover:text-blue-600'
+                  }`}
                   onClick={() => setIsMenuOpen(false)}
                 >
                   Sign in
                 </Link>
                 <Link
                   href="/register"
-                  className="bg-blue-600 text-white block px-3 py-2 rounded-md text-base font-medium hover:bg-blue-700 transition-colors"
+                  className={`block px-3 py-2 rounded-md text-base font-medium transition-colors ${
+                    isActive('/register')
+                      ? 'bg-blue-700 text-white'
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                  }`}
                   onClick={() => setIsMenuOpen(false)}
                 >
                   Sign up

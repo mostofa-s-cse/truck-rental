@@ -14,6 +14,7 @@ import fareCalculationRoutes from './fareCalculation';
 import emergencyAlertRoutes from './emergencyAlert';
 import trackingRoutes from './tracking';
 import searchRoutes from './search';
+import dashboardRoutes from './dashboard';
 
 const router = Router();
 
@@ -33,6 +34,7 @@ router.use('/fare-calculation', fareCalculationRoutes);
 router.use('/emergency-alerts', emergencyAlertRoutes);
 router.use('/tracking', trackingRoutes);
 router.use('/search', searchRoutes);
+router.use('/dashboard', dashboardRoutes);
 
 // Health check for v1
 router.get('/health', (req, res) => {

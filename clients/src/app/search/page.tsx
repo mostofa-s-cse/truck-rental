@@ -220,42 +220,6 @@ export default function SearchPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Search Statistics */}
-        {searchStats && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <div className="bg-white rounded-lg shadow-sm p-4 text-center">
-              <div className="text-2xl font-bold text-blue-600">{searchStats.totalDrivers}</div>
-              <div className="text-sm text-gray-600">Total Trucks</div>
-            </div>
-            <div className="bg-white rounded-lg shadow-sm p-4 text-center">
-              <div className="text-2xl font-bold text-green-600">{searchStats.availableDrivers}</div>
-              <div className="text-sm text-gray-600">Available</div>
-            </div>
-            <div className="bg-white rounded-lg shadow-sm p-4 text-center">
-              <div className="text-2xl font-bold text-purple-600">{searchStats.verifiedDrivers}</div>
-              <div className="text-sm text-gray-600">Verified</div>
-            </div>
-            <div className="bg-white rounded-lg shadow-sm p-4 text-center">
-              <div className="text-2xl font-bold text-yellow-600">{searchStats.averageRating.toFixed(1)}</div>
-              <div className="text-sm text-gray-600">Avg Rating</div>
-            </div>
-          </div>
-        )}
-
-        {/* Truck Type Statistics */}
-        {truckTypeStats.length > 0 && (
-          <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Truck Type Distribution</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {truckTypeStats.map((stat) => (
-                <div key={stat.truckType} className="text-center">
-                  <div className="text-xl font-bold text-gray-900">{stat.count}</div>
-                  <div className="text-sm text-gray-600">{stat.truckType.replace('_', ' ')}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Filters Sidebar */}

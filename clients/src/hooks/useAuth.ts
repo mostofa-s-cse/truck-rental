@@ -19,11 +19,29 @@ export const useAuth = () => {
   }, [dispatch]);
 
   const login = async (email: string, password: string) => {
-    await dispatch(loginUser({ email, password }));
+    console.log('useAuth: Starting login dispatch'); // Debug log
+    const result = await dispatch(loginUser({ email, password }));
+    console.log('useAuth: Login dispatch result:', result); // Debug log
+    
+    // Check if the action was rejected
+    if (loginUser.rejected.match(result)) {
+      console.log('useAuth: Login rejected, throwing error'); // Debug log
+      throw new Error(result.payload as string || 'Login failed');
+    }
+    
+    console.log('useAuth: Login successful, returning payload'); // Debug log
+    return result.payload;
   };
 
   const register = async (userData: RegisterData) => {
-    await dispatch(registerUser(userData));
+    const result = await dispatch(registerUser(userData));
+    
+    // Check if the action was rejected
+    if (registerUser.rejected.match(result)) {
+      throw new Error(result.payload as string || 'Registration failed');
+    }
+    
+    return result.payload;
   };
 
   const logout = () => {
