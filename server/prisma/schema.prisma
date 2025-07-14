@@ -1,0 +1,235 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  DRIVER
+  USER
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum TruckType {
+  MINI_TRUCK
+  PICKUP
+  LORRY
+  TRUCK
+}
+
+enum TruckQuality {
+  EXCELLENT
+  GOOD
+  AVERAGE
+  POOR
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  phone     String?
+  role      UserRole @default(USER)
+  avatar    String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  driverProfile Driver?
+  bookings      Booking[]
+  reviews       Review[]
+  sentMessages     Message[] @relation("MessageSender")
+  receivedMessages Message[] @relation("MessageReceiver")
+  emergencyAlerts  EmergencyAlert[]
+
+  @@map("users")
+}
+
+model Driver {
+  id           String       @id @default(cuid())
+  userId       String       @unique
+  truckType    TruckType
+  capacity     Float        // in tons
+  quality      TruckQuality
+  license      String
+  registration String
+  documents    Json?        // Array of document URLs
+  location     String
+  latitude     Float?
+  longitude    Float?
+  isAvailable  Boolean      @default(true)
+  isVerified   Boolean      @default(false)
+  rating       Float        @default(0)
+  totalTrips   Int          @default(0)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  // Relations
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookings Booking[]
+  reviews  Review[]
+  tracking Tracking[]
+
+  @@map("drivers")
+}
+
+model Booking {
+  id           String        @id @default(cuid())
+  userId       String
+  driverId     String
+  source       String
+  destination  String
+  sourceLat    Float?
+  sourceLng    Float?
+  destLat      Float?
+  destLng      Float?
+  distance     Float?        // in km
+  fare         Float
+  status       BookingStatus @default(PENDING)
+  pickupTime   DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  // Relations
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  driver  Driver  @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  review  Review?
+  payment Payment?
+
+  @@map("bookings")
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  userId    String
+  driverId  String
+  bookingId String   @unique
+  rating    Int      // 1-5 stars
+  comment   String?
+  createdAt DateTime @default(now())
+
+  // Relations
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  driver  Driver  @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@map("reviews")
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  senderId  String
+  receiverId String
+  content   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  // Relations
+  sender   User @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("MessageReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@map("messages")
+}
+
+model TruckCategory {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  basePrice   Float    // per km
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("truck_categories")
+}
+
+model Area {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  city      String
+  state     String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("areas")
+}
+
+model SystemSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  type      String   // string, number, boolean, json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("system_settings")
+}
+
+model Payment {
+  id            String    @id @default(cuid())
+  bookingId     String    @unique
+  booking       Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  amount        Float
+  paymentMethod String    // CASH, CARD, MOBILE_BANKING
+  transactionId String?
+  status        String    // PENDING, COMPLETED, FAILED, REFUNDED
+  refundReason  String?
+  refundedAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@map("payments")
+}
+
+model Tracking {
+  id        String   @id @default(cuid())
+  driverId  String
+  latitude  Float
+  longitude Float
+  accuracy  Float?
+  speed     Float?   // km/h
+  heading   Float?   // degrees
+  timestamp DateTime @default(now())
+  address   String?
+
+  // Relations
+  driver Driver @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  @@map("tracking")
+}
+
+model EmergencyAlert {
+  id            String   @id @default(cuid())
+  userId        String
+  type          String   // SAFETY, ACCIDENT, BREAKDOWN, THEFT, OTHER
+  location      Json     // { latitude, longitude, address }
+  description   String
+  severity      String   // LOW, MEDIUM, HIGH, CRITICAL
+  status        String   @default("PENDING") // PENDING, ACKNOWLEDGED, RESOLVED, CLOSED
+  contactNumber String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("emergency_alerts")
+}
