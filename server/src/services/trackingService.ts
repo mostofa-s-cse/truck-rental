@@ -19,17 +19,17 @@ export interface TrackingData {
   driverId: string;
   latitude: number;
   longitude: number;
-  accuracy?: number;
-  speed?: number;
-  heading?: number;
+  accuracy?: number | null;
+  speed?: number | null;
+  heading?: number | null;
   timestamp: Date;
-  address?: string;
+  address?: string | null;
   driver?: {
     id: string;
     userId: string;
     user: {
       name: string;
-      phone: string;
+      phone: string | null;
     };
     truckType: string;
     isAvailable: boolean;
@@ -42,7 +42,7 @@ export interface TrackingHistory {
     latitude: number;
     longitude: number;
     timestamp: Date;
-    speed?: number;
+    speed?: number | null;
   }>;
   totalDistance: number;
   averageSpeed: number;

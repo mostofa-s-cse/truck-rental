@@ -23,15 +23,15 @@ export interface EmergencyAlert {
   location: any;
   description: string;
   severity: string;
-  status: 'PENDING' | 'ACKNOWLEDGED' | 'RESOLVED' | 'CLOSED';
-  contactNumber?: string;
+  status: string; // PENDING, ACKNOWLEDGED, RESOLVED, CLOSED
+  contactNumber?: string | null;
   createdAt: Date;
   updatedAt: Date;
   user?: {
     id: string;
     name: string;
     email: string;
-    phone: string;
+    phone: string | null;
   };
 }
 

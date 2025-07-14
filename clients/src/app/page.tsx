@@ -1,165 +1,217 @@
 'use client';
 
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import Link from 'next/link';
-import { Truck, MapPin, Star, Users } from 'lucide-react';
+import { Truck, MapPin, Star, Users, Shield, Clock, Phone, ArrowRight } from 'lucide-react';
+import Button from '@/components/ui/Button';
 
 export default function HomePage() {
-  const { user, loading } = useAuth();
+  const { user } = useAuth();
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
+  const features = [
+    {
+      icon: <Truck className="w-8 h-8 text-blue-600" />,
+      title: 'Wide Range of Trucks',
+      description: 'From mini trucks to heavy lorries, find the perfect vehicle for your needs.'
+    },
+    {
+      icon: <MapPin className="w-8 h-8 text-green-600" />,
+      title: 'Real-time Tracking',
+      description: 'Track your shipment in real-time with our advanced GPS tracking system.'
+    },
+    {
+      icon: <Star className="w-8 h-8 text-yellow-600" />,
+      title: 'Verified Drivers',
+      description: 'All our drivers are verified and rated by customers for your safety.'
+    },
+    {
+      icon: <Shield className="w-8 h-8 text-purple-600" />,
+      title: 'Secure Payments',
+      description: 'Safe and secure payment options with multiple payment methods.'
+    },
+    {
+      icon: <Clock className="w-8 h-8 text-red-600" />,
+      title: '24/7 Support',
+      description: 'Round-the-clock customer support to help you anytime, anywhere.'
+    },
+    {
+      icon: <Users className="w-8 h-8 text-indigo-600" />,
+      title: 'Trusted by Thousands',
+      description: 'Join thousands of satisfied customers who trust us for their transportation needs.'
+    }
+  ];
+
+  const stats = [
+    { number: '10,000+', label: 'Happy Customers' },
+    { number: '500+', label: 'Verified Drivers' },
+    { number: '50+', label: 'Cities Covered' },
+    { number: '99%', label: 'Satisfaction Rate' }
+  ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      {/* Navigation */}
-      <nav className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <Truck className="h-8 w-8 text-blue-600" />
-              <span className="ml-2 text-xl font-bold text-gray-900">TruckRental</span>
-            </div>
-            <div className="flex items-center space-x-4">
-              {user ? (
+    <div>
+      {/* Hero Section */}
+      <section className="relative bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 text-white">
+        <div className="absolute inset-0 bg-black opacity-20"></div>
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+          <div className="text-center">
+            <h1 className="text-4xl md:text-6xl font-bold mb-6">
+              Find the Perfect Truck
+              <span className="block text-blue-200">for Your Cargo</span>
+            </h1>
+            <p className="text-xl md:text-2xl mb-8 text-blue-100 max-w-3xl mx-auto">
+              Connect with verified drivers and reliable trucks for all your transportation needs. 
+              Fast, secure, and affordable shipping solutions.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              {!user ? (
                 <>
-                  <span className="text-gray-700">Welcome, {user.name}</span>
-                  <Link
-                    href={user.role === 'ADMIN' ? '/admin' : user.role === 'DRIVER' ? '/driver' : '/dashboard'}
-                    className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-                  >
-                    Dashboard
+                  <Link href="/search">
+                    <Button className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-3 text-lg font-semibold">
+                      Find Trucks
+                    </Button>
+                  </Link>
+                  <Link href="/register">
+                    <Button className="border-2 border-white text-white hover:bg-white hover:text-blue-600 px-8 py-3 text-lg font-semibold">
+                      Join as Driver
+                    </Button>
                   </Link>
                 </>
               ) : (
-                <>
-                  <Link
-                    href="/login"
-                    className="text-gray-700 hover:text-gray-900"
-                  >
-                    Login
-                  </Link>
-                  <Link
-                    href="/register"
-                    className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-                  >
-                    Register
-                  </Link>
-                </>
+                <Link href="/search">
+                  <Button className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-3 text-lg font-semibold">
+                    Find Trucks
+                  </Button>
+                </Link>
               )}
             </div>
           </div>
         </div>
-      </nav>
+      </section>
 
-      {/* Hero Section */}
-      <div className="relative overflow-hidden">
-        <div className="max-w-7xl mx-auto">
-          <div className="relative z-10 pb-8 bg-gradient-to-br from-blue-50 to-indigo-100 sm:pb-16 md:pb-20 lg:max-w-2xl lg:w-full lg:pb-28 xl:pb-32">
-            <main className="mt-10 mx-auto max-w-7xl px-4 sm:mt-12 sm:px-6 md:mt-16 lg:mt-20 lg:px-8 xl:mt-28">
-              <div className="sm:text-center lg:text-left">
-                <h1 className="text-4xl tracking-tight font-extrabold text-gray-900 sm:text-5xl md:text-6xl">
-                  <span className="block xl:inline">Find the perfect</span>{' '}
-                  <span className="block text-blue-600 xl:inline">truck for your needs</span>
-                </h1>
-                <p className="mt-3 text-base text-gray-500 sm:mt-5 sm:text-lg sm:max-w-xl sm:mx-auto md:mt-5 md:text-xl lg:mx-0">
-                  Connect with verified drivers in your area. Book trucks instantly and track your deliveries in real-time.
-                </p>
-                <div className="mt-5 sm:mt-8 sm:flex sm:justify-center lg:justify-start">
-                  <div className="rounded-md shadow">
-                    <Link
-                      href="/search"
-                      className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 md:py-4 md:text-lg md:px-10"
-                    >
-                      Find Trucks
-                    </Link>
-                  </div>
-                  <div className="mt-3 sm:mt-0 sm:ml-3">
-                    <Link
-                      href="/register"
-                      className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 md:py-4 md:text-lg md:px-10"
-                    >
-                      Become a Driver
-                    </Link>
-                  </div>
+      {/* Stats Section */}
+      <section className="py-16 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+            {stats.map((stat, index) => (
+              <div key={index} className="text-center">
+                <div className="text-3xl md:text-4xl font-bold text-blue-600 mb-2">
+                  {stat.number}
+                </div>
+                <div className="text-gray-600 font-medium">
+                  {stat.label}
                 </div>
               </div>
-            </main>
+            ))}
           </div>
         </div>
-      </div>
+      </section>
 
       {/* Features Section */}
-      <div className="py-12 bg-white">
+      <section className="py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="lg:text-center">
-            <h2 className="text-base text-blue-600 font-semibold tracking-wide uppercase">Features</h2>
-            <p className="mt-2 text-3xl leading-8 font-extrabold tracking-tight text-gray-900 sm:text-4xl">
-              Everything you need for truck rental
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+              Why Choose Our Platform?
+            </h2>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              We provide the most reliable and efficient truck rental service with advanced features 
+              to make your shipping experience seamless.
             </p>
           </div>
-
-          <div className="mt-10">
-            <div className="space-y-10 md:space-y-0 md:grid md:grid-cols-2 md:gap-x-8 md:gap-y-10">
-              <div className="relative">
-                <div className="absolute flex items-center justify-center h-12 w-12 rounded-md bg-blue-500 text-white">
-                  <MapPin className="h-6 w-6" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {features.map((feature, index) => (
+              <div key={index} className="bg-white p-8 rounded-lg shadow-lg hover:shadow-xl transition-shadow">
+                <div className="mb-4">
+                  {feature.icon}
                 </div>
-                <p className="ml-16 text-lg leading-6 font-medium text-gray-900">Real-time Location Tracking</p>
-                <p className="mt-2 ml-16 text-base text-gray-500">
-                  Track your truck's location in real-time and get updates on delivery status.
+                <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                  {feature.title}
+                </h3>
+                <p className="text-gray-600">
+                  {feature.description}
                 </p>
               </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
-              <div className="relative">
-                <div className="absolute flex items-center justify-center h-12 w-12 rounded-md bg-blue-500 text-white">
-                  <Star className="h-6 w-6" />
-                </div>
-                <p className="ml-16 text-lg leading-6 font-medium text-gray-900">Verified Drivers</p>
-                <p className="mt-2 ml-16 text-base text-gray-500">
-                  All drivers are verified and rated by previous customers for your safety.
-                </p>
+      {/* How It Works Section */}
+      <section className="py-20 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+              How It Works
+            </h2>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              Get your cargo delivered in just a few simple steps
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="text-center">
+              <div className="bg-blue-600 text-white w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold">
+                1
               </div>
-
-              <div className="relative">
-                <div className="absolute flex items-center justify-center h-12 w-12 rounded-md bg-blue-500 text-white">
-                  <Truck className="h-6 w-6" />
-                </div>
-                <p className="ml-16 text-lg leading-6 font-medium text-gray-900">Multiple Truck Types</p>
-                <p className="mt-2 ml-16 text-base text-gray-500">
-                  Choose from mini trucks, pickups, lorries, and more based on your needs.
-                </p>
+              <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                Search & Book
+              </h3>
+              <p className="text-gray-600">
+                Search for available trucks in your area and book the one that fits your needs.
+              </p>
+            </div>
+            <div className="text-center">
+              <div className="bg-blue-600 text-white w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold">
+                2
               </div>
-
-              <div className="relative">
-                <div className="absolute flex items-center justify-center h-12 w-12 rounded-md bg-blue-500 text-white">
-                  <Users className="h-6 w-6" />
-                </div>
-                <p className="ml-16 text-lg leading-6 font-medium text-gray-900">Instant Booking</p>
-                <p className="mt-2 ml-16 text-base text-gray-500">
-                  Book trucks instantly with transparent pricing and no hidden fees.
-                </p>
+              <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                Track & Monitor
+              </h3>
+              <p className="text-gray-600">
+                Track your shipment in real-time and stay updated on delivery progress.
+              </p>
+            </div>
+            <div className="text-center">
+              <div className="bg-blue-600 text-white w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold">
+                3
               </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                Safe Delivery
+              </h3>
+              <p className="text-gray-600">
+                Your cargo is safely delivered and you can rate the driver&apos;s service.
+              </p>
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Footer */}
-      <footer className="bg-gray-800">
-        <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <p className="text-base text-gray-400">
-              © 2024 TruckRental. All rights reserved.
-            </p>
+      {/* CTA Section */}
+      <section className="py-20 bg-blue-600">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+            Ready to Ship Your Cargo?
+          </h2>
+          <p className="text-xl text-blue-100 mb-8 max-w-3xl mx-auto">
+            Join thousands of satisfied customers who trust us for their transportation needs. 
+            Start your journey today!
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link href="/search">
+              <Button className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-3 text-lg font-semibold">
+                Find Trucks Now
+                <ArrowRight className="ml-2 w-5 h-5" />
+              </Button>
+            </Link>
+            <Link href="/contact">
+              <Button className="border-2 border-white text-white hover:bg-white hover:text-blue-600 px-8 py-3 text-lg font-semibold">
+                Contact Us
+                <Phone className="ml-2 w-5 h-5" />
+              </Button>
+            </Link>
           </div>
         </div>
-      </footer>
+      </section>
     </div>
   );
 }

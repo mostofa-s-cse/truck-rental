@@ -90,14 +90,7 @@ export interface PaginatedResponse<T> {
   totalPages: number;
 }
 
-export interface AuthContextType {
-  user: User | null;
-  token: string | null;
-  login: (email: string, password: string) => Promise<void>;
-  register: (userData: RegisterData) => Promise<void>;
-  logout: () => void;
-  loading: boolean;
-}
+
 
 export interface RegisterData {
   email: string;
@@ -142,4 +135,30 @@ export interface SearchDriversParams {
   latitude?: number;
   longitude?: number;
   radius?: number;
+}
+
+export interface SearchFilters {
+  truckType?: 'MINI_TRUCK' | 'PICKUP' | 'LORRY' | 'TRUCK';
+  capacity?: number;
+  location?: string;
+  latitude?: number;
+  longitude?: number;
+  radius?: number;
+  rating?: number;
+  priceRange?: {
+    min?: number;
+    max?: number;
+  };
+  availability?: boolean;
+  verified?: boolean;
+  quality?: 'EXCELLENT' | 'GOOD' | 'AVERAGE' | 'POOR';
+}
+
+export interface SearchResult {
+  drivers: Driver[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  filters: SearchFilters;
 } 

@@ -22,4 +22,10 @@ router.get('/suggestions', SearchController.getSearchSuggestions);
 // Advanced search (Public)
 router.get('/advanced', SearchController.getAdvancedSearch);
 
+// Get search statistics (Public)
+router.get('/stats', SearchController.getSearchStats);
+
+// Get truck type statistics (Public)
+router.get('/stats/truck-types', SearchController.getTruckTypeStats);
+
 export default router; 

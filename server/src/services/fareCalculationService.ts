@@ -100,7 +100,7 @@ export class FareCalculationService {
       return result;
     } catch (error) {
       logDatabase('select_error', 'fare_calculation', { 
-        error: error.message,
+        error: error instanceof Error ? error.message : 'Unknown error',
         request 
       });
       throw error;
@@ -120,7 +120,7 @@ export class FareCalculationService {
       const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${origin}&destinations=${dest}&key=${this.GOOGLE_MAPS_API_KEY}`;
       
       const response = await fetch(url);
-      const data = await response.json();
+      const data = await response.json() as any;
 
       if (data.status === 'OK' && data.rows[0]?.elements[0]?.status === 'OK') {
         const element = data.rows[0].elements[0];
@@ -133,6 +133,7 @@ export class FareCalculationService {
       }
     } catch (error) {
       // Fallback to simple calculation
+      console.warn('Google Maps API error, using fallback calculation:', error instanceof Error ? error.message : 'Unknown error');
       return this.calculateSimpleDistance(source, destination);
     }
   }

@@ -11,6 +11,23 @@ export class SearchController {
       const limit = parseInt(req.query.limit as string) || 10;
       const userId = (req as any).user?.userId || 'anonymous';
       
+      // Validate pagination parameters
+      if (page < 1) {
+        return res.status(400).json({
+          success: false,
+          message: 'Page number must be greater than 0',
+          error: 'Invalid page parameter'
+        });
+      }
+      
+      if (limit < 1 || limit > 100) {
+        return res.status(400).json({
+          success: false,
+          message: 'Limit must be between 1 and 100',
+          error: 'Invalid limit parameter'
+        });
+      }
+      
       logDatabase('select', 'search_trucks', { 
         userId, 
         filters, 
@@ -22,7 +39,7 @@ export class SearchController {
 
       const response: ApiResponse = {
         success: true,
-        message: 'Truck search completed successfully',
+        message: `Found ${result.total} trucks matching your criteria`,
         data: result
       };
 
@@ -44,7 +61,7 @@ export class SearchController {
         error: error.message
       };
 
-      res.status(400).json(response);
+      res.status(500).json(response);
     }
   }
 
@@ -91,6 +108,41 @@ export class SearchController {
       const limit = parseInt(req.query.limit as string) || 20;
       const userId = (req as any).user?.userId || 'anonymous';
       
+      // Validate required parameters
+      if (isNaN(latitude) || isNaN(longitude)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Valid latitude and longitude are required',
+          error: 'Missing or invalid coordinates'
+        });
+      }
+      
+      // Validate coordinate ranges
+      if (latitude < -90 || latitude > 90) {
+        return res.status(400).json({
+          success: false,
+          message: 'Latitude must be between -90 and 90',
+          error: 'Invalid latitude'
+        });
+      }
+      
+      if (longitude < -180 || longitude > 180) {
+        return res.status(400).json({
+          success: false,
+          message: 'Longitude must be between -180 and 180',
+          error: 'Invalid longitude'
+        });
+      }
+      
+      // Validate radius
+      if (radius <= 0 || radius > 100) {
+        return res.status(400).json({
+          success: false,
+          message: 'Radius must be between 0 and 100 km',
+          error: 'Invalid radius'
+        });
+      }
+      
       logDatabase('select', 'nearby_trucks', { 
         userId, 
         latitude, 
@@ -103,7 +155,7 @@ export class SearchController {
 
       const response: ApiResponse = {
         success: true,
-        message: 'Nearby trucks retrieved successfully',
+        message: `Found ${result.length} trucks within ${radius}km`,
         data: result
       };
 
@@ -126,7 +178,7 @@ export class SearchController {
         error: error.message
       };
 
-      res.status(400).json(response);
+      res.status(500).json(response);
     }
   }
 
@@ -222,12 +274,25 @@ export class SearchController {
         maxPrice,
         availability,
         verified,
-        quality
+        quality,
+        sortBy,
+        sortOrder,
+        minTrips,
+        maxTrips,
+        page,
+        limit
       } = req.query;
 
-      const filters: SearchFilters = {};
+      // Build comprehensive filters
+      const filters: SearchFilters & {
+        sortBy?: 'rating' | 'distance' | 'price' | 'totalTrips';
+        sortOrder?: 'asc' | 'desc';
+        minTrips?: number;
+        maxTrips?: number;
+      } = {};
 
-      if (truckType) filters.truckType = truckType as any;
+      // Basic filters
+      if (truckType) filters.truckType = truckType as SearchFilters['truckType'];
       if (capacity) filters.capacity = parseFloat(capacity as string);
       if (location) filters.location = location as string;
       if (latitude) filters.latitude = parseFloat(latitude as string);
@@ -241,24 +306,47 @@ export class SearchController {
       }
       if (availability !== undefined) filters.availability = availability === 'true';
       if (verified !== undefined) filters.verified = verified === 'true';
-      if (quality) filters.quality = quality as any;
+      if (quality) filters.quality = quality as SearchFilters['quality'];
 
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 10;
+      // Advanced filters
+      if (sortBy) filters.sortBy = sortBy as 'rating' | 'distance' | 'price' | 'totalTrips';
+      if (sortOrder) filters.sortOrder = sortOrder as 'asc' | 'desc';
+      if (minTrips) filters.minTrips = parseInt(minTrips as string);
+      if (maxTrips) filters.maxTrips = parseInt(maxTrips as string);
+
+      const pageNum = parseInt(page as string) || 1;
+      const limitNum = parseInt(limit as string) || 10;
       const userId = (req as any).user?.userId || 'anonymous';
+      
+      // Validate pagination
+      if (pageNum < 1) {
+        return res.status(400).json({
+          success: false,
+          message: 'Page number must be greater than 0',
+          error: 'Invalid page parameter'
+        });
+      }
+      
+      if (limitNum < 1 || limitNum > 100) {
+        return res.status(400).json({
+          success: false,
+          message: 'Limit must be between 1 and 100',
+          error: 'Invalid limit parameter'
+        });
+      }
       
       logDatabase('select', 'advanced_search', { 
         userId, 
         filters, 
-        page, 
-        limit 
+        page: pageNum, 
+        limit: limitNum 
       });
       
-      const result = await SearchService.searchTrucks(filters, page, limit);
+      const result = await SearchService.advancedSearch(filters, pageNum, limitNum);
 
       const response: ApiResponse = {
         success: true,
-        message: 'Advanced search completed successfully',
+        message: `Advanced search completed. Found ${result.total} trucks matching criteria`,
         data: result
       };
 
@@ -278,7 +366,88 @@ export class SearchController {
         error: error.message
       };
 
-      res.status(400).json(response);
+      res.status(500).json(response);
+    }
+  }
+
+  // Get search statistics and analytics
+  static async getSearchStats(req: Request, res: Response) {
+    try {
+      const userId = (req as any).user?.userId || 'anonymous';
+      
+      logDatabase('select', 'search_stats', { userId });
+      
+      // Get basic statistics
+      const totalDrivers = await SearchService.getTotalDrivers();
+      const availableDrivers = await SearchService.getAvailableDrivers();
+      const verifiedDrivers = await SearchService.getVerifiedDrivers();
+      const avgRating = await SearchService.getAverageRating();
+      
+      const stats = {
+        totalDrivers,
+        availableDrivers,
+        verifiedDrivers,
+        averageRating: avgRating,
+        availabilityRate: totalDrivers > 0 ? (availableDrivers / totalDrivers * 100).toFixed(1) : 0,
+        verificationRate: totalDrivers > 0 ? (verifiedDrivers / totalDrivers * 100).toFixed(1) : 0
+      };
+
+      const response: ApiResponse = {
+        success: true,
+        message: 'Search statistics retrieved successfully',
+        data: stats
+      };
+
+      res.status(200).json(response);
+    } catch (error: any) {
+      const userId = (req as any).user?.userId || 'anonymous';
+      
+      logError(error, { 
+        operation: 'get_search_stats', 
+        userId
+      });
+
+      const response: ApiResponse = {
+        success: false,
+        message: error.message || 'Failed to get search statistics',
+        error: error.message
+      };
+
+      res.status(500).json(response);
+    }
+  }
+
+  // Get truck types with counts
+  static async getTruckTypeStats(req: Request, res: Response) {
+    try {
+      const userId = (req as any).user?.userId || 'anonymous';
+      
+      logDatabase('select', 'truck_type_stats', { userId });
+      
+      const truckTypeStats = await SearchService.getTruckTypeStats();
+
+      const response: ApiResponse = {
+        success: true,
+        message: 'Truck type statistics retrieved successfully',
+        data: truckTypeStats
+      };
+
+      res.status(200).json(response);
+    } catch (error: any) {
+      const userId = (req as any).user?.userId || 'anonymous';
+      
+      logError(error, { 
+        operation: 'get_truck_type_stats', 
+        userId
+      });
+
+      const response: ApiResponse = {
+        success: false,
+        message: error.message || 'Failed to get truck type statistics',
+        error: error.message
+      };
+
+      res.status(500).json(response);
     }
   }
 } 

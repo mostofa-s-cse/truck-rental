@@ -67,44 +67,51 @@ export class SearchService {
 
       const where: Record<string, any> = {};
 
-      // Build where clause based on filters
+      // Build comprehensive where clause based on all filters
+      
+      // Truck Type Filter
       if (filters.truckType) {
         where.truckType = filters.truckType;
       }
 
-      if (filters.capacity) {
+      // Capacity Filter (minimum capacity)
+      if (filters.capacity && filters.capacity > 0) {
         where.capacity = {
           gte: filters.capacity
         };
       }
 
-      if (filters.rating) {
+      // Rating Filter (minimum rating)
+      if (filters.rating && filters.rating > 0) {
         where.rating = {
           gte: filters.rating
         };
       }
 
+      // Availability Filter
       if (filters.availability !== undefined) {
         where.isAvailable = filters.availability;
       }
 
+      // Verification Filter
       if (filters.verified !== undefined) {
         where.isVerified = filters.verified;
       }
 
+      // Quality Filter
       if (filters.quality) {
         where.quality = filters.quality;
       }
 
-      // Add location filter if provided
-      if (filters.location) {
+      // Location Filter (case-insensitive search)
+      if (filters.location && filters.location.trim()) {
         where.location = {
-          contains: filters.location,
+          contains: filters.location.trim(),
           mode: 'insensitive'
         };
       }
 
-      // Get all drivers first for distance calculation
+      // Get all drivers with comprehensive filtering
       const allDrivers = await prisma.driver.findMany({
         where,
         include: {
@@ -128,12 +135,14 @@ export class SearchService {
             }
           }
         },
-        orderBy: {
-          rating: 'desc'
-        }
+        orderBy: [
+          { rating: 'desc' },
+          { totalTrips: 'desc' },
+          { isVerified: 'desc' }
+        ]
       });
 
-      // Calculate distance and apply radius filter if coordinates are provided
+      // Apply distance-based filtering and sorting if coordinates provided
       let driversWithDistance = allDrivers;
       if (filters.latitude && filters.longitude) {
         driversWithDistance = allDrivers
@@ -151,18 +160,29 @@ export class SearchService {
           })
           .filter(driver => {
             // Filter by radius if specified
-            if (filters.radius && driver.distance !== undefined) {
-              return driver.distance <= filters.radius!;
+            if (filters.radius && filters.radius > 0 && driver.distance !== undefined) {
+              return driver.distance <= filters.radius;
             }
             return true;
           })
           .sort((a, b) => {
-            // Sort by distance if available
-            if (a.distance === undefined && b.distance === undefined) return 0;
-            if (a.distance === undefined) return 1;
-            if (b.distance === undefined) return -1;
-            return a.distance - b.distance;
+            // Sort by distance if available, then by rating
+            if (a.distance !== undefined && b.distance !== undefined) {
+              return a.distance - b.distance;
+            }
+            if (a.distance !== undefined) return -1;
+            if (b.distance !== undefined) return 1;
+            return b.rating - a.rating;
           });
+      }
+
+      // Apply price range filter if specified
+      if (filters.priceRange) {
+        driversWithDistance = driversWithDistance.filter(driver => {
+          // This would need to be implemented based on your pricing logic
+          // For now, we'll assume all drivers are within range
+          return true;
+        });
       }
 
       // Apply pagination after all filtering
@@ -415,11 +435,193 @@ export class SearchService {
 
       suggestions.push(...matchingTruckTypes);
 
+      // Get quality suggestions
+      const qualities = ['EXCELLENT', 'GOOD', 'AVERAGE', 'POOR'];
+      const matchingQualities = qualities.filter(quality =>
+        quality.toLowerCase().includes(query.toLowerCase())
+      );
+
+      suggestions.push(...matchingQualities);
+
       return [...new Set(suggestions)]; // Remove duplicates
     } catch (error) {
       logError(error, { 
         operation: 'get_search_suggestions', 
         query 
+      });
+      throw error;
+    }
+  }
+
+  // Advanced search with additional filtering options
+  static async advancedSearch(
+    filters: SearchFilters & {
+      sortBy?: 'rating' | 'distance' | 'price' | 'totalTrips';
+      sortOrder?: 'asc' | 'desc';
+      minTrips?: number;
+      maxTrips?: number;
+      experienceYears?: number;
+    },
+    page = 1,
+    limit = 10
+  ): Promise<SearchResult> {
+    try {
+      const skip = (page - 1) * limit;
+
+      logDatabase('select', 'advanced_search', { filters, page, limit });
+
+      const where: Record<string, any> = {};
+
+      // Apply all basic filters
+      if (filters.truckType) {
+        where.truckType = filters.truckType;
+      }
+
+      if (filters.capacity && filters.capacity > 0) {
+        where.capacity = {
+          gte: filters.capacity
+        };
+      }
+
+      if (filters.rating && filters.rating > 0) {
+        where.rating = {
+          gte: filters.rating
+        };
+      }
+
+      if (filters.availability !== undefined) {
+        where.isAvailable = filters.availability;
+      }
+
+      if (filters.verified !== undefined) {
+        where.isVerified = filters.verified;
+      }
+
+      if (filters.quality) {
+        where.quality = filters.quality;
+      }
+
+      if (filters.location && filters.location.trim()) {
+        where.location = {
+          contains: filters.location.trim(),
+          mode: 'insensitive'
+        };
+      }
+
+      // Advanced filters
+      if (filters.minTrips && filters.minTrips > 0) {
+        where.totalTrips = {
+          gte: filters.minTrips
+        };
+      }
+
+      if (filters.maxTrips && filters.maxTrips > 0) {
+        where.totalTrips = {
+          ...where.totalTrips,
+          lte: filters.maxTrips
+        };
+      }
+
+      // Get drivers with advanced filtering
+      const allDrivers = await prisma.driver.findMany({
+        where,
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true,
+              avatar: true
+            }
+          },
+          reviews: {
+            select: {
+              rating: true,
+              comment: true
+            },
+            take: 5,
+            orderBy: {
+              createdAt: 'desc'
+            }
+          }
+        }
+      });
+
+      // Apply distance filtering if coordinates provided
+      let driversWithDistance = allDrivers;
+      if (filters.latitude && filters.longitude) {
+        driversWithDistance = allDrivers
+          .map(driver => {
+            if (driver.latitude && driver.longitude) {
+              const distance = this.calculateDistance(
+                filters.latitude!,
+                filters.longitude!,
+                driver.latitude,
+                driver.longitude
+              );
+              return { ...driver, distance };
+            }
+            return { ...driver, distance: undefined };
+          })
+          .filter(driver => {
+            if (filters.radius && filters.radius > 0 && driver.distance !== undefined) {
+              return driver.distance <= filters.radius;
+            }
+            return true;
+          });
+      }
+
+      // Apply custom sorting
+      const sortBy = filters.sortBy || 'rating';
+      const sortOrder = filters.sortOrder || 'desc';
+
+      driversWithDistance.sort((a: any, b: any) => {
+        let comparison = 0;
+
+        switch (sortBy) {
+          case 'rating':
+            comparison = a.rating - b.rating;
+            break;
+          case 'distance':
+            if (a.distance !== undefined && b.distance !== undefined) {
+              comparison = a.distance - b.distance;
+            } else if (a.distance !== undefined) {
+              comparison = -1;
+            } else if (b.distance !== undefined) {
+              comparison = 1;
+            }
+            break;
+          case 'totalTrips':
+            comparison = a.totalTrips - b.totalTrips;
+            break;
+          case 'price':
+            // This would need to be implemented based on your pricing logic
+            comparison = 0;
+            break;
+        }
+
+        return sortOrder === 'asc' ? comparison : -comparison;
+      });
+
+      // Apply pagination
+      const total = driversWithDistance.length;
+      const paginatedDrivers = driversWithDistance.slice(skip, skip + limit);
+
+      return {
+        drivers: paginatedDrivers,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+        filters
+      };
+    } catch (error) {
+      logError(error, { 
+        operation: 'advanced_search', 
+        filters, 
+        page, 
+        limit 
       });
       throw error;
     }
@@ -445,5 +647,70 @@ export class SearchService {
 
   private static toRadians(degrees: number): number {
     return degrees * (Math.PI / 180);
+  }
+
+  // Statistics methods
+  static async getTotalDrivers(): Promise<number> {
+    try {
+      return await prisma.driver.count();
+    } catch (error) {
+      logError(error, { operation: 'get_total_drivers' });
+      throw error;
+    }
+  }
+
+  static async getAvailableDrivers(): Promise<number> {
+    try {
+      return await prisma.driver.count({
+        where: { isAvailable: true }
+      });
+    } catch (error) {
+      logError(error, { operation: 'get_available_drivers' });
+      throw error;
+    }
+  }
+
+  static async getVerifiedDrivers(): Promise<number> {
+    try {
+      return await prisma.driver.count({
+        where: { isVerified: true }
+      });
+    } catch (error) {
+      logError(error, { operation: 'get_verified_drivers' });
+      throw error;
+    }
+  }
+
+  static async getAverageRating(): Promise<number> {
+    try {
+      const result = await prisma.driver.aggregate({
+        _avg: {
+          rating: true
+        }
+      });
+      return result._avg.rating || 0;
+    } catch (error) {
+      logError(error, { operation: 'get_average_rating' });
+      throw error;
+    }
+  }
+
+  static async getTruckTypeStats(): Promise<Array<{ truckType: string; count: number }>> {
+    try {
+      const stats = await prisma.driver.groupBy({
+        by: ['truckType'],
+        _count: {
+          truckType: true
+        }
+      });
+
+      return stats.map(stat => ({
+        truckType: stat.truckType,
+        count: stat._count.truckType
+      }));
+    } catch (error) {
+      logError(error, { operation: 'get_truck_type_stats' });
+      throw error;
+    }
   }
 } 

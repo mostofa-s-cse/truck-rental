@@ -1,7 +1,7 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
-import { ApiResponse } from '@/types';
+import { ApiResponse, RegisterData, LoginData, CreateDriverData, CreateBookingData, SearchDriversParams, SearchFilters, SearchResult, Driver } from '@/types';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
 
 class ApiClient {
   private client: AxiosInstance;
@@ -45,28 +45,28 @@ class ApiClient {
   }
 
   // Auth endpoints
-  async register(userData: any): Promise<ApiResponse> {
+  async register(userData: RegisterData): Promise<ApiResponse> {
     const response = await this.client.post('/auth/register', userData);
     return response.data;
   }
 
-  async login(credentials: any): Promise<ApiResponse> {
+  async login(credentials: LoginData): Promise<ApiResponse> {
     const response = await this.client.post('/auth/login', credentials);
     return response.data;
   }
 
-  async changePassword(passwords: any): Promise<ApiResponse> {
+  async changePassword(passwords: { oldPassword: string; newPassword: string }): Promise<ApiResponse> {
     const response = await this.client.post('/auth/change-password', passwords);
     return response.data;
   }
 
   // Driver endpoints
-  async createDriver(driverData: any): Promise<ApiResponse> {
+  async createDriver(driverData: CreateDriverData): Promise<ApiResponse> {
     const response = await this.client.post('/drivers/profile', driverData);
     return response.data;
   }
 
-  async updateDriver(driverData: any): Promise<ApiResponse> {
+  async updateDriver(driverData: Partial<CreateDriverData>): Promise<ApiResponse> {
     const response = await this.client.put('/drivers/profile', driverData);
     return response.data;
   }
@@ -76,8 +76,67 @@ class ApiClient {
     return response.data;
   }
 
-  async searchDrivers(params: any): Promise<ApiResponse> {
+  async searchDrivers(params: SearchDriversParams): Promise<ApiResponse> {
     const response = await this.client.get('/drivers/search', { params });
+    return response.data;
+  }
+
+  // Search endpoints
+  async searchTrucks(filters: SearchFilters, page = 1, limit = 10): Promise<ApiResponse<SearchResult>> {
+    const response = await this.client.post('/search/trucks', filters, { 
+      params: { page, limit } 
+    });
+    return response.data;
+  }
+
+  async getPopularTrucks(limit = 10): Promise<ApiResponse<Driver[]>> {
+    const response = await this.client.get('/search/trucks/popular', { 
+      params: { limit } 
+    });
+    return response.data;
+  }
+
+  async getNearbyTrucks(latitude: number, longitude: number, radius = 10, limit = 20): Promise<ApiResponse<Driver[]>> {
+    const response = await this.client.get('/search/trucks/nearby', { 
+      params: { latitude, longitude, radius, limit } 
+    });
+    return response.data;
+  }
+
+  async getSearchSuggestions(query: string): Promise<ApiResponse<string[]>> {
+    const response = await this.client.get('/search/suggestions', { 
+      params: { query } 
+    });
+    return response.data;
+  }
+
+  async getAdvancedSearch(params: SearchFilters & {
+    sortBy?: 'rating' | 'distance' | 'price' | 'totalTrips';
+    sortOrder?: 'asc' | 'desc';
+    minTrips?: number;
+    maxTrips?: number;
+  }): Promise<ApiResponse<SearchResult>> {
+    const response = await this.client.get('/search/advanced', { params });
+    return response.data;
+  }
+
+  async getSearchStats(): Promise<ApiResponse<{
+    totalDrivers: number;
+    availableDrivers: number;
+    verifiedDrivers: number;
+    averageRating: number;
+    availabilityRate: string;
+    verificationRate: string;
+  }>> {
+    const response = await this.client.get('/search/stats');
+    return response.data;
+  }
+
+  async getTruckTypeStats(): Promise<ApiResponse<Array<{
+    truckType: string;
+    count: number;
+  }>>> {
+    const response = await this.client.get('/search/stats/truck-types');
     return response.data;
   }
 
@@ -86,7 +145,7 @@ class ApiClient {
     return response.data;
   }
 
-  async updateLocation(locationData: any): Promise<ApiResponse> {
+  async updateLocation(locationData: { latitude: number; longitude: number; accuracy?: number }): Promise<ApiResponse> {
     const response = await this.client.put('/drivers/location', locationData);
     return response.data;
   }
@@ -103,7 +162,7 @@ class ApiClient {
   }
 
   // Booking endpoints (to be implemented)
-  async createBooking(bookingData: any): Promise<ApiResponse> {
+  async createBooking(bookingData: CreateBookingData): Promise<ApiResponse> {
     const response = await this.client.post('/bookings', bookingData);
     return response.data;
   }
@@ -118,7 +177,7 @@ class ApiClient {
     return response.data;
   }
 
-  async updateBooking(bookingId: string, updateData: any): Promise<ApiResponse> {
+  async updateBooking(bookingId: string, updateData: Partial<CreateBookingData>): Promise<ApiResponse> {
     const response = await this.client.put(`/bookings/${bookingId}`, updateData);
     return response.data;
   }
@@ -126,6 +185,11 @@ class ApiClient {
   async cancelBooking(bookingId: string): Promise<ApiResponse> {
     const response = await this.client.delete(`/bookings/${bookingId}`);
     return response.data;
+  }
+
+  // Method to access the underlying axios client for custom requests
+  getClient() {
+    return this.client;
   }
 }
 
