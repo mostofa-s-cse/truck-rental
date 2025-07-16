@@ -36,6 +36,7 @@ import {
   InformationCircleIcon,
   ArrowRightEndOnRectangleIcon
 } from '@heroicons/react/24/outline';
+import Link from 'next/link';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -299,7 +300,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     
     return (
       <div key={item.name}>
-        <a
+        <Link
           href={item.href}
           className={`
             group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
@@ -318,7 +319,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           {hasChildren && (
             <ChevronDownIcon className={`ml-2 h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
           )}
-        </a>
+        </Link>
         {hasChildren && isOpen && (
           <div className="ml-4 mt-1 space-y-1">
             {item.children!.map((child) => renderMenuItem(child, level + 1))}
@@ -329,10 +330,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-gray-800 transform transition-transform duration-300 ease-in-out ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 lg:static lg:inset-0`}>
-        <div className="flex items-center justify-between h-16 px-4 bg-gray-900">
+    <div className="h-screen bg-gray-100 flex overflow-hidden">
+      {/* Fixed Sidebar */}
+      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-gray-800 transform transition-transform duration-300 ease-in-out ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 lg:static lg:inset-0 flex flex-col`}>
+        <div className="flex-shrink-0 flex items-center justify-between h-16 px-4 bg-gray-900">
           <div className="flex items-center">
             <TruckIcon className="h-8 w-8 text-blue-500" />
             <span className="ml-2 text-xl font-bold text-white">TruckBook</span>
@@ -345,17 +346,17 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           </button>
         </div>
         
-        <div className="flex-1 flex flex-col overflow-y-auto">
-          <nav className="flex-1 px-2 py-4 space-y-1">
+        <div className="flex-1 overflow-hidden">
+          <nav className="h-full px-2 py-4 space-y-1 overflow-y-auto">
             {menuItems.map((item) => renderMenuItem(item))}
           </nav>
         </div>
       </div>
 
-      {/* Main content */}
-      <div className="lg:pl-64 flex flex-col flex-1">
-        {/* Topbar */}
-        <div className="sticky top-0 z-40 flex-shrink-0 flex h-16 bg-white shadow">
+      {/* Main content area */}
+      <div className="flex flex-col flex-1 min-w-0">
+        {/* Fixed Topbar */}
+        <div className="flex-shrink-0 flex h-16 bg-white shadow z-40">
           <button
             onClick={() => setSidebarOpen(true)}
             className="lg:hidden px-4 text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
@@ -413,8 +414,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           </div>
         </div>
 
-        {/* Page content */}
-        <main className="flex-1">
+        {/* Scrollable Page content */}
+        <main className="flex-1 overflow-y-auto">
           <div className="py-6">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               {children}
@@ -422,8 +423,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           </div>
         </main>
 
-        {/* Footer */}
-        <footer className="bg-white border-t border-gray-200">
+        {/* Fixed Footer */}
+        <footer className="flex-shrink-0 bg-white border-t border-gray-200">
           <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between">
               <div className="text-sm text-gray-500">

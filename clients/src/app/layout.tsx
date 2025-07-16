@@ -3,9 +3,7 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import 'sweetalert2/dist/sweetalert2.min.css';
 import ReduxProvider from '@/providers/ReduxProvider';
-import Navigation from '@/components/ui/Navigation';
-import Footer from '@/components/ui/Footer';
-import Notification from '@/components/ui/Notification';
+import LayoutWrapper from '@/components/layout/LayoutWrapper';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -23,14 +21,9 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <ReduxProvider>
-          <div className="min-h-screen bg-gray-50 flex flex-col">
-            <Navigation />
-            <main className="flex-1">
-              {children}
-            </main>
-            <Footer />
-            <Notification />
-          </div>
+          <LayoutWrapper>
+            {children}
+          </LayoutWrapper>
         </ReduxProvider>
       </body>
     </html>

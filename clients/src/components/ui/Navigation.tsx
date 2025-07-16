@@ -9,7 +9,15 @@ import {
   Bars3Icon, 
   XMarkIcon,
   TruckIcon,
-  UserCircleIcon
+  UserCircleIcon,
+  HomeIcon,
+  MagnifyingGlassIcon,
+  InformationCircleIcon,
+  PhoneIcon,
+  ChartBarIcon,
+  CalendarIcon,
+  CurrencyDollarIcon,
+
 } from '@heroicons/react/24/outline';
 
 const Navigation = () => {
@@ -23,30 +31,99 @@ const Navigation = () => {
     successToast('Logged out successfully');
   };
 
-  const getDashboardLink = () => {
-    if (!user) return '/login';
+
+
+  const getRoleBasedNavigation = () => {
+    if (!user) {
+      return [
+        { name: 'Home', href: '/', icon: HomeIcon },
+        { name: 'Search Trucks', href: '/search', icon: MagnifyingGlassIcon },
+        { name: 'About', href: '/about', icon: InformationCircleIcon },
+        { name: 'Contact', href: '/contact', icon: PhoneIcon }
+      ];
+    }
     
     switch (user.role) {
       case 'ADMIN':
-        return '/admin';
+        return [
+          { name: 'Dashboard', href: '/dashboard/admin', icon: ChartBarIcon },
+          { name: 'Users', href: '/dashboard/admin/users', icon: UserCircleIcon },
+          { name: 'Drivers', href: '/dashboard/admin/drivers', icon: TruckIcon },
+          { name: 'Bookings', href: '/dashboard/admin/bookings', icon: CalendarIcon },
+          { name: 'Reports', href: '/dashboard/admin/reports', icon: ChartBarIcon }
+        ];
       case 'DRIVER':
-        return '/driver';
+        return [
+          { name: 'Dashboard', href: '/dashboard/driver', icon: ChartBarIcon },
+          { name: 'Bookings', href: '/dashboard/driver/bookings', icon: CalendarIcon },
+          { name: 'Earnings', href: '/dashboard/driver/earnings', icon: CurrencyDollarIcon },
+          { name: 'Profile', href: '/dashboard/driver/profile', icon: UserCircleIcon }
+        ];
       case 'USER':
-        return '/dashboard';
+        return [
+          { name: 'Dashboard', href: '/dashboard/user', icon: ChartBarIcon },
+          { name: 'Search', href: '/search', icon: MagnifyingGlassIcon },
+          { name: 'Bookings', href: '/dashboard/user/bookings', icon: CalendarIcon },
+          { name: 'Profile', href: '/dashboard/user/profile', icon: UserCircleIcon }
+        ];
       default:
-        return '/dashboard';
+        return [
+          { name: 'Home', href: '/', icon: HomeIcon },
+          { name: 'Search Trucks', href: '/search', icon: MagnifyingGlassIcon },
+          { name: 'About', href: '/about', icon: InformationCircleIcon },
+          { name: 'Contact', href: '/contact', icon: PhoneIcon }
+        ];
+    }
+  };
+
+  const getRoleBasedUserMenu = () => {
+    if (!user) return [];
+    
+    switch (user.role) {
+      case 'ADMIN':
+        return [
+          { name: 'Admin Dashboard', href: '/dashboard/admin' },
+          { name: 'User Management', href: '/dashboard/admin/users' },
+          { name: 'Driver Management', href: '/dashboard/admin/drivers' },
+          { name: 'System Settings', href: '/dashboard/admin/settings' },
+          { name: 'Profile', href: '/profile' },
+          { name: 'Sign out', action: handleLogout, isAction: true }
+        ];
+      case 'DRIVER':
+        return [
+          { name: 'Driver Dashboard', href: '/dashboard/driver' },
+          { name: 'My Bookings', href: '/dashboard/driver/bookings' },
+          { name: 'Earnings', href: '/dashboard/driver/earnings' },
+          { name: 'Profile', href: '/dashboard/driver/profile' },
+          { name: 'Settings', href: '/dashboard/driver/settings' },
+          { name: 'Sign out', action: handleLogout, isAction: true }
+        ];
+      case 'USER':
+        return [
+          { name: 'User Dashboard', href: '/dashboard/user' },
+          { name: 'My Bookings', href: '/dashboard/user/bookings' },
+          { name: 'Favorites', href: '/dashboard/user/favorites' },
+          { name: 'Profile', href: '/dashboard/user/profile' },
+          { name: 'Settings', href: '/dashboard/user/settings' },
+          { name: 'Sign out', action: handleLogout, isAction: true }
+        ];
+      default:
+        return [
+          { name: 'Dashboard', href: '/dashboard' },
+          { name: 'Profile', href: '/profile' },
+          { name: 'Settings', href: '/settings' },
+          { name: 'Sign out', action: handleLogout, isAction: true }
+        ];
     }
   };
 
   const navigation = [
-    { name: 'Home', href: '/' },
-    { name: 'Search Trucks', href: '/search' },
-    { name: 'About', href: '/about' },
-    { name: 'Contact', href: '/contact' },
-    // Development links - remove in production
-    // { name: 'SweetAlert Demo', href: '/sweetalert-demo' },
-    // { name: 'SweetAlert Examples', href: '/sweetalert-examples' },
+    { name: 'Home', href: '/', icon: HomeIcon },
+    { name: 'Search Trucks', href: '/search', icon: MagnifyingGlassIcon },
+    { name: 'About', href: '/about', icon: InformationCircleIcon },
+    { name: 'Contact', href: '/contact', icon: PhoneIcon }
   ];
+  const userMenu = getRoleBasedUserMenu();
 
   const isActive = (href: string) => {
     if (href === '/') {
@@ -92,12 +169,13 @@ const Navigation = () => {
               <Link
                 key={item.name}
                 href={item.href}
-                className={`px-3 py-2 text-sm font-medium transition-colors ${
+                className={`flex items-center px-3 py-2 text-sm font-medium transition-colors ${
                   isActive(item.href)
                     ? 'text-blue-600 border-b-2 border-blue-600'
                     : 'text-gray-700 hover:text-blue-600'
                 }`}
               >
+                <item.icon className="h-4 w-4 mr-1" />
                 {item.name}
               </Link>
             ))}
@@ -107,44 +185,40 @@ const Navigation = () => {
           <div className="hidden md:flex items-center space-x-4">
             {user ? (
               <>
-                <Link
-                  href={getDashboardLink()}
-                  className={`px-3 py-2 text-sm font-medium transition-colors ${
-                    isActive(getDashboardLink())
-                      ? 'text-blue-600 border-b-2 border-blue-600'
-                      : 'text-gray-700 hover:text-blue-600'
-                  }`}
-                >
-                  Dashboard
-                </Link>
                 <div className="relative group">
                   <button className="flex items-center text-gray-700 hover:text-blue-600 px-3 py-2 text-sm font-medium transition-colors">
                     <UserCircleIcon className="h-5 w-5 mr-1" />
                     {user.name}
+                    <span className={`ml-2 px-2 py-1 text-xs rounded-full ${
+                      user.role === 'ADMIN' ? 'bg-red-100 text-red-800' :
+                      user.role === 'DRIVER' ? 'bg-blue-100 text-blue-800' :
+                      'bg-green-100 text-green-800'
+                    }`}>
+                      {user.role}
+                    </span>
                   </button>
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
-                    <Link
-                      href="/profile"
-                      className={`block px-4 py-2 text-sm hover:bg-gray-100 ${
-                        isActive('/profile') ? 'text-blue-600 bg-blue-50' : 'text-gray-700'
-                      }`}
-                    >
-                      Profile
-                    </Link>
-                    <Link
-                      href="/settings"
-                      className={`block px-4 py-2 text-sm hover:bg-gray-100 ${
-                        isActive('/settings') ? 'text-blue-600 bg-blue-50' : 'text-gray-700'
-                      }`}
-                    >
-                      Settings
-                    </Link>
-                    <button
-                      onClick={handleLogout}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                      Sign out
-                    </button>
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg py-1 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                    {userMenu.map((item, index) => (
+                      <div key={index}>
+                        {item.isAction ? (
+                          <button
+                            onClick={item.action}
+                            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          >
+                            {item.name}
+                          </button>
+                                                 ) : (
+                           <Link
+                             href={item.href || '#'}
+                             className={`block px-4 py-2 text-sm hover:bg-gray-100 ${
+                               isActive(item.href || '') ? 'text-blue-600 bg-blue-50' : 'text-gray-700'
+                             }`}
+                           >
+                             {item.name}
+                           </Link>
+                         )}
+                      </div>
+                    ))}
                   </div>
                 </div>
               </>
@@ -198,52 +272,54 @@ const Navigation = () => {
               <Link
                 key={item.name}
                 href={item.href}
-                className={`block px-3 py-2 text-base font-medium transition-colors ${
+                className={`flex items-center px-3 py-2 text-base font-medium transition-colors ${
                   isActive(item.href)
                     ? 'text-blue-600 bg-blue-50 border-l-4 border-blue-600'
                     : 'text-gray-700 hover:text-blue-600'
                 }`}
                 onClick={() => setIsMenuOpen(false)}
               >
+                <item.icon className="h-5 w-5 mr-2" />
                 {item.name}
               </Link>
             ))}
             
-            {user ? (
-              <>
-                <Link
-                  href={getDashboardLink()}
-                  className={`block px-3 py-2 text-base font-medium transition-colors ${
-                    isActive(getDashboardLink())
-                      ? 'text-blue-600 bg-blue-50 border-l-4 border-blue-600'
-                      : 'text-gray-700 hover:text-blue-600'
-                  }`}
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Dashboard
-                </Link>
-                <Link
-                  href="/profile"
-                  className={`block px-3 py-2 text-base font-medium transition-colors ${
-                    isActive('/profile')
-                      ? 'text-blue-600 bg-blue-50 border-l-4 border-blue-600'
-                      : 'text-gray-700 hover:text-blue-600'
-                  }`}
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Profile
-                </Link>
-                <button
-                  onClick={() => {
-                    handleLogout();
-                    setIsMenuOpen(false);
-                  }}
-                  className="text-gray-700 hover:text-blue-600 block w-full text-left px-3 py-2 text-base font-medium transition-colors"
-                >
-                  Sign out
-                </button>
-              </>
-            ) : (
+            {user && (
+              <div className="border-t border-gray-200 pt-2 mt-2">
+                <div className="px-3 py-2 text-sm text-gray-500">
+                  {user.name} ({user.role})
+                </div>
+                {userMenu.map((item, index) => (
+                  <div key={index}>
+                    {item.isAction ? (
+                      <button
+                        onClick={() => {
+                          item.action();
+                          setIsMenuOpen(false);
+                        }}
+                        className="text-gray-700 hover:text-blue-600 block w-full text-left px-3 py-2 text-base font-medium transition-colors"
+                      >
+                        {item.name}
+                      </button>
+                    ) : (
+                                             <Link
+                         href={item.href || '#'}
+                         className={`flex items-center px-3 py-2 text-base font-medium transition-colors ${
+                           isActive(item.href || '')
+                             ? 'text-blue-600 bg-blue-50 border-l-4 border-blue-600'
+                             : 'text-gray-700 hover:text-blue-600'
+                         }`}
+                         onClick={() => setIsMenuOpen(false)}
+                       >
+                         {item.name}
+                       </Link>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {!user && (
               <>
                 <Link
                   href="/login"

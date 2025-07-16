@@ -1,4 +1,4 @@
-import { PrismaClient, BookingStatus } from '@prisma/client';
+import { PrismaClient, BookingStatus, UserRole } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -21,7 +21,7 @@ export class DashboardService {
             }
           }
         },
-        review: true // <-- Fix: include review relation
+        review: true
       },
       orderBy: { createdAt: 'desc' }
     });
@@ -138,65 +138,295 @@ export class DashboardService {
       orderBy: { createdAt: 'desc' }
     });
 
-    // Calculate today's earnings
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayBookings = driverBookings.filter(booking => {
-      const bookingDate = new Date(booking.createdAt);
-      return bookingDate >= today;
-    });
-    const todayEarnings = todayBookings.reduce((sum, booking) => sum + booking.fare, 0);
+    // Calculate statistics
+    const totalTrips = driverBookings.filter(b => b.status === BookingStatus.COMPLETED).length;
+    const totalEarnings = driverBookings.reduce((sum, booking) => sum + booking.fare, 0);
+    
+    // Calculate completion rate
+    const totalBookings = driverBookings.length;
+    const completionRate = totalBookings > 0 ? (totalTrips / totalBookings) * 100 : 0;
 
-    // Get active bookings
-    const activeBookings = driverBookings.filter(booking => 
-      booking.status === BookingStatus.IN_PROGRESS || booking.status === BookingStatus.CONFIRMED
-    ).length;
-
-    // Get rating from reviews
+    // Get reviews for average rating
     const reviews = await prisma.review.findMany({
       where: { driverId: driver.id }
     });
-    const rating = reviews.length > 0 
+    const averageRating = reviews.length > 0 
       ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
       : driver.rating;
 
-    // Mock online hours (in a real app, this would track actual online time)
-    const onlineHours = 8.5;
+    // Mock response time (in a real app, this would track actual response times)
+    const responseTime = '2.3 min';
 
     // Get recent bookings (last 5)
     const recentBookings = driverBookings.slice(0, 5);
 
-    // Generate earnings data (last 7 days)
-    const earningsData = [];
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    for (let i = 0; i < 7; i++) {
-      const dayBookings = driverBookings.filter(booking => {
-        const bookingDate = new Date(booking.createdAt);
-        const currentDate = new Date();
-        const dayDiff = Math.floor((currentDate.getTime() - bookingDate.getTime()) / (1000 * 60 * 60 * 24));
-        return dayDiff === i;
-      });
-      const dayAmount = dayBookings.reduce((sum, booking) => sum + booking.fare, 0);
-      earningsData.push({ day: days[i], amount: dayAmount });
-    }
+    // Calculate earnings breakdown
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const todayEarnings = driverBookings
+      .filter(booking => new Date(booking.createdAt) >= today)
+      .reduce((sum, booking) => sum + booking.fare, 0);
 
-    // Generate rating data
-    const ratingData = [
-      { rating: 5, count: reviews.filter(r => r.rating === 5).length },
-      { rating: 4, count: reviews.filter(r => r.rating === 4).length },
-      { rating: 3, count: reviews.filter(r => r.rating === 3).length },
-      { rating: 2, count: reviews.filter(r => r.rating === 2).length },
-      { rating: 1, count: reviews.filter(r => r.rating === 1).length }
-    ];
+    const thisWeek = new Date();
+    thisWeek.setDate(thisWeek.getDate() - 7);
+    const thisWeekEarnings = driverBookings
+      .filter(booking => new Date(booking.createdAt) >= thisWeek)
+      .reduce((sum, booking) => sum + booking.fare, 0);
+
+    const thisMonth = new Date();
+    thisMonth.setMonth(thisMonth.getMonth() - 1);
+    const thisMonthEarnings = driverBookings
+      .filter(booking => new Date(booking.createdAt) >= thisMonth)
+      .reduce((sum, booking) => sum + booking.fare, 0);
 
     return {
-      todayEarnings,
-      activeBookings,
-      rating,
-      onlineHours,
+      totalTrips,
+      averageRating,
+      completionRate,
+      responseTime,
       recentBookings,
-      earningsData,
-      ratingData
+      earnings: {
+        today: todayEarnings,
+        thisWeek: thisWeekEarnings,
+        thisMonth: thisMonthEarnings,
+        totalEarnings
+      }
+    };
+  }
+
+  // Admin Dashboard Methods
+  static async getAdminDashboardStats() {
+    // Get total counts
+    const totalUsers = await prisma.user.count({
+      where: { role: UserRole.USER }
+    });
+
+    const totalDrivers = await prisma.user.count({
+      where: { role: UserRole.DRIVER }
+    });
+
+    const totalBookings = await prisma.booking.count();
+
+    // Calculate total revenue
+    const allBookings = await prisma.booking.findMany({
+      where: { status: BookingStatus.COMPLETED }
+    });
+    const totalRevenue = allBookings.reduce((sum, booking) => sum + booking.fare, 0);
+
+    // Get pending verifications
+    const pendingVerifications = await prisma.driver.count({
+      where: { isVerified: false }
+    });
+
+    // Get active bookings
+    const activeBookings = await prisma.booking.count({
+      where: {
+        status: {
+          in: [BookingStatus.CONFIRMED, BookingStatus.IN_PROGRESS]
+        }
+      }
+    });
+
+    return {
+      totalUsers,
+      totalDrivers,
+      totalBookings,
+      totalRevenue,
+      pendingVerifications,
+      activeBookings
+    };
+  }
+
+  static async getPendingDriverVerifications() {
+    const pendingDrivers = await prisma.driver.findMany({
+      where: { isVerified: false },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true
+          }
+        }
+      },
+      orderBy: { createdAt: 'asc' }
+    });
+
+    return pendingDrivers.map(driver => ({
+      id: driver.id,
+      name: driver.user.name,
+      email: driver.user.email,
+      truckType: driver.truckType,
+      submittedAt: driver.createdAt
+    }));
+  }
+
+  static async getRecentBookings(limit: number = 10) {
+    const recentBookings = await prisma.booking.findMany({
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        },
+        driver: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit
+    });
+
+    return recentBookings.map(booking => ({
+      id: booking.id,
+      user: booking.user.name,
+      driver: booking.driver.user.name,
+      source: booking.source,
+      destination: booking.destination,
+      fare: booking.fare,
+      status: booking.status,
+      date: booking.createdAt,
+      pickupTime: booking.pickupTime
+    }));
+  }
+
+  static async approveDriver(driverId: string) {
+    return await prisma.driver.update({
+      where: { id: driverId },
+      data: { isVerified: true }
+    });
+  }
+
+  static async rejectDriver(driverId: string) {
+    return await prisma.driver.update({
+      where: { id: driverId },
+      data: { isVerified: false }
+    });
+  }
+
+  // Driver-specific methods
+  static async updateDriverAvailability(driverId: string, isAvailable: boolean) {
+    return await prisma.driver.update({
+      where: { id: driverId },
+      data: { isAvailable }
+    });
+  }
+
+  static async acceptBooking(bookingId: string) {
+    return await prisma.booking.update({
+      where: { id: bookingId },
+      data: { status: BookingStatus.CONFIRMED }
+    });
+  }
+
+  static async declineBooking(bookingId: string) {
+    return await prisma.booking.update({
+      where: { id: bookingId },
+      data: { status: BookingStatus.CANCELLED }
+    });
+  }
+
+  // User-specific methods
+  static async searchDrivers(params: {
+    location?: string;
+    truckType?: string;
+    capacity?: number;
+    latitude?: number;
+    longitude?: number;
+    radius?: number;
+  }) {
+    const whereClause: any = {
+      isAvailable: true,
+      isVerified: true
+    };
+
+    if (params.truckType) {
+      whereClause.truckType = params.truckType;
+    }
+
+    if (params.capacity) {
+      whereClause.capacity = {
+        gte: params.capacity
+      };
+    }
+
+    if (params.location) {
+      whereClause.location = {
+        contains: params.location,
+        mode: 'insensitive'
+      };
+    }
+
+    const drivers = await prisma.driver.findMany({
+      where: whereClause,
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            avatar: true
+          }
+        }
+      },
+      orderBy: { rating: 'desc' }
+    });
+
+    return drivers.map(driver => ({
+      id: driver.id,
+      name: driver.user.name,
+      truckType: driver.truckType,
+      capacity: driver.capacity,
+      rating: driver.rating,
+      distance: 5, // Mock distance calculation
+      isAvailable: driver.isAvailable,
+      location: driver.location
+    }));
+  }
+
+  static async calculateFare(params: {
+    source: string;
+    destination: string;
+    truckType: string;
+  }) {
+    // Mock fare calculation
+    const baseRate = 2.5; // per km
+    const distance = 15; // Mock distance calculation
+    
+    let multiplier = 1;
+    switch (params.truckType) {
+      case 'MINI_TRUCK':
+        multiplier = 1;
+        break;
+      case 'PICKUP':
+        multiplier = 1.2;
+        break;
+      case 'LORRY':
+        multiplier = 1.5;
+        break;
+      case 'TRUCK':
+        multiplier = 2;
+        break;
+    }
+
+    const fare = baseRate * distance * multiplier;
+
+    return {
+      fare: Math.round(fare * 100) / 100,
+      distance
     };
   }
 } 
