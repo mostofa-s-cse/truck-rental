@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useAuth } from '@/hooks/useAuth';
+import { useRouter } from 'next/navigation';
+import { useAppDispatch, useAppSelector } from '@/hooks/redux';
+import { loginUser, clearError } from '@/store/slices/authSlice';
 import { useSweetAlert } from '@/hooks/useSweetAlert';
 import Button from '@/components/ui/Button';
-import AuthGuard from '@/components/auth/AuthGuard';
+import SecureRouteGuard from '@/components/auth/SecureRouteGuard';
 import { Truck, Eye, EyeOff } from 'lucide-react';
 
 export default function LoginPage() {
@@ -15,25 +16,18 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const dispatch = useAppDispatch();
   const router = useRouter();
-  const { login, clearError, loading, error, user } = useAuth();
+  const { loading, error } = useAppSelector((state) => state.auth);
   const { successToast, errorToast } = useSweetAlert();
-
-  // Redirect if user is already logged in
-  useEffect(() => {
-    if (user && !loading) {
-      const dashboardPath = getDashboardPath(user.role);
-      router.push(dashboardPath);
-    }
-  }, [user, loading, router]);
 
   // Show error toast when error state changes
   useEffect(() => {
     if (error && !isSubmitting) {
       errorToast(error);
-      clearError();
+      dispatch(clearError());
     }
-  }, [error, isSubmitting, errorToast, clearError]);
+  }, [error, isSubmitting, errorToast, dispatch]);
 
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
@@ -56,15 +50,33 @@ export default function LoginPage() {
     }
 
     setIsSubmitting(true);
-    clearError();
+    dispatch(clearError());
     console.log('Starting login process'); // Debug log
 
     try {
-      await login(email.trim(), password);
-      console.log('Login successful'); // Debug log
-      successToast('Login successful!');
+      const result = await dispatch(loginUser({ email: email.trim(), password }));
+      console.log('Login dispatch result:', result); // Debug log
       
-      // Redirect will be handled by useEffect when user state updates
+      if (loginUser.fulfilled.match(result)) {
+        console.log('Login successful'); // Debug log
+        successToast('Login successful!');
+        
+        // Redirect to user's dashboard based on role
+        const user = result.payload.user;
+        let dashboardPath = '/dashboard';
+        if (user.role === 'ADMIN') {
+          dashboardPath = '/dashboard/admin';
+        } else if (user.role === 'DRIVER') {
+          dashboardPath = '/dashboard/driver';
+        } else if (user.role === 'USER') {
+          dashboardPath = '/dashboard/user';
+        }
+        router.push(dashboardPath);
+      } else {
+        console.log('Login failed'); // Debug log
+        const errorMessage = result.payload as string || 'Login failed. Please check your credentials.';
+        errorToast(errorMessage);
+      }
     } catch (error: unknown) {
       console.error('Login error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Login failed. Please check your credentials.';
@@ -76,21 +88,8 @@ export default function LoginPage() {
     }
   };
 
-  const getDashboardPath = (role: string): string => {
-    switch (role) {
-      case 'ADMIN':
-        return '/admin';
-      case 'DRIVER':
-        return '/driver';
-      case 'USER':
-        return '/dashboard';
-      default:
-        return '/dashboard';
-    }
-  };
-
   return (
-    <AuthGuard requireAuth={false}>
+    <SecureRouteGuard requireAuth={false}>
       <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-8">
           <div>
@@ -222,6 +221,6 @@ export default function LoginPage() {
           </form>
         </div>
       </div>
-    </AuthGuard>
+    </SecureRouteGuard>
   );
 } 

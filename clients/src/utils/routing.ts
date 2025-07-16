@@ -15,6 +15,19 @@ export const getDashboardRoute = (user: User | null): string => {
   }
 };
 
+export const getRoleBasedDashboard = (user: User): string => {
+  switch (user.role) {
+    case 'ADMIN':
+      return '/dashboard/admin';
+    case 'DRIVER':
+      return '/dashboard/driver';
+    case 'USER':
+      return '/dashboard/user';
+    default:
+      return '/dashboard';
+  }
+};
+
 export const getRoleBasedRoutes = (user: User | null) => {
   if (!user) {
     return {

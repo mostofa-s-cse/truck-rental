@@ -2,13 +2,9 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 // Define protected routes that require authentication
-const protectedRoutes = [
-  '/admin',
-  '/driver', 
-  '/dashboard',
-  '/profile',
-  '/settings'
-];
+// const protectedRoutes = [
+//   '/dashboard',
+// ];
 
 // Define auth routes that should redirect authenticated users
 const authRoutes = [
@@ -16,11 +12,20 @@ const authRoutes = [
   '/register'
 ];
 
+// Define public routes that don't require authentication
+// const publicRoutes = [
+//   '/',
+//   '/about',
+//   '/contact',
+//   '/search'
+// ];
+
 // Define role-based route access
 const roleBasedRoutes = {
-  '/admin': ['ADMIN'],
-  '/driver': ['DRIVER'],
-  '/dashboard': ['USER', 'ADMIN', 'DRIVER'] // Allow all authenticated users to access dashboard
+  '/dashboard/admin': ['ADMIN'],
+  '/dashboard/driver': ['DRIVER'],
+  '/dashboard/user': ['USER'],
+  '/dashboard': ['ADMIN', 'DRIVER', 'USER'] // Allow all authenticated users to access general dashboard
 };
 
 export function middleware(request: NextRequest) {
@@ -28,55 +33,72 @@ export function middleware(request: NextRequest) {
   
   // Get token from cookies
   const token = request.cookies.get('authToken')?.value;
-  
-  // Get user role from cookies (you might want to decode JWT to get role)
   const userRole = request.cookies.get('userRole')?.value;
   
   // Check if user is authenticated
   const isAuthenticated = !!token;
   
-  // Check if current path is a protected route
-  const isProtectedRoute = protectedRoutes.some(route => 
-    pathname.startsWith(route)
-  );
+  // Check if current path is a dashboard route (any path starting with /dashboard)
+  const isDashboardRoute = pathname.startsWith('/dashboard');
   
   // Check if current path is an auth route
   const isAuthRoute = authRoutes.some(route => 
     pathname.startsWith(route)
   );
   
-  // If user is not authenticated and trying to access protected route
-  if (!isAuthenticated && isProtectedRoute) {
-    const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('redirect', pathname);
-    return NextResponse.redirect(loginUrl);
+  // Check if current path is a role-specific dashboard route
+  const isRoleSpecificRoute = pathname.startsWith('/dashboard/admin') || 
+                             pathname.startsWith('/dashboard/driver') || 
+                             pathname.startsWith('/dashboard/user');
+  
+  // Debug logging
+  console.log('Middleware Debug:', {
+    pathname,
+    isAuthenticated,
+    userRole,
+    isDashboardRoute,
+    isAuthRoute,
+    isRoleSpecificRoute
+  });
+  
+  // BLOCK 1: If user is NOT authenticated and trying to access ANY dashboard route
+  if (!isAuthenticated && isDashboardRoute) {
+    console.log('🚫 BLOCKED: Unauthenticated user trying to access dashboard route:', pathname);
+    console.log('🔒 Dashboard protection active - redirecting to login');
+    return NextResponse.redirect(new URL('/login', request.url));
   }
   
-  // If user is authenticated and trying to access auth routes
+  // If user is authenticated and trying to access auth routes (login/register)
   if (isAuthenticated && isAuthRoute) {
     // Redirect to appropriate dashboard based on role
     let dashboardPath = '/dashboard';
     if (userRole === 'ADMIN') {
-      dashboardPath = '/admin';
+      dashboardPath = '/dashboard/admin';
     } else if (userRole === 'DRIVER') {
-      dashboardPath = '/driver';
+      dashboardPath = '/dashboard/driver';
+    } else if (userRole === 'USER') {
+      dashboardPath = '/dashboard/user';
     }
     
+    console.log('Redirecting authenticated user from auth route to:', dashboardPath);
     return NextResponse.redirect(new URL(dashboardPath, request.url));
   }
   
-  // Check role-based access for specific routes
-  if (isAuthenticated && userRole) {
+  // Check role-based access for specific routes (only for authenticated users)
+  if (isAuthenticated && userRole && isRoleSpecificRoute) {
     for (const [route, allowedRoles] of Object.entries(roleBasedRoutes)) {
       if (pathname.startsWith(route) && !allowedRoles.includes(userRole)) {
         // User doesn't have permission for this route
         let redirectPath = '/dashboard';
         if (userRole === 'ADMIN') {
-          redirectPath = '/admin';
+          redirectPath = '/dashboard/admin';
         } else if (userRole === 'DRIVER') {
-          redirectPath = '/driver';
+          redirectPath = '/dashboard/driver';
+        } else if (userRole === 'USER') {
+          redirectPath = '/dashboard/user';
         }
         
+        console.log('Redirecting user due to role mismatch:', { userRole, pathname, redirectPath });
         return NextResponse.redirect(new URL(redirectPath, request.url));
       }
     }

@@ -1,12 +1,12 @@
 'use client';
 
-import { useAuth } from '@/hooks/useAuth';
+import { useAppSelector } from '@/hooks/redux';
 import Link from 'next/link';
 import { Truck, MapPin, Star, Users, Shield, Clock, Phone, ArrowRight } from 'lucide-react';
 import Button from '@/components/ui/Button';
 
 export default function HomePage() {
-  const { user } = useAuth();
+  const { user } = useAppSelector((state) => state.auth);
 
   const features = [
     {

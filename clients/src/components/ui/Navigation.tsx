@@ -2,8 +2,9 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useAuth } from '@/hooks/useAuth';
+import { usePathname, useRouter } from 'next/navigation';
+import { useAppDispatch, useAppSelector } from '@/hooks/redux';
+import { logoutUser } from '@/store/slices/authSlice';
 import { useSweetAlert } from '@/hooks/useSweetAlert';
 import { 
   Bars3Icon, 
@@ -14,66 +15,32 @@ import {
   MagnifyingGlassIcon,
   InformationCircleIcon,
   PhoneIcon,
-  ChartBarIcon,
-  CalendarIcon,
-  CurrencyDollarIcon,
-
 } from '@heroicons/react/24/outline';
 
 const Navigation = () => {
-  const { user, logout, loading } = useAuth();
+  const dispatch = useAppDispatch();
+  const { user, loading } = useAppSelector((state) => state.auth);
   const { successToast } = useSweetAlert();
+  const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const pathname = usePathname();
 
   const handleLogout = () => {
-    logout();
+    dispatch(logoutUser());
     successToast('Logged out successfully');
+    router.push('/login');
   };
 
 
 
   const getRoleBasedNavigation = () => {
-    if (!user) {
-      return [
-        { name: 'Home', href: '/', icon: HomeIcon },
-        { name: 'Search Trucks', href: '/search', icon: MagnifyingGlassIcon },
-        { name: 'About', href: '/about', icon: InformationCircleIcon },
-        { name: 'Contact', href: '/contact', icon: PhoneIcon }
-      ];
-    }
-    
-    switch (user.role) {
-      case 'ADMIN':
-        return [
-          { name: 'Dashboard', href: '/dashboard/admin', icon: ChartBarIcon },
-          { name: 'Users', href: '/dashboard/admin/users', icon: UserCircleIcon },
-          { name: 'Drivers', href: '/dashboard/admin/drivers', icon: TruckIcon },
-          { name: 'Bookings', href: '/dashboard/admin/bookings', icon: CalendarIcon },
-          { name: 'Reports', href: '/dashboard/admin/reports', icon: ChartBarIcon }
-        ];
-      case 'DRIVER':
-        return [
-          { name: 'Dashboard', href: '/dashboard/driver', icon: ChartBarIcon },
-          { name: 'Bookings', href: '/dashboard/driver/bookings', icon: CalendarIcon },
-          { name: 'Earnings', href: '/dashboard/driver/earnings', icon: CurrencyDollarIcon },
-          { name: 'Profile', href: '/dashboard/driver/profile', icon: UserCircleIcon }
-        ];
-      case 'USER':
-        return [
-          { name: 'Dashboard', href: '/dashboard/user', icon: ChartBarIcon },
-          { name: 'Search', href: '/search', icon: MagnifyingGlassIcon },
-          { name: 'Bookings', href: '/dashboard/user/bookings', icon: CalendarIcon },
-          { name: 'Profile', href: '/dashboard/user/profile', icon: UserCircleIcon }
-        ];
-      default:
-        return [
-          { name: 'Home', href: '/', icon: HomeIcon },
-          { name: 'Search Trucks', href: '/search', icon: MagnifyingGlassIcon },
-          { name: 'About', href: '/about', icon: InformationCircleIcon },
-          { name: 'Contact', href: '/contact', icon: PhoneIcon }
-        ];
-    }
+    // Show public navigation for all users (logged in or not)
+    return [
+      { name: 'Home', href: '/', icon: HomeIcon },
+      { name: 'Search Trucks', href: '/search', icon: MagnifyingGlassIcon },
+      { name: 'About', href: '/about', icon: InformationCircleIcon },
+      { name: 'Contact', href: '/contact', icon: PhoneIcon }
+    ];
   };
 
   const getRoleBasedUserMenu = () => {
@@ -117,12 +84,7 @@ const Navigation = () => {
     }
   };
 
-  const navigation = [
-    { name: 'Home', href: '/', icon: HomeIcon },
-    { name: 'Search Trucks', href: '/search', icon: MagnifyingGlassIcon },
-    { name: 'About', href: '/about', icon: InformationCircleIcon },
-    { name: 'Contact', href: '/contact', icon: PhoneIcon }
-  ];
+  const navigation = getRoleBasedNavigation();
   const userMenu = getRoleBasedUserMenu();
 
   const isActive = (href: string) => {

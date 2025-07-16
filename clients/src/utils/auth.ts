@@ -4,7 +4,7 @@
 export const setCookie = (name: string, value: string, days: number = 7) => {
   const expires = new Date();
   expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
-  document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/`;
+  document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Lax`;
 };
 
 export const getCookie = (name: string): string | null => {
@@ -23,7 +23,7 @@ export const deleteCookie = (name: string) => {
 };
 
 // Authentication storage utilities
-export const setAuthData = (user: any, token: string) => {
+export const setAuthData = (user: { role: string }, token: string) => {
   // Store in localStorage for client-side access
   localStorage.setItem('token', token);
   localStorage.setItem('user', JSON.stringify(user));
@@ -68,11 +68,11 @@ export const hasRole = (userRole: string, requiredRoles: string[]): boolean => {
 export const getDashboardPath = (role: string): string => {
   switch (role) {
     case 'ADMIN':
-      return '/admin';
+      return '/dashboard/admin';
     case 'DRIVER':
-      return '/driver';
+      return '/dashboard/driver';
     case 'USER':
-      return '/dashboard';
+      return '/dashboard/user';
     default:
       return '/dashboard';
   }
@@ -90,7 +90,7 @@ export const getUserRole = (): string | null => {
     try {
       const user = JSON.parse(userStr);
       return user.role;
-    } catch (error) {
+    } catch {
       return null;
     }
   }

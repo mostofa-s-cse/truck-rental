@@ -1,11 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-
 import Link from 'next/link';
-import { useAuth } from '@/hooks/useAuth';
+import { useRouter } from 'next/navigation';
+import { useAppDispatch, useAppSelector } from '@/hooks/redux';
+import { registerUser, clearError } from '@/store/slices/authSlice';
 import Button from '@/components/ui/Button';
-import AuthGuard from '@/components/auth/AuthGuard';
+import SecureRouteGuard from '@/components/auth/SecureRouteGuard';
 import { Truck, Eye, EyeOff } from 'lucide-react';
 import { RegisterData } from '@/types';
 
@@ -20,10 +21,12 @@ export default function RegisterPage() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  const { register } = useAuth();
+  const dispatch = useAppDispatch();
+  const router = useRouter();
+  const { loading } = useAppSelector((state) => state.auth);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({
@@ -34,35 +37,58 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    setIsSubmitting(true);
     setError('');
+    dispatch(clearError());
 
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
-      setLoading(false);
+      setIsSubmitting(false);
       return;
     }
 
     if (formData.password.length < 6) {
       setError('Password must be at least 6 characters long');
-      setLoading(false);
+      setIsSubmitting(false);
       return;
     }
 
     try {
-      const registerData = { name: formData.name, email: formData.email, password: formData.password, phone: formData.phone, role: formData.role as 'USER' };
-      await register(registerData as RegisterData);
+      const registerData = { 
+        name: formData.name, 
+        email: formData.email, 
+        password: formData.password, 
+        phone: formData.phone, 
+        role: formData.role as 'USER' 
+      };
       
-      // The AuthGuard will handle the redirect based on user role
+      const result = await dispatch(registerUser(registerData as RegisterData));
+      
+      if (registerUser.fulfilled.match(result)) {
+        // Redirect to user's dashboard based on role
+        const user = result.payload.user;
+        let dashboardPath = '/dashboard';
+        if (user.role === 'ADMIN') {
+          dashboardPath = '/dashboard/admin';
+        } else if (user.role === 'DRIVER') {
+          dashboardPath = '/dashboard/driver';
+        } else if (user.role === 'USER') {
+          dashboardPath = '/dashboard/user';
+        }
+        router.push(dashboardPath);
+      } else {
+        const errorMessage = result.payload as string || 'Registration failed';
+        setError(errorMessage);
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Registration failed');
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <AuthGuard requireAuth={false}>
+    <SecureRouteGuard requireAuth={false}>
       <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-8">
           <div>
@@ -93,7 +119,8 @@ export default function RegisterPage() {
                   name="name"
                   type="text"
                   required
-                  className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  disabled={isSubmitting || loading}
+                  className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                   placeholder="Enter your full name"
                   value={formData.name}
                   onChange={handleChange}
@@ -110,7 +137,8 @@ export default function RegisterPage() {
                   type="email"
                   autoComplete="email"
                   required
-                  className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  disabled={isSubmitting || loading}
+                  className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                   placeholder="Enter your email"
                   value={formData.email}
                   onChange={handleChange}
@@ -125,7 +153,8 @@ export default function RegisterPage() {
                   id="phone"
                   name="phone"
                   type="tel"
-                  className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  disabled={isSubmitting || loading}
+                  className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                   placeholder="Enter your phone number"
                   value={formData.phone}
                   onChange={handleChange}
@@ -141,14 +170,16 @@ export default function RegisterPage() {
                     name="password"
                     type={showPassword ? 'text' : 'password'}
                     required
-                    className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    disabled={isSubmitting || loading}
+                    className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                     placeholder="Enter your password"
                     value={formData.password}
                     onChange={handleChange}
                   />
                   <button
                     type="button"
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                    disabled={isSubmitting || loading}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center disabled:cursor-not-allowed"
                     onClick={() => setShowPassword(!showPassword)}
                   >
                     {showPassword ? (
@@ -170,14 +201,16 @@ export default function RegisterPage() {
                     name="confirmPassword"
                     type={showConfirmPassword ? 'text' : 'password'}
                     required
-                    className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    disabled={isSubmitting || loading}
+                    className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                     placeholder="Confirm your password"
                     value={formData.confirmPassword}
                     onChange={handleChange}
                   />
                   <button
                     type="button"
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                    disabled={isSubmitting || loading}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center disabled:cursor-not-allowed"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   >
                     {showConfirmPassword ? (
@@ -197,15 +230,22 @@ export default function RegisterPage() {
             <div>
               <Button
                 type="submit"
-                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                loading={loading}
+                disabled={isSubmitting || loading}
+                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-blue-400 disabled:cursor-not-allowed"
               >
-                Create Account
+                {isSubmitting || loading ? (
+                  <div className="flex items-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Creating Account...
+                  </div>
+                ) : (
+                  'Create Account'
+                )}
               </Button>
             </div>
           </form>
         </div>
       </div>
-    </AuthGuard>
+    </SecureRouteGuard>
   );
 } 

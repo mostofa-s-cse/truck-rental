@@ -1,42 +1,32 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useAuth } from '@/hooks/useAuth';
+import { useAppDispatch, useAppSelector } from '@/hooks/redux';
+import { useSweetAlert } from '@/hooks/useSweetAlert';
 import { 
   HomeIcon, 
-  UsersIcon, 
   TruckIcon, 
   CalendarIcon, 
-  ChartBarIcon,
   CogIcon,
   BellIcon,
   UserCircleIcon,
   Bars3Icon,
   XMarkIcon,
-  MapIcon,
   CreditCardIcon,
   DocumentTextIcon,
   ClipboardIcon,
   StarIcon,
-  CurrencyDollarIcon,
   ClockIcon,
   MapPinIcon,
   PhoneIcon,
-  Cog6ToothIcon,
-  ExclamationTriangleIcon,
-  ChartPieIcon,
-  UserGroupIcon,
-  ClipboardDocumentListIcon,
-  WrenchScrewdriverIcon,
-  BuildingOfficeIcon,
-  DocumentDuplicateIcon,
-  PlusIcon,
   CheckCircleIcon,
   XCircleIcon,
   InformationCircleIcon,
   ArrowRightEndOnRectangleIcon
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { logoutUser } from '@/store/slices/authSlice';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -57,227 +47,79 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   title = "Dashboard",
   subtitle 
 }) => {
-  const { user, logout } = useAuth();
+  const { user } = useAppSelector((state) => state.auth);
+  const { successToast } = useSweetAlert();
+  const dispatch = useAppDispatch();
+  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [openMenuItems, setOpenMenuItems] = useState<Set<string>>(new Set());
 
+  const handleLogout = () => {
+    dispatch(logoutUser());
+    successToast('Signed out successfully');
+    router.push('/login');
+  };
+
   const getMenuItems = (): MenuItem[] => {
-    if (!user) return [];
-
-    switch (user.role) {
-      case 'ADMIN':
-        return [
-          {
-            name: 'Overview',
-            href: '/admin',
-            icon: HomeIcon
-          },
-          {
-            name: 'User Management',
-            href: '/admin/users',
-            icon: UsersIcon,
-            children: [
-              { name: 'All Users', href: '/admin/users', icon: UsersIcon },
-              { name: 'Drivers', href: '/admin/drivers', icon: TruckIcon },
-              { name: 'Customers', href: '/admin/customers', icon: UserCircleIcon }
-            ]
-          },
-          {
-            name: 'Truck Management',
-            href: '/admin/trucks',
-            icon: TruckIcon,
-            children: [
-              { name: 'All Trucks', href: '/admin/trucks', icon: TruckIcon },
-              { name: 'Categories', href: '/admin/truck-categories', icon: BuildingOfficeIcon },
-              { name: 'Add Truck', href: '/admin/trucks/add', icon: PlusIcon }
-            ]
-          },
-          {
-            name: 'Bookings',
-            href: '/admin/bookings',
-            icon: CalendarIcon,
-            children: [
-              { name: 'All Bookings', href: '/admin/bookings', icon: ClipboardIcon },
-              { name: 'Pending', href: '/admin/bookings/pending', icon: ClockIcon },
-              { name: 'Completed', href: '/admin/bookings/completed', icon: CheckCircleIcon },
-              { name: 'Cancelled', href: '/admin/bookings/cancelled', icon: XCircleIcon }
-            ]
-          },
-          {
-            name: 'Payments',
-            href: '/admin/payments',
-            icon: CreditCardIcon,
-            children: [
-              { name: 'All Payments', href: '/admin/payments', icon: CreditCardIcon },
-              { name: 'Pending', href: '/admin/payments/pending', icon: ClockIcon },
-              { name: 'Completed', href: '/admin/payments/completed', icon: CheckCircleIcon },
-              { name: 'Refunds', href: '/admin/payments/refunds', icon: CurrencyDollarIcon }
-            ]
-          },
-          {
-            name: 'Reviews',
-            href: '/admin/reviews',
-            icon: StarIcon
-          },
-          {
-            name: 'Reports',
-            href: '/admin/reports',
-            icon: ChartBarIcon,
-            children: [
-              { name: 'Analytics', href: '/admin/reports/analytics', icon: ChartPieIcon },
-              { name: 'Earnings', href: '/admin/reports/earnings', icon: CurrencyDollarIcon },
-              { name: 'Bookings', href: '/admin/reports/bookings', icon: CalendarIcon },
-              { name: 'Users', href: '/admin/reports/users', icon: UserGroupIcon }
-            ]
-          },
-          {
-            name: 'System',
-            href: '/admin/system',
-            icon: CogIcon,
-            children: [
-              { name: 'Settings', href: '/admin/system/settings', icon: Cog6ToothIcon },
-              { name: 'Areas', href: '/admin/system/areas', icon: MapIcon },
-              { name: 'Logs', href: '/admin/system/logs', icon: DocumentTextIcon },
-              { name: 'Backups', href: '/admin/system/backups', icon: DocumentDuplicateIcon }
-            ]
-          }
-        ];
-
-      case 'DRIVER':
-        return [
-          {
-            name: 'Dashboard',
-            href: '/driver',
-            icon: HomeIcon
-          },
-          {
-            name: 'Profile',
-            href: '/driver/profile',
-            icon: UserCircleIcon,
-            children: [
-              { name: 'Personal Info', href: '/driver/profile', icon: UserCircleIcon },
-              { name: 'Documents', href: '/driver/documents', icon: DocumentTextIcon },
-              { name: 'Settings', href: '/driver/settings', icon: CogIcon }
-            ]
-          },
-          {
-            name: 'Truck',
-            href: '/driver/truck',
-            icon: TruckIcon,
-            children: [
-              { name: 'My Truck', href: '/driver/truck', icon: TruckIcon },
-              { name: 'Maintenance', href: '/driver/maintenance', icon: WrenchScrewdriverIcon },
-              { name: 'Documents', href: '/driver/truck-documents', icon: DocumentTextIcon }
-            ]
-          },
-          {
-            name: 'Bookings',
-            href: '/driver/bookings',
-            icon: CalendarIcon,
-            children: [
-              { name: 'Active', href: '/driver/bookings/active', icon: ClockIcon },
-              { name: 'Pending', href: '/driver/bookings/pending', icon: InformationCircleIcon },
-              { name: 'Completed', href: '/driver/bookings/completed', icon: CheckCircleIcon },
-              { name: 'History', href: '/driver/bookings/history', icon: ClipboardDocumentListIcon }
-            ]
-          },
-          {
-            name: 'Earnings',
-            href: '/driver/earnings',
-            icon: CurrencyDollarIcon,
-            children: [
-              { name: 'Overview', href: '/driver/earnings', icon: ChartBarIcon },
-              { name: 'Transactions', href: '/driver/earnings/transactions', icon: CreditCardIcon },
-              { name: 'Withdrawals', href: '/driver/earnings/withdrawals', icon: CurrencyDollarIcon },
-              { name: 'Tax Documents', href: '/driver/earnings/tax', icon: DocumentTextIcon }
-            ]
-          },
-          {
-            name: 'Location',
-            href: '/driver/location',
-            icon: MapIcon,
-            children: [
-              { name: 'Live Tracking', href: '/driver/location/tracking', icon: MapPinIcon },
-              { name: 'Service Areas', href: '/driver/location/areas', icon: MapIcon },
-              { name: 'Availability', href: '/driver/location/availability', icon: ClockIcon }
-            ]
-          },
-          {
-            name: 'Support',
-            href: '/driver/support',
-            icon: PhoneIcon,
-            children: [
-              { name: 'Help Center', href: '/driver/support/help', icon: InformationCircleIcon },
-              { name: 'Contact Support', href: '/driver/support/contact', icon: PhoneIcon },
-              { name: 'Emergency', href: '/driver/support/emergency', icon: ExclamationTriangleIcon }
-            ]
-          }
-        ];
-
-      case 'USER':
-        return [
-          {
-            name: 'Dashboard',
-            href: '/dashboard',
-            icon: HomeIcon
-          },
-          {
-            name: 'Search Trucks',
-            href: '/search',
-            icon: TruckIcon
-          },
-          {
-            name: 'My Bookings',
-            href: '/dashboard/bookings',
-            icon: CalendarIcon,
-            children: [
-              { name: 'Active', href: '/dashboard/bookings/active', icon: ClockIcon },
-              { name: 'Upcoming', href: '/dashboard/bookings/upcoming', icon: CalendarIcon },
-              { name: 'Completed', href: '/dashboard/bookings/completed', icon: CheckCircleIcon },
-              { name: 'Cancelled', href: '/dashboard/bookings/cancelled', icon: XCircleIcon }
-            ]
-          },
-          {
-            name: 'Favorites',
-            href: '/dashboard/favorites',
-            icon: StarIcon
-          },
-          {
-            name: 'Payments',
-            href: '/dashboard/payments',
-            icon: CreditCardIcon,
-            children: [
-              { name: 'Payment Methods', href: '/dashboard/payments/methods', icon: CreditCardIcon },
-              { name: 'Transaction History', href: '/dashboard/payments/history', icon: ClipboardIcon },
-              { name: 'Invoices', href: '/dashboard/payments/invoices', icon: DocumentTextIcon }
-            ]
-          },
-          {
-            name: 'Profile',
-            href: '/dashboard/profile',
-            icon: UserCircleIcon,
-            children: [
-              { name: 'Personal Info', href: '/dashboard/profile', icon: UserCircleIcon },
-              { name: 'Addresses', href: '/dashboard/profile/addresses', icon: MapPinIcon },
-              { name: 'Preferences', href: '/dashboard/profile/preferences', icon: CogIcon }
-            ]
-          },
-          {
-            name: 'Support',
-            href: '/dashboard/support',
-            icon: PhoneIcon,
-            children: [
-              { name: 'Help Center', href: '/dashboard/support/help', icon: InformationCircleIcon },
-              { name: 'Contact Support', href: '/dashboard/support/contact', icon: PhoneIcon },
-              { name: 'FAQ', href: '/dashboard/support/faq', icon: InformationCircleIcon }
-            ]
-          }
-        ];
-
-      default:
-        return [];
-    }
+    return [
+      {
+        name: 'Dashboard',
+        href: '/dashboard',
+        icon: HomeIcon
+      },
+      {
+        name: 'Search Trucks',
+        href: '/search',
+        icon: TruckIcon
+      },
+      {
+        name: 'My Bookings',
+        href: '/dashboard/bookings',
+        icon: CalendarIcon,
+        children: [
+          { name: 'Active', href: '/dashboard/bookings/active', icon: ClockIcon },
+          { name: 'Upcoming', href: '/dashboard/bookings/upcoming', icon: CalendarIcon },
+          { name: 'Completed', href: '/dashboard/bookings/completed', icon: CheckCircleIcon },
+          { name: 'Cancelled', href: '/dashboard/bookings/cancelled', icon: XCircleIcon }
+        ]
+      },
+      {
+        name: 'Favorites',
+        href: '/dashboard/favorites',
+        icon: StarIcon
+      },
+      {
+        name: 'Payments',
+        href: '/dashboard/payments',
+        icon: CreditCardIcon,
+        children: [
+          { name: 'Payment Methods', href: '/dashboard/payments/methods', icon: CreditCardIcon },
+          { name: 'Transaction History', href: '/dashboard/payments/history', icon: ClipboardIcon },
+          { name: 'Invoices', href: '/dashboard/payments/invoices', icon: DocumentTextIcon }
+        ]
+      },
+      {
+        name: 'Profile',
+        href: '/dashboard/profile',
+        icon: UserCircleIcon,
+        children: [
+          { name: 'Personal Info', href: '/dashboard/profile', icon: UserCircleIcon },
+          { name: 'Addresses', href: '/dashboard/profile/addresses', icon: MapPinIcon },
+          { name: 'Preferences', href: '/dashboard/profile/preferences', icon: CogIcon }
+        ]
+      },
+      {
+        name: 'Support',
+        href: '/dashboard/support',
+        icon: PhoneIcon,
+        children: [
+          { name: 'Help Center', href: '/dashboard/support/help', icon: InformationCircleIcon },
+          { name: 'Contact Support', href: '/dashboard/support/contact', icon: PhoneIcon },
+          { name: 'FAQ', href: '/dashboard/support/faq', icon: InformationCircleIcon }
+        ]
+      }
+    ];
   };
 
   const menuItems = getMenuItems();
@@ -385,7 +227,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                   className="flex items-center max-w-xs text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
                   <UserCircleIcon className="h-8 w-8 text-gray-400" />
-                  <span className="ml-2 text-gray-700">{user?.name || 'User'}</span>
+                  <span className="ml-2 text-gray-700">{user?.name}</span>
                 </button>
                 
                 {userMenuOpen && (
@@ -400,7 +242,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                         Settings
                       </a>
                       <button
-                        onClick={logout}
+                        onClick={handleLogout}
                         className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       >
                         <ArrowRightEndOnRectangleIcon className="mr-3 h-4 w-4" />
