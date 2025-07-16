@@ -103,16 +103,11 @@ export class SearchService {
         where.quality = filters.quality;
       }
 
-      // Location Filter (case-insensitive search)
-      if (filters.location && filters.location.trim()) {
-        where.location = {
-          contains: filters.location.trim(),
-          mode: 'insensitive'
-        };
-      }
+      // Location Filter will be applied after fetching results for case-insensitive search
+      const locationFilter = filters.location?.trim().toLowerCase();
 
       // Get all drivers with comprehensive filtering
-      const allDrivers = await prisma.driver.findMany({
+      let allDrivers = await prisma.driver.findMany({
         where,
         include: {
           user: {
@@ -141,6 +136,13 @@ export class SearchService {
           { isVerified: 'desc' }
         ]
       });
+
+      // Apply location filter if specified (case-insensitive)
+      if (locationFilter) {
+        allDrivers = allDrivers.filter(driver => 
+          driver.location.toLowerCase().includes(locationFilter)
+        );
+      }
 
       // Apply distance-based filtering and sorting if coordinates provided
       let driversWithDistance = allDrivers;
@@ -501,12 +503,8 @@ export class SearchService {
         where.quality = filters.quality;
       }
 
-      if (filters.location && filters.location.trim()) {
-        where.location = {
-          contains: filters.location.trim(),
-          mode: 'insensitive'
-        };
-      }
+      // Location filter will be applied after fetching results for case-insensitive search
+      const locationFilter = filters.location?.trim().toLowerCase();
 
       // Advanced filters
       if (filters.minTrips && filters.minTrips > 0) {
@@ -523,7 +521,7 @@ export class SearchService {
       }
 
       // Get drivers with advanced filtering
-      const allDrivers = await prisma.driver.findMany({
+      let allDrivers = await prisma.driver.findMany({
         where,
         include: {
           user: {
@@ -547,6 +545,13 @@ export class SearchService {
           }
         }
       });
+
+      // Apply location filter if specified (case-insensitive)
+      if (locationFilter) {
+        allDrivers = allDrivers.filter(driver => 
+          driver.location.toLowerCase().includes(locationFilter)
+        );
+      }
 
       // Apply distance filtering if coordinates provided
       let driversWithDistance = allDrivers;

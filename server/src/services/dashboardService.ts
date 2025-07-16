@@ -362,14 +362,10 @@ export class DashboardService {
       };
     }
 
-    if (params.location) {
-      whereClause.location = {
-        contains: params.location,
-        mode: 'insensitive'
-      };
-    }
+    // Location filter will be applied after fetching results for case-insensitive search
+    const locationFilter = params.location?.toLowerCase();
 
-    const drivers = await prisma.driver.findMany({
+    let drivers = await prisma.driver.findMany({
       where: whereClause,
       include: {
         user: {
@@ -384,6 +380,13 @@ export class DashboardService {
       },
       orderBy: { rating: 'desc' }
     });
+
+    // Apply location filter if specified (case-insensitive)
+    if (locationFilter) {
+      drivers = drivers.filter(driver => 
+        driver.location.toLowerCase().includes(locationFilter)
+      );
+    }
 
     return drivers.map(driver => ({
       id: driver.id,
