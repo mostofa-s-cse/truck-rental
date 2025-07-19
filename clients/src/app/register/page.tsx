@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useAppDispatch, useAppSelector } from '@/hooks/redux';
 import { registerUser, clearError } from '@/store/slices/authSlice';
 import Button from '@/components/ui/Button';
-import SecureRouteGuard from '@/components/auth/SecureRouteGuard';
+import PublicRoute from '@/components/auth/PublicRoute';
 import { Truck, Eye, EyeOff } from 'lucide-react';
 import { RegisterData } from '@/types';
 
@@ -88,7 +88,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <SecureRouteGuard requireAuth={false}>
+    <PublicRoute>
       <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-8">
           <div>
@@ -246,6 +246,6 @@ export default function RegisterPage() {
           </form>
         </div>
       </div>
-    </SecureRouteGuard>
+    </PublicRoute>
   );
 } 

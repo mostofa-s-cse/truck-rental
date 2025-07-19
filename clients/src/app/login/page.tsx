@@ -7,7 +7,7 @@ import { useAppDispatch, useAppSelector } from '@/hooks/redux';
 import { loginUser, clearError } from '@/store/slices/authSlice';
 import { useSweetAlert } from '@/hooks/useSweetAlert';
 import Button from '@/components/ui/Button';
-import SecureRouteGuard from '@/components/auth/SecureRouteGuard';
+import PublicRoute from '@/components/auth/PublicRoute';
 import { Truck, Eye, EyeOff } from 'lucide-react';
 
 export default function LoginPage() {
@@ -89,7 +89,7 @@ export default function LoginPage() {
   };
 
   return (
-    <SecureRouteGuard requireAuth={false}>
+    <PublicRoute>
       <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-8">
           <div>
@@ -221,6 +221,6 @@ export default function LoginPage() {
           </form>
         </div>
       </div>
-    </SecureRouteGuard>
+    </PublicRoute>
   );
 } 

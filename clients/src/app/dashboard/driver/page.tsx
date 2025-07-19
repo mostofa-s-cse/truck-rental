@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAppSelector } from '@/hooks/redux';
 import DashboardLayout from '@/components/ui/DashboardLayout';
-import SecureRouteGuard from '@/components/auth/SecureRouteGuard';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { driverApi, DriverStats, Earnings, Booking } from '@/lib/dashboardApi';
 import { 
   CurrencyDollarIcon, 
@@ -85,7 +85,7 @@ export default function DriverDashboard({}: DriverDashboardProps) {
   };
 
   return (
-    <SecureRouteGuard requiredRole="DRIVER">
+    <ProtectedRoute requiredRole="DRIVER">
       <DashboardLayout title="Driver Dashboard" subtitle={`Welcome back, ${user?.name}`}>
         {loading ? (
           <div className="flex items-center justify-center h-64">
@@ -270,6 +270,6 @@ export default function DriverDashboard({}: DriverDashboardProps) {
           </div>
         )}
       </DashboardLayout>
-    </SecureRouteGuard>
+    </ProtectedRoute>
   );
 } 

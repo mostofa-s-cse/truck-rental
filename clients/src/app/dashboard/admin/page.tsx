@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAppSelector } from '@/hooks/redux';
 import DashboardLayout from '@/components/ui/DashboardLayout';
-import SecureRouteGuard from '@/components/auth/SecureRouteGuard';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { adminApi, DashboardStats } from '@/lib/dashboardApi';
 import { 
   UsersIcon, 
@@ -74,7 +74,7 @@ export default function AdminDashboard({}: AdminDashboardProps) {
   };
 
   return (
-    <SecureRouteGuard requiredRole="ADMIN">
+    <ProtectedRoute requiredRole="ADMIN">
       <DashboardLayout title="Admin Dashboard" subtitle="Manage your truck booking platform">
         {loading ? (
           <div className="flex items-center justify-center h-64">
@@ -255,6 +255,6 @@ export default function AdminDashboard({}: AdminDashboardProps) {
           </div>
         )}
       </DashboardLayout>
-    </SecureRouteGuard>
+    </ProtectedRoute>
   );
 } 

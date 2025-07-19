@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAppSelector } from '@/hooks/redux';
 import DashboardLayout from '@/components/ui/DashboardLayout';
-import SecureRouteGuard from '@/components/auth/SecureRouteGuard';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { userApi, UserStats, Driver } from '@/lib/dashboardApi';
 import { 
   CalendarIcon, 
@@ -74,7 +74,7 @@ export default function UserDashboard({}: UserDashboardProps) {
   };
 
   return (
-    <SecureRouteGuard requiredRole="USER">
+    <ProtectedRoute requiredRole="USER">
       <DashboardLayout title="User Dashboard" subtitle={`Welcome back, ${user?.name}`}>
         {loading ? (
           <div className="flex items-center justify-center h-64">
@@ -273,6 +273,6 @@ export default function UserDashboard({}: UserDashboardProps) {
           </div>
         )}
       </DashboardLayout>
-    </SecureRouteGuard>
+    </ProtectedRoute>
   );
 } 

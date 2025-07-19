@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAppSelector } from '@/hooks/redux';
 import DashboardLayout from '@/components/ui/DashboardLayout';
-import SecureRouteGuard from '@/components/auth/SecureRouteGuard';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { getRoleBasedDashboard } from '@/utils/routing';
 
 export default function DashboardPage() {
@@ -19,7 +19,7 @@ export default function DashboardPage() {
   }, [user, loading, router]);
 
   return (
-    <SecureRouteGuard requireAuth={true}>
+    <ProtectedRoute>
       <DashboardLayout title="Dashboard" subtitle="Redirecting to your dashboard...">
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
@@ -28,6 +28,6 @@ export default function DashboardPage() {
           </div>
         </div>
       </DashboardLayout>
-    </SecureRouteGuard>
+    </ProtectedRoute>
   );
 }
