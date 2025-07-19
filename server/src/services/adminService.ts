@@ -200,19 +200,32 @@ export class AdminService {
         id: driver.id,
         name: driver.user.name,
         email: driver.user.email,
-        truckType: driver.truckType,
-        isVerified: driver.isVerified,
-        isAvailable: driver.isAvailable,
-        totalTrips: driver.totalTrips,
-        totalRevenue,
-        averageRating,
         totalBookings: driver.bookings.length,
         completedBookings: completedBookings.length,
-        joinDate: driver.user.createdAt
+        totalRevenue,
+        averageRating,
+        isVerified: driver.isVerified,
+        isAvailable: driver.isAvailable
       };
     });
 
-    return driverStats;
+    // Calculate summary statistics
+    const totalDrivers = drivers.length;
+    const verifiedDrivers = drivers.filter(d => d.isVerified).length;
+    const activeDrivers = drivers.filter(d => d.isAvailable).length;
+    const totalRevenue = driverStats.reduce((sum, driver) => sum + driver.totalRevenue, 0);
+    const averageRating = driverStats.length > 0 
+      ? driverStats.reduce((sum, driver) => sum + driver.averageRating, 0) / driverStats.length 
+      : 0;
+
+    return {
+      totalDrivers,
+      verifiedDrivers,
+      activeDrivers,
+      averageRating,
+      totalRevenue,
+      driverStats
+    };
   }
 
   static async getSystemSettings() {

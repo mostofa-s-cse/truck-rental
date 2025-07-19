@@ -1,303 +1,216 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/hooks/useAuth';
 import DashboardLayout from '@/components/ui/DashboardLayout';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import DataTable, { Column } from '@/components/ui/DataTable';
+import Modal from '@/components/ui/Modal';
+import Button from '@/components/ui/Button';
+import { adminApi, User } from '@/lib/adminApi';
+import { useSweetAlert } from '@/hooks/useSweetAlert';
 import { 
-  UsersIcon, 
-  TruckIcon, 
   UserCircleIcon,
-  PlusIcon,
-  PencilIcon,
-  TrashIcon,
-  EyeIcon,
   CheckCircleIcon,
-  XCircleIcon,
-  MagnifyingGlassIcon,
-  FunnelIcon
+  EnvelopeIcon,
+  PhoneIcon,
+  CalendarIcon
 } from '@heroicons/react/24/outline';
 
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  phone?: string;
-  role: 'ADMIN' | 'DRIVER' | 'USER';
-  isActive: boolean;
-  createdAt: string;
-  avatar?: string;
-}
-
-interface Driver {
-  id: string;
-  userId: string;
-  truckType: string;
-  capacity: number;
-  quality: string;
-  license: string;
-  registration: string;
-  location: string;
-  isAvailable: boolean;
-  isVerified: boolean;
-  rating: number;
-  totalTrips: number;
-  user: User;
-}
-
 export default function AdminUsersPage() {
-  const { user } = useAuth();
+  const { successToast, errorToast, withConfirmation } = useSweetAlert();
+  
+  // State
   const [users, setUsers] = useState<User[]>([]);
-  const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'users' | 'drivers' | 'customers'>('users');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const [filterRole, setFilterRole] = useState<string>('');
-  const [showAddModal, setShowAddModal] = useState(false);
+  
+  // Modal states
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [formData, setFormData] = useState({
+  
+  // Form data
+  const [editFormData, setEditFormData] = useState({
     name: '',
     email: '',
     phone: '',
-    role: 'USER' as 'ADMIN' | 'DRIVER' | 'USER',
-    password: ''
+    role: 'USER',
+    isActive: true
   });
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    fetchUsers();
+  }, [currentPage, pageSize, searchQuery, filterRole]);
 
-  const fetchData = async () => {
+  const fetchUsers = async () => {
     try {
-      // Mock data - replace with actual API calls
-      const mockUsers: User[] = [
-        {
-          id: '1',
-          name: 'John Doe',
-          email: 'john@example.com',
-          phone: '+1234567890',
-          role: 'USER',
-          isActive: true,
-          createdAt: '2024-01-15T10:30:00Z'
-        },
-        {
-          id: '2',
-          name: 'Jane Smith',
-          email: 'jane@example.com',
-          phone: '+1234567891',
-          role: 'DRIVER',
-          isActive: true,
-          createdAt: '2024-01-10T14:20:00Z'
-        },
-        {
-          id: '3',
-          name: 'Bob Johnson',
-          email: 'bob@example.com',
-          phone: '+1234567892',
-          role: 'USER',
-          isActive: false,
-          createdAt: '2024-01-05T09:15:00Z'
-        }
-      ];
-
-      const mockDrivers: Driver[] = [
-        {
-          id: '1',
-          userId: '2',
-          truckType: 'MINI_TRUCK',
-          capacity: 1.5,
-          quality: 'EXCELLENT',
-          license: 'DL123456',
-          registration: 'REG789012',
-          location: 'New York',
-          isAvailable: true,
-          isVerified: true,
-          rating: 4.8,
-          totalTrips: 150,
-          user: mockUsers[1]
-        }
-      ];
-
-      setUsers(mockUsers);
-      setDrivers(mockDrivers);
+      setLoading(true);
+      const response = await adminApi.getUsers(currentPage, pageSize, searchQuery, filterRole);
+      setUsers(response.data);
+      setTotalUsers(response.pagination.total);
+      setTotalPages(response.pagination.totalPages);
     } catch (error) {
-      console.error('Error fetching data:', error);
+      console.error('Error fetching users:', error);
+      errorToast('Failed to fetch users');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAddUser = async () => {
-    try {
-      // Mock API call
-      const newUser: User = {
-        id: Date.now().toString(),
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone,
-        role: formData.role,
-        isActive: true,
-        createdAt: new Date().toISOString()
-      };
+  const handleSearch = async (query: string) => {
+    setSearchQuery(query);
+    setCurrentPage(1);
+  };
 
-      setUsers([...users, newUser]);
-      setShowAddModal(false);
-      setFormData({ name: '', email: '', phone: '', role: 'USER', password: '' });
-    } catch (error) {
-      console.error('Error adding user:', error);
-    }
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handlePageSizeChange = (size: number) => {
+    setPageSize(size);
+    setCurrentPage(1);
   };
 
   const handleEditUser = async () => {
     if (!selectedUser) return;
 
     try {
-      // Mock API call
-      const updatedUsers = users.map(user => 
-        user.id === selectedUser.id 
-          ? { ...user, ...formData }
-          : user
-      );
-
-      setUsers(updatedUsers);
+      await adminApi.updateUser(selectedUser.id, editFormData);
+      successToast('User updated successfully');
       setShowEditModal(false);
       setSelectedUser(null);
-      setFormData({ name: '', email: '', phone: '', role: 'USER', password: '' });
+      setEditFormData({ name: '', email: '', phone: '', role: 'USER', isActive: true });
+      fetchUsers();
     } catch (error) {
       console.error('Error updating user:', error);
+      errorToast('Failed to update user');
     }
   };
 
-  const handleDeleteUser = async (userId: string) => {
-    if (!confirm('Are you sure you want to delete this user?')) return;
-
-    try {
-      // Mock API call
-      setUsers(users.filter(user => user.id !== userId));
-    } catch (error) {
-      console.error('Error deleting user:', error);
-    }
-  };
-
-  const handleToggleUserStatus = async (userId: string) => {
-    try {
-      // Mock API call
-      setUsers(users.map(user => 
-        user.id === userId 
-          ? { ...user, isActive: !user.isActive }
-          : user
-      ));
-    } catch (error) {
-      console.error('Error toggling user status:', error);
-    }
-  };
-
-  const handleVerifyDriver = async (driverId: string) => {
-    try {
-      // Mock API call
-      setDrivers(drivers.map(driver => 
-        driver.id === driverId 
-          ? { ...driver, isVerified: true }
-          : driver
-      ));
-    } catch (error) {
-      console.error('Error verifying driver:', error);
-    }
-  };
-
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = !filterRole || user.role === filterRole;
-    return matchesSearch && matchesRole;
-  });
-
-  const filteredDrivers = drivers.filter(driver => {
-    const matchesSearch = driver.user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         driver.user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         driver.location.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesSearch;
-  });
-
-  const customers = users.filter(user => user.role === 'USER');
-  const filteredCustomers = customers.filter(user => {
-    const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.email.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesSearch;
-  });
-
-  if (loading) {
-    return (
-      <DashboardLayout title="User Management">
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-        </div>
-      </DashboardLayout>
+  const handleDeleteUser = async (user: User) => {
+    await withConfirmation(
+      async () => {
+        await adminApi.deleteUser(user.id);
+        successToast('User deleted successfully');
+        fetchUsers();
+      },
+      `Are you sure you want to delete ${user.name}? This action cannot be undone.`,
+      'Delete User'
     );
-  }
+  };
+
+  const handleViewUser = (user: User) => {
+    setSelectedUser(user);
+    setShowViewModal(true);
+  };
+
+  const handleEditUserClick = (user: User) => {
+    setSelectedUser(user);
+    setEditFormData({
+      name: user.name,
+      email: user.email,
+      phone: user.phone || '',
+      role: user.role,
+      isActive: user.isActive
+    });
+    setShowEditModal(true);
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString();
+  };
+
+  const getRoleColor = (role: string) => {
+    switch (role) {
+      case 'ADMIN': return 'bg-red-100 text-red-800';
+      case 'DRIVER': return 'bg-green-100 text-green-800';
+      case 'USER': return 'bg-blue-100 text-blue-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  // Table columns
+  const columns: Column<User>[] = [
+    {
+      key: 'name',
+      header: 'Name',
+      render: (value, row) => (
+        <div className="flex items-center">
+          <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
+            <UserCircleIcon className="h-5 w-5 text-blue-600" />
+          </div>
+          <div className="ml-3">
+            <div className="text-sm font-medium text-gray-900">{row.name}</div>
+            <div className="text-sm text-gray-500">{row.email}</div>
+          </div>
+        </div>
+      )
+    },
+    {
+      key: 'phone',
+      header: 'Phone',
+      render: (value) => value || '-'
+    },
+    {
+      key: 'role',
+      header: 'Role',
+      render: (value) => (
+        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getRoleColor(value)}`}>
+          {value}
+        </span>
+      )
+    },
+    {
+      key: 'totalBookings',
+      header: 'Bookings',
+      render: (value) => (
+        <div className="text-sm text-gray-900">{value}</div>
+      )
+    },
+    {
+      key: 'totalSpent',
+      header: 'Total Spent',
+      render: (value) => (
+        <div className="text-sm font-medium text-green-600">
+          ${(value || 0).toFixed(2)}
+        </div>
+      )
+    },
+    {
+      key: 'isActive',
+      header: 'Status',
+      render: (value) => (
+        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+          value ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+        }`}>
+          {value ? 'Active' : 'Inactive'}
+        </span>
+      )
+    },
+    {
+      key: 'createdAt',
+      header: 'Joined',
+      render: (value) => formatDate(value)
+    }
+  ];
 
   return (
-    <DashboardLayout title="User Management" subtitle="Manage users, drivers, and customers">
-      <div className="space-y-6">
-        {/* Tabs */}
-        <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8">
-            <button
-              onClick={() => setActiveTab('users')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'users'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              <UsersIcon className="h-5 w-5 inline mr-2" />
-              All Users ({users.length})
-            </button>
-            <button
-              onClick={() => setActiveTab('drivers')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'drivers'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              <TruckIcon className="h-5 w-5 inline mr-2" />
-              Drivers ({drivers.length})
-            </button>
-            <button
-              onClick={() => setActiveTab('customers')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'customers'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              <UserCircleIcon className="h-5 w-5 inline mr-2" />
-              Customers ({customers.length})
-            </button>
-          </nav>
-        </div>
-
-        {/* Search and Filters */}
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1">
-            <div className="relative">
-              <MagnifyingGlassIcon className="h-5 w-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search users..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-          {activeTab === 'users' && (
-            <div className="flex gap-2">
+    <ProtectedRoute requiredRole="ADMIN">
+      <DashboardLayout title="User Management" subtitle="Manage all user accounts">
+        <div className="space-y-6">
+          {/* Filters */}
+          <div className="bg-white rounded-lg shadow p-4">
+            <div className="flex items-center space-x-4">
+              <label className="text-sm font-medium text-gray-700">Filter by Role:</label>
               <select
                 value={filterRole}
                 onChange={(e) => setFilterRole(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
               >
                 <option value="">All Roles</option>
                 <option value="ADMIN">Admin</option>
@@ -305,422 +218,202 @@ export default function AdminUsersPage() {
                 <option value="USER">User</option>
               </select>
             </div>
-          )}
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-          >
-            <PlusIcon className="h-4 w-4 mr-2" />
-            Add User
-          </button>
+          </div>
+
+          {/* DataTable */}
+          <DataTable
+            data={users}
+            columns={columns}
+            loading={loading}
+            pagination={{
+              page: currentPage,
+              limit: pageSize,
+              total: totalUsers,
+              totalPages: totalPages
+            }}
+            onPageChange={handlePageChange}
+            onLimitChange={handlePageSizeChange}
+            onSearch={handleSearch}
+            searchPlaceholder="Search users by name or email..."
+            showAddButton={false}
+            actions={{
+              view: handleViewUser,
+              edit: handleEditUserClick,
+              delete: handleDeleteUser
+            }}
+            emptyMessage="No users found"
+          />
         </div>
 
-        {/* Users Table */}
-        {activeTab === 'users' && (
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    User
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Role
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Joined
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredUsers.map((user) => (
-                  <tr key={user.id}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10">
-                          <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
-                            <UserCircleIcon className="h-6 w-6 text-gray-600" />
-                          </div>
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{user.name}</div>
-                          <div className="text-sm text-gray-500">{user.email}</div>
-                          {user.phone && <div className="text-sm text-gray-500">{user.phone}</div>}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        user.role === 'ADMIN' ? 'bg-red-100 text-red-800' :
-                        user.role === 'DRIVER' ? 'bg-blue-100 text-blue-800' :
-                        'bg-green-100 text-green-800'
-                      }`}>
-                        {user.role}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <button
-                        onClick={() => handleToggleUserStatus(user.id)}
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          user.isActive 
-                            ? 'bg-green-100 text-green-800 hover:bg-green-200' 
-                            : 'bg-red-100 text-red-800 hover:bg-red-200'
-                        }`}
-                      >
-                        {user.isActive ? 'Active' : 'Inactive'}
-                      </button>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(user.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex justify-end space-x-2">
-                        <button
-                          onClick={() => {
-                            setSelectedUser(user);
-                            setFormData({
-                              name: user.name,
-                              email: user.email,
-                              phone: user.phone || '',
-                              role: user.role,
-                              password: ''
-                            });
-                            setShowEditModal(true);
-                          }}
-                          className="text-blue-600 hover:text-blue-900"
-                        >
-                          <PencilIcon className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteUser(user.id)}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          <TrashIcon className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* Drivers Table */}
-        {activeTab === 'drivers' && (
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Driver
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Vehicle
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Rating
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Trips
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredDrivers.map((driver) => (
-                  <tr key={driver.id}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10">
-                          <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
-                            <UserCircleIcon className="h-6 w-6 text-gray-600" />
-                          </div>
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{driver.user.name}</div>
-                          <div className="text-sm text-gray-500">{driver.user.email}</div>
-                          <div className="text-sm text-gray-500">{driver.location}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{driver.truckType}</div>
-                      <div className="text-sm text-gray-500">{driver.capacity} tons</div>
-                      <div className="text-sm text-gray-500">{driver.quality}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="space-y-1">
-                        <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          driver.isAvailable ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                        }`}>
-                          {driver.isAvailable ? 'Available' : 'Busy'}
-                        </div>
-                        <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          driver.isVerified ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {driver.isVerified ? 'Verified' : 'Pending'}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <span className="text-sm font-medium text-gray-900">{driver.rating}</span>
-                        <span className="text-sm text-gray-500 ml-1">/ 5</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {driver.totalTrips}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex justify-end space-x-2">
-                        {!driver.isVerified && (
-                          <button
-                            onClick={() => handleVerifyDriver(driver.id)}
-                            className="text-green-600 hover:text-green-900"
-                          >
-                            <CheckCircleIcon className="h-4 w-4" />
-                          </button>
-                        )}
-                        <button className="text-blue-600 hover:text-blue-900">
-                          <EyeIcon className="h-4 w-4" />
-                        </button>
-                        <button className="text-red-600 hover:text-red-900">
-                          <TrashIcon className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* Customers Table */}
-        {activeTab === 'customers' && (
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Customer
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Joined
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredCustomers.map((customer) => (
-                  <tr key={customer.id}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10">
-                          <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
-                            <UserCircleIcon className="h-6 w-6 text-gray-600" />
-                          </div>
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{customer.name}</div>
-                          <div className="text-sm text-gray-500">{customer.email}</div>
-                          {customer.phone && <div className="text-sm text-gray-500">{customer.phone}</div>}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <button
-                        onClick={() => handleToggleUserStatus(customer.id)}
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          customer.isActive 
-                            ? 'bg-green-100 text-green-800 hover:bg-green-200' 
-                            : 'bg-red-100 text-red-800 hover:bg-red-200'
-                        }`}
-                      >
-                        {customer.isActive ? 'Active' : 'Inactive'}
-                      </button>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(customer.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex justify-end space-x-2">
-                        <button className="text-blue-600 hover:text-blue-900">
-                          <EyeIcon className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteUser(customer.id)}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          <TrashIcon className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* Add User Modal */}
-        {showAddModal && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-              <div className="mt-3">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Add New User</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Name</label>
-                    <input
-                      type="text"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Email</label>
-                    <input
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Phone</label>
-                    <input
-                      type="tel"
-                      value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Role</label>
-                    <select
-                      value={formData.role}
-                      onChange={(e) => setFormData({ ...formData, role: e.target.value as any })}
-                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="USER">User</option>
-                      <option value="DRIVER">Driver</option>
-                      <option value="ADMIN">Admin</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Password</label>
-                    <input
-                      type="password"
-                      value={formData.password}
-                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-                <div className="flex justify-end space-x-3 mt-6">
-                  <button
-                    onClick={() => setShowAddModal(false)}
-                    className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleAddUser}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                  >
-                    Add User
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Edit User Modal */}
-        {showEditModal && selectedUser && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-              <div className="mt-3">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Edit User</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Name</label>
-                    <input
-                      type="text"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Email</label>
-                    <input
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Phone</label>
-                    <input
-                      type="tel"
-                      value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Role</label>
-                    <select
-                      value={formData.role}
-                      onChange={(e) => setFormData({ ...formData, role: e.target.value as any })}
-                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="USER">User</option>
-                      <option value="DRIVER">Driver</option>
-                      <option value="ADMIN">Admin</option>
-                    </select>
-                  </div>
-                </div>
-                <div className="flex justify-end space-x-3 mt-6">
-                  <button
-                    onClick={() => setShowEditModal(false)}
-                    className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleEditUser}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                  >
-                    Update User
-                  </button>
-                </div>
-              </div>
+        <Modal
+          isOpen={showEditModal}
+          onClose={() => setShowEditModal(false)}
+          title="Edit User"
+          size="md"
+        >
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Full Name
+              </label>
+              <input
+                type="text"
+                value={editFormData.name}
+                onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter full name"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Email Address
+              </label>
+              <input
+                type="email"
+                value={editFormData.email}
+                onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter email address"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Phone Number
+              </label>
+              <input
+                type="tel"
+                value={editFormData.phone}
+                onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter phone number"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Role
+              </label>
+              <select
+                value={editFormData.role}
+                onChange={(e) => setEditFormData({ ...editFormData, role: e.target.value })}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="USER">User</option>
+                <option value="DRIVER">Driver</option>
+                <option value="ADMIN">Admin</option>
+              </select>
+            </div>
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="isActive"
+                checked={editFormData.isActive}
+                onChange={(e) => setEditFormData({ ...editFormData, isActive: e.target.checked })}
+                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <label htmlFor="isActive" className="ml-2 text-sm text-gray-700">
+                Active Account
+              </label>
+            </div>
+            <div className="flex justify-end space-x-3 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => setShowEditModal(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleEditUser}
+              >
+                Update User
+              </Button>
             </div>
           </div>
-        )}
-      </div>
-    </DashboardLayout>
+        </Modal>
+
+        {/* View User Modal */}
+        <Modal
+          isOpen={showViewModal}
+          onClose={() => setShowViewModal(false)}
+          title="User Details"
+          size="lg"
+        >
+          {selectedUser && (
+            <div className="space-y-6">
+              {/* User Header */}
+              <div className="flex items-center">
+                <div className="h-16 w-16 rounded-full bg-blue-100 flex items-center justify-center">
+                  <UserCircleIcon className="h-8 w-8 text-blue-600" />
+                </div>
+                <div className="ml-4">
+                  <h3 className="text-lg font-medium text-gray-900">{selectedUser.name}</h3>
+                  <p className="text-sm text-gray-500">{selectedUser.email}</p>
+                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium mt-1 ${getRoleColor(selectedUser.role)}`}>
+                    {selectedUser.role}
+                  </span>
+                </div>
+              </div>
+
+              {/* User Information */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h4 className="text-sm font-medium text-gray-700 mb-3">Contact Information</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-center">
+                    <EnvelopeIcon className="h-4 w-4 text-gray-400 mr-2" />
+                    <span className="text-sm text-gray-900">{selectedUser.email}</span>
+                  </div>
+                  {selectedUser.phone && (
+                    <div className="flex items-center">
+                      <PhoneIcon className="h-4 w-4 text-gray-400 mr-2" />
+                      <span className="text-sm text-gray-900">{selectedUser.phone}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center">
+                    <CalendarIcon className="h-4 w-4 text-gray-400 mr-2" />
+                    <span className="text-sm text-gray-900">Joined {formatDate(selectedUser.createdAt)}</span>
+                  </div>
+                  {selectedUser.lastLogin && (
+                    <div className="flex items-center">
+                      <CheckCircleIcon className="h-4 w-4 text-gray-400 mr-2" />
+                      <span className="text-sm text-gray-900">Last login {formatDate(selectedUser.lastLogin)}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* User Statistics */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h4 className="text-sm font-medium text-gray-700 mb-3">User Statistics</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-600">Total Bookings</span>
+                    <span className="text-sm font-medium text-gray-900">{selectedUser.totalBookings || 0}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-600">Total Spent</span>
+                    <span className="text-sm font-medium text-green-600">${(selectedUser.totalSpent || 0).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-600">Account Status</span>
+                    <span className={`text-sm ${selectedUser.isActive ? 'text-green-600' : 'text-red-600'}`}>
+                      {selectedUser.isActive ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowViewModal(false)}
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
+          )}
+        </Modal>
+      </DashboardLayout>
+    </ProtectedRoute>
   );
 } 

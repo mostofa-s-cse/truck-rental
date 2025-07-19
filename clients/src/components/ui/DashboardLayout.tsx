@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useAppDispatch, useAppSelector } from '@/hooks/redux';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useAppSelector, useAppDispatch } from '@/hooks/redux';
 import { useSweetAlert } from '@/hooks/useSweetAlert';
 import { 
   HomeIcon, 
@@ -22,10 +22,12 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   InformationCircleIcon,
-  ArrowRightEndOnRectangleIcon
+  ArrowRightEndOnRectangleIcon,
+  ChartBarIcon,
+  CurrencyDollarIcon
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { logoutUser } from '@/store/slices/authSlice';
 
 interface DashboardLayoutProps {
@@ -51,6 +53,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   const { successToast } = useSweetAlert();
   const dispatch = useAppDispatch();
   const router = useRouter();
+  const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [openMenuItems, setOpenMenuItems] = useState<Set<string>>(new Set());
@@ -62,6 +65,58 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   };
 
   const getMenuItems = (): MenuItem[] => {
+    // Admin-specific menu items
+    if (user?.role === 'ADMIN') {
+      return [
+        {
+          name: 'Dashboard',
+          href: '/dashboard/admin',
+          icon: HomeIcon
+        },
+        {
+          name: 'User Management',
+          href: '/dashboard/admin/users',
+          icon: UserCircleIcon
+        },
+        {
+          name: 'Driver Management',
+          href: '/dashboard/admin/drivers',
+          icon: TruckIcon
+        },
+        {
+          name: 'Booking Management',
+          href: '/dashboard/admin/bookings',
+          icon: CalendarIcon
+        },
+        {
+          name: 'Payment Management',
+          href: '/dashboard/admin/payments',
+          icon: CreditCardIcon
+        },
+        {
+          name: 'Review Management',
+          href: '/dashboard/admin/reviews',
+          icon: StarIcon
+        },
+        {
+          name: 'Analytics',
+          href: '/dashboard/admin/analytics',
+          icon: ChartBarIcon,
+          children: [
+            { name: 'Booking Analytics', href: '/dashboard/admin/analytics/bookings', icon: ChartBarIcon },
+            { name: 'Revenue Reports', href: '/dashboard/admin/analytics/revenue', icon: CurrencyDollarIcon },
+            { name: 'Driver Analytics', href: '/dashboard/admin/analytics/drivers', icon: TruckIcon }
+          ]
+        },
+        {
+          name: 'System Settings',
+          href: '/dashboard/admin/settings',
+          icon: CogIcon
+        }
+      ];
+    }
+
+    // Regular user menu items
     return [
       {
         name: 'Dashboard',
@@ -122,7 +177,34 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     ];
   };
 
-  const menuItems = getMenuItems();
+  const menuItems = useMemo(() => getMenuItems(), [user?.role]);
+
+  useEffect(() => {
+    const activeMenuItem = menuItems.find(item => 
+      item.href === pathname || 
+      item.children?.some(child => child.href === pathname)
+    );
+
+    if (activeMenuItem) {
+      setOpenMenuItems(prev => {
+        const newSet = new Set(prev);
+        newSet.add(activeMenuItem.name);
+        return newSet;
+      });
+    }
+  }, [pathname]);
+
+  const isActiveMenuItem = (href: string): boolean => {
+    if (href === pathname) return true;
+    
+    // For parent menu items with children, check if any child is active
+    const menuItem = menuItems.find(item => item.href === href);
+    if (menuItem?.children) {
+      return menuItem.children.some(child => child.href === pathname);
+    }
+    
+    return false;
+  };
 
   const toggleMenuItem = (itemName: string) => {
     setOpenMenuItems(prev => {
@@ -139,6 +221,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   const renderMenuItem = (item: MenuItem, level: number = 0) => {
     const hasChildren = item.children && item.children.length > 0;
     const isOpen = openMenuItems.has(item.name);
+    const isActive = isActiveMenuItem(item.href);
     
     return (
       <div key={item.name}>
@@ -146,7 +229,14 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           href={item.href}
           className={`
             group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
-            ${level === 0 ? 'text-gray-300 hover:text-white hover:bg-gray-700' : 'text-gray-400 hover:text-gray-300 pl-6'}
+            ${level === 0 
+              ? isActive 
+                ? 'text-white bg-blue-600' 
+                : 'text-gray-300 hover:text-white hover:bg-gray-700'
+              : isActive
+                ? 'text-white bg-gray-700'
+                : 'text-gray-400 hover:text-gray-300 pl-6'
+            }
             ${hasChildren ? 'cursor-pointer' : ''}
           `}
           onClick={hasChildren ? (e) => { e.preventDefault(); toggleMenuItem(item.name); } : undefined}

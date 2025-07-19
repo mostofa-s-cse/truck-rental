@@ -9,21 +9,14 @@ import {
   CurrencyDollarIcon, 
   CalendarIcon,
   StarIcon,
-  TruckIcon,
   ClockIcon,
   CheckCircleIcon,
-  XCircleIcon,
-  MapIcon,
-  ChartBarIcon,
-  UserGroupIcon,
-  ExclamationTriangleIcon,
   PlayIcon,
   PauseIcon
 } from '@heroicons/react/24/outline';
 
-interface DriverDashboardProps {}
 
-export default function DriverDashboard({}: DriverDashboardProps) {
+export default function DriverDashboard() {
   const { user } = useAppSelector((state) => state.auth);
   const [stats, setStats] = useState<DriverStats | null>(null);
   const [earnings, setEarnings] = useState<Earnings | null>(null);
