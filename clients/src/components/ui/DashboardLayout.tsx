@@ -323,11 +323,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 {userMenuOpen && (
                   <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5">
                     <div className="py-1">
-                      <a href="/profile" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                      <a href="/dashboard/admin/profile" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                         <UserCircleIcon className="mr-3 h-4 w-4" />
                         Profile
                       </a>
-                      <a href="/settings" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                      <a href="/dashboard/admin/settings" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                         <CogIcon className="mr-3 h-4 w-4" />
                         Settings
                       </a>

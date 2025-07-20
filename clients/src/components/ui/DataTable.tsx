@@ -18,7 +18,7 @@ import Button from './Button';
 export interface Column<T> {
   key: keyof T | string;
   header: string;
-  render?: (value: any, row: T) => React.ReactNode;
+  render?: (value: unknown, row: T) => React.ReactNode;
   sortable?: boolean;
   width?: string;
 }
@@ -54,6 +54,7 @@ export interface DataTableProps<T> {
   };
   emptyMessage?: string;
   className?: string;
+  initialSearchQuery?: string;
 }
 
 export default function DataTable<T extends { id: string | number }>({
@@ -73,9 +74,11 @@ export default function DataTable<T extends { id: string | number }>({
   onAdd,
   actions,
   emptyMessage = 'No data found',
-  className = ''
+  className = '',
+  initialSearchQuery = ''
 }: DataTableProps<T>) {
-  const [searchQuery, setSearchQuery] = useState('');
+
+  const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
   const [sortKey, setSortKey] = useState<string>('');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
@@ -98,9 +101,23 @@ export default function DataTable<T extends { id: string | number }>({
   };
 
   const renderCell = (column: Column<T>, row: T) => {
-    const value = column.key.includes('.') 
-      ? column.key.split('.').reduce((obj, key) => obj?.[key], row)
-      : row[column.key as keyof T];
+    let value: unknown;
+    
+    if (typeof column.key === 'string' && column.key.includes('.')) {
+      const keys = column.key.split('.');
+      let current: unknown = row;
+      for (const key of keys) {
+        if (current && typeof current === 'object' && key in current) {
+          current = (current as Record<string, unknown>)[key];
+        } else {
+          current = undefined;
+          break;
+        }
+      }
+      value = current;
+    } else {
+      value = row[column.key as keyof T];
+    }
 
     if (column.render) {
       return column.render(value, row);
@@ -211,7 +228,7 @@ export default function DataTable<T extends { id: string | number }>({
                 </td>
               </tr>
             ) : (
-              data.map((row, index) => (
+              data.map((row) => (
                 <tr key={row.id} className="hover:bg-gray-50">
                   {columns.map((column) => (
                     <td key={String(column.key)} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">

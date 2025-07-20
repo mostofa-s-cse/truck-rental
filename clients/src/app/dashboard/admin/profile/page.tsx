@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAppSelector, useAppDispatch } from '@/hooks/redux';
+import { useAppSelector } from '@/hooks/redux';
 import DashboardLayout from '@/components/ui/DashboardLayout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import Button from '@/components/ui/Button';
@@ -9,17 +9,12 @@ import Modal from '@/components/ui/Modal';
 import { useSweetAlert } from '@/hooks/useSweetAlert';
 import { 
   UserCircleIcon, 
-  EnvelopeIcon,
-  PhoneIcon,
-  MapPinIcon,
-  CogIcon,
   ShieldCheckIcon,
   BellIcon,
   KeyIcon,
   PencilIcon,
   CameraIcon,
-  CheckCircleIcon,
-  ExclamationTriangleIcon
+  CheckCircleIcon
 } from '@heroicons/react/24/outline';
 
 interface AdminProfile {
@@ -42,7 +37,11 @@ interface AdminProfile {
   };
   security: {
     lastLogin: string;
-    loginHistory: any[];
+    loginHistory: Array<{
+      date: string;
+      ip: string;
+      device: string;
+    }>;
     twoFactorEnabled: boolean;
   };
   stats: {
@@ -54,8 +53,7 @@ interface AdminProfile {
 
 export default function AdminProfilePage() {
   const { user } = useAppSelector((state) => state.auth);
-  const dispatch = useAppDispatch();
-  const { successToast, errorToast, confirmDialog } = useSweetAlert();
+  const { successToast, errorToast } = useSweetAlert();
   
   // State
   const [loading, setLoading] = useState(true);
@@ -64,6 +62,7 @@ export default function AdminProfilePage() {
   const [editMode, setEditMode] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
+  const [showTestModal, setShowTestModal] = useState(false);
   
   // Form data
   const [formData, setFormData] = useState({
@@ -307,6 +306,8 @@ export default function AdminProfilePage() {
     );
   }
 
+  console.log('Modal states - showAvatarModal:', showAvatarModal, 'showPasswordModal:', showPasswordModal);
+
   return (
     <ProtectedRoute requiredRole="ADMIN">
       <DashboardLayout title="Admin Profile" subtitle="Manage your account settings">
@@ -328,7 +329,10 @@ export default function AdminProfilePage() {
                     </div>
                   )}
                   <button
-                    onClick={() => setShowAvatarModal(true)}
+                    onClick={() => {
+                      console.log('Avatar button clicked');
+                      setShowAvatarModal(true);
+                    }}
                     className="absolute -bottom-1 -right-1 p-1 bg-blue-600 rounded-full text-white hover:bg-blue-700"
                   >
                     <CameraIcon className="h-4 w-4" />
@@ -502,6 +506,17 @@ export default function AdminProfilePage() {
                   >
                     <KeyIcon className="h-4 w-4 mr-2" />
                     Change Password
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      console.log('Test modal button clicked');
+                      setShowTestModal(true);
+                    }}
+                    variant="outline"
+                    className="w-full justify-start"
+                  >
+                    <CameraIcon className="h-4 w-4 mr-2" />
+                    Test Simple Modal
                   </Button>
                   <Button
                     variant="outline"
@@ -699,10 +714,36 @@ export default function AdminProfilePage() {
           </div>
         </Modal>
 
+        {/* Test Modal */}
+        <Modal
+          isOpen={showTestModal}
+          onClose={() => {
+            console.log('Closing test modal');
+            setShowTestModal(false);
+          }}
+          title="Test Modal"
+          size="md"
+        >
+          <div className="space-y-4">
+            <p className="text-gray-600">This is a test modal to verify the Modal component is working.</p>
+            <div className="flex justify-end space-x-3 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => setShowTestModal(false)}
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </Modal>
+
         {/* Avatar Upload Modal */}
         <Modal
           isOpen={showAvatarModal}
-          onClose={() => setShowAvatarModal(false)}
+          onClose={() => {
+            console.log('Closing avatar modal');
+            setShowAvatarModal(false);
+          }}
           title="Update Avatar"
           size="md"
         >

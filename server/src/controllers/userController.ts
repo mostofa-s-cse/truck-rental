@@ -9,11 +9,12 @@ export class UserController {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
       const role = req.query.role as string;
+      const search = req.query.search as string;
       const userId = (req as any).user?.userId || 'anonymous';
       
-      logDatabase('select', 'users', { page, limit, role, requestedBy: userId });
+      logDatabase('select', 'users', { page, limit, role, search, requestedBy: userId });
       
-      const result = await UserService.getAllUsers(page, limit, role as any);
+      const result = await UserService.getAllUsers(page, limit, role as any, search);
 
       const response: ApiResponse = {
         success: true,
@@ -30,7 +31,8 @@ export class UserController {
         userId,
         page: req.query.page,
         limit: req.query.limit,
-        role: req.query.role
+        role: req.query.role,
+        search: req.query.search
       });
 
       const response: ApiResponse = {

@@ -4,33 +4,42 @@ import { logDatabase } from '../utils/logger';
 const prisma = new PrismaClient();
 
 export class UserService {
-  static async getAllUsers(page = 1, limit = 10, role?: UserRole) {
+  static async getAllUsers(page = 1, limit = 10, role?: UserRole, search?: string) {
     const skip = (page - 1) * limit;
-    const where = role ? { role } : {};
+    
+    let where: any = {};
+    
+    if (role) {
+      where.role = role;
+    }
+    
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+        { phone: { contains: search, mode: 'insensitive' } }
+      ];
+    }
 
-    logDatabase('select', 'users', { page, limit, role });
+    logDatabase('select', 'users', { page, limit, role, search });
 
     const [users, total] = await Promise.all([
       prisma.user.findMany({
         where,
         skip,
         take: limit,
-        select: {
-          id: true,
-          email: true,
-          name: true,
-          phone: true,
-          role: true,
-          avatar: true,
-          isActive: true,
-          createdAt: true,
-          updatedAt: true,
+        include: {
           driverProfile: {
             select: {
               id: true,
               truckType: true,
               isVerified: true,
               rating: true
+            }
+          },
+          _count: {
+            select: {
+              bookings: true
             }
           }
         },
@@ -41,8 +50,15 @@ export class UserService {
       prisma.user.count({ where })
     ]);
 
+    // Transform the data to match the expected format
+    const transformedUsers = users.map(user => ({
+      ...user,
+      totalBookings: user._count.bookings,
+      totalSpent: 0 // This would need to be calculated from bookings if needed
+    }));
+
     return {
-      users,
+      users: transformedUsers,
       total,
       page,
       limit,

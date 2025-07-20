@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import DashboardLayout from '@/components/ui/DashboardLayout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import DataTable, { Column } from '@/components/ui/DataTable';
@@ -13,25 +14,43 @@ import {
   CheckCircleIcon,
   EnvelopeIcon,
   PhoneIcon,
-  CalendarIcon
+  CalendarIcon,
+  CameraIcon
 } from '@heroicons/react/24/outline';
 
 export default function AdminUsersPage() {
   const { successToast, errorToast, withConfirmation } = useSweetAlert();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  // Get initial state from URL params
+  const getInitialState = () => {
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const search = searchParams.get('search') || '';
+    const role = searchParams.get('role') || '';
+    
+    console.log('Initial state from URL:', { page, limit, search, role });
+    return { page, limit, search, role };
+  };
+  
+  // Initialize state from URL params
+  const initialState = getInitialState();
   
   // State
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [searchQuery, setSearchQuery] = useState(initialState.search);
+  const [currentPage, setCurrentPage] = useState(initialState.page);
+  const [pageSize, setPageSize] = useState(initialState.limit);
   const [totalUsers, setTotalUsers] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
-  const [filterRole, setFilterRole] = useState<string>('');
+  const [filterRole, setFilterRole] = useState<string>(initialState.role);
   
   // Modal states
   const [showEditModal, setShowEditModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   
   // Form data
@@ -40,11 +59,58 @@ export default function AdminUsersPage() {
     email: '',
     phone: '',
     role: 'USER',
-    isActive: true
+    isActive: true,
+    avatar: ''
   });
 
+  const [createFormData, setCreateFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    password: '',
+    role: 'USER',
+    isActive: true,
+    avatar: ''
+  });
+
+  // Update URL with current state
+  const updateURL = (page: number, limit: number, search: string, role: string) => {
+    const params = new URLSearchParams();
+    if (page > 1) params.set('page', page.toString());
+    if (limit !== 10) params.set('limit', limit.toString());
+    if (search) params.set('search', search);
+    if (role) params.set('role', role);
+    
+    const newURL = params.toString() ? `?${params.toString()}` : '';
+    const fullURL = `/dashboard/admin/users${newURL}`;
+    console.log('Updating URL:', fullURL, 'Current state:', { page, limit, search, role });
+    
+    // Use push instead of replace to ensure proper browser history
+    router.push(fullURL, { scroll: false });
+  };
+
+  // Sync state with URL changes (for browser back/forward)
+  useEffect(() => {
+    const urlPage = parseInt(searchParams.get('page') || '1');
+    const urlLimit = parseInt(searchParams.get('limit') || '10');
+    const urlSearch = searchParams.get('search') || '';
+    const urlRole = searchParams.get('role') || '';
+    
+    // Only update if URL params are different from current state
+    if (urlPage !== currentPage) setCurrentPage(urlPage);
+    if (urlLimit !== pageSize) setPageSize(urlLimit);
+    if (urlSearch !== searchQuery) setSearchQuery(urlSearch);
+    if (urlRole !== filterRole) setFilterRole(urlRole);
+  }, [searchParams]);
+
+  // Fetch users when dependencies change
   useEffect(() => {
     fetchUsers();
+  }, [currentPage, pageSize, searchQuery, filterRole]);
+
+  // Update URL when state changes (separate effect to avoid race conditions)
+  useEffect(() => {
+    updateURL(currentPage, pageSize, searchQuery, filterRole);
   }, [currentPage, pageSize, searchQuery, filterRole]);
 
   const fetchUsers = async () => {
@@ -68,6 +134,7 @@ export default function AdminUsersPage() {
   };
 
   const handlePageChange = (page: number) => {
+    console.log('Page change requested:', page);
     setCurrentPage(page);
   };
 
@@ -84,7 +151,7 @@ export default function AdminUsersPage() {
       successToast('User updated successfully');
       setShowEditModal(false);
       setSelectedUser(null);
-      setEditFormData({ name: '', email: '', phone: '', role: 'USER', isActive: true });
+      setEditFormData({ name: '', email: '', phone: '', role: 'USER', isActive: true, avatar: '' });
       fetchUsers();
     } catch (error) {
       console.error('Error updating user:', error);
@@ -109,6 +176,20 @@ export default function AdminUsersPage() {
     setShowViewModal(true);
   };
 
+  const handleCreateUser = async () => {
+    try {
+      // Mock API call for creating user (replace with real API)
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      successToast('User created successfully');
+      setShowCreateModal(false);
+      setCreateFormData({ name: '', email: '', phone: '', password: '', role: 'USER', isActive: true, avatar: '' });
+      fetchUsers();
+    } catch (error) {
+      console.error('Error creating user:', error);
+      errorToast('Failed to create user');
+    }
+  };
+
   const handleEditUserClick = (user: User) => {
     setSelectedUser(user);
     setEditFormData({
@@ -116,9 +197,26 @@ export default function AdminUsersPage() {
       email: user.email,
       phone: user.phone || '',
       role: user.role,
-      isActive: user.isActive
+      isActive: user.isActive,
+      avatar: user.avatar || ''
     });
     setShowEditModal(true);
+  };
+
+  const handleAvatarUpload = (event: React.ChangeEvent<HTMLInputElement>, isCreate: boolean = false) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const avatarUrl = e.target?.result as string;
+      if (isCreate) {
+        setCreateFormData(prev => ({ ...prev, avatar: avatarUrl }));
+      } else {
+        setEditFormData(prev => ({ ...prev, avatar: avatarUrl }));
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   const formatDate = (dateString: string) => {
@@ -154,14 +252,14 @@ export default function AdminUsersPage() {
     {
       key: 'phone',
       header: 'Phone',
-      render: (value) => value || '-'
+      render: (value) => (value as string) || '-'
     },
     {
       key: 'role',
       header: 'Role',
       render: (value) => (
-        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getRoleColor(value)}`}>
-          {value}
+        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getRoleColor(value as string)}`}>
+          {value as string}
         </span>
       )
     },
@@ -169,7 +267,7 @@ export default function AdminUsersPage() {
       key: 'totalBookings',
       header: 'Bookings',
       render: (value) => (
-        <div className="text-sm text-gray-900">{value}</div>
+        <div className="text-sm text-gray-900">{value as number || 0}</div>
       )
     },
     {
@@ -177,7 +275,7 @@ export default function AdminUsersPage() {
       header: 'Total Spent',
       render: (value) => (
         <div className="text-sm font-medium text-green-600">
-          ${(value || 0).toFixed(2)}
+          ${((value as number) || 0).toFixed(2)}
         </div>
       )
     },
@@ -195,7 +293,7 @@ export default function AdminUsersPage() {
     {
       key: 'createdAt',
       header: 'Joined',
-      render: (value) => formatDate(value)
+      render: (value) => formatDate(value as string)
     }
   ];
 
@@ -209,7 +307,10 @@ export default function AdminUsersPage() {
               <label className="text-sm font-medium text-gray-700">Filter by Role:</label>
               <select
                 value={filterRole}
-                onChange={(e) => setFilterRole(e.target.value)}
+                onChange={(e) => {
+                  setFilterRole(e.target.value);
+                  setCurrentPage(1); // Reset to first page when filter changes
+                }}
                 className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
               >
                 <option value="">All Roles</option>
@@ -222,6 +323,7 @@ export default function AdminUsersPage() {
 
           {/* DataTable */}
           <DataTable
+            key={`${currentPage}-${pageSize}-${searchQuery}-${filterRole}`}
             data={users}
             columns={columns}
             loading={loading}
@@ -235,15 +337,140 @@ export default function AdminUsersPage() {
             onLimitChange={handlePageSizeChange}
             onSearch={handleSearch}
             searchPlaceholder="Search users by name or email..."
-            showAddButton={false}
+            showAddButton={true}
+            addButtonText="Create User"
+            onAdd={() => setShowCreateModal(true)}
             actions={{
               view: handleViewUser,
               edit: handleEditUserClick,
               delete: handleDeleteUser
             }}
             emptyMessage="No users found"
+            initialSearchQuery={searchQuery}
           />
         </div>
+
+        {/* Create User Modal */}
+        <Modal
+          isOpen={showCreateModal}
+          onClose={() => setShowCreateModal(false)}
+          title="Create New User"
+          size="md"
+        >
+          <div className="space-y-4">
+            {/* Avatar Upload */}
+            <div className="text-center">
+              <div className="mx-auto w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mb-4 relative">
+                {createFormData.avatar ? (
+                  <img 
+                    src={createFormData.avatar} 
+                    alt="User avatar"
+                    className="w-20 h-20 rounded-full object-cover"
+                  />
+                ) : (
+                  <UserCircleIcon className="h-12 w-12 text-gray-400" />
+                )}
+                <label className="absolute -bottom-1 -right-1 p-1 bg-blue-600 rounded-full text-white hover:bg-blue-700 cursor-pointer">
+                  <CameraIcon className="h-4 w-4" />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleAvatarUpload(e, true)}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Full Name
+              </label>
+              <input
+                type="text"
+                value={createFormData.name}
+                onChange={(e) => setCreateFormData({ ...createFormData, name: e.target.value })}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter full name"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Email Address
+              </label>
+              <input
+                type="email"
+                value={createFormData.email}
+                onChange={(e) => setCreateFormData({ ...createFormData, email: e.target.value })}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter email address"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Password
+              </label>
+              <input
+                type="password"
+                value={createFormData.password}
+                onChange={(e) => setCreateFormData({ ...createFormData, password: e.target.value })}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter password"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Phone Number
+              </label>
+              <input
+                type="tel"
+                value={createFormData.phone}
+                onChange={(e) => setCreateFormData({ ...createFormData, phone: e.target.value })}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter phone number"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Role
+              </label>
+              <select
+                value={createFormData.role}
+                onChange={(e) => setCreateFormData({ ...createFormData, role: e.target.value })}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="USER">User</option>
+                <option value="DRIVER">Driver</option>
+                <option value="ADMIN">Admin</option>
+              </select>
+            </div>
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="createIsActive"
+                checked={createFormData.isActive}
+                onChange={(e) => setCreateFormData({ ...createFormData, isActive: e.target.checked })}
+                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <label htmlFor="createIsActive" className="ml-2 text-sm text-gray-700">
+                Active Account
+              </label>
+            </div>
+            <div className="flex justify-end space-x-3 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => setShowCreateModal(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleCreateUser}
+              >
+                Create User
+              </Button>
+            </div>
+          </div>
+        </Modal>
 
         {/* Edit User Modal */}
         <Modal
@@ -253,6 +480,30 @@ export default function AdminUsersPage() {
           size="md"
         >
           <div className="space-y-4">
+            {/* Avatar Upload */}
+            <div className="text-center">
+              <div className="mx-auto w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mb-4 relative">
+                {editFormData.avatar ? (
+                  <img 
+                    src={editFormData.avatar} 
+                    alt="User avatar"
+                    className="w-20 h-20 rounded-full object-cover"
+                  />
+                ) : (
+                  <UserCircleIcon className="h-12 w-12 text-gray-400" />
+                )}
+                <label className="absolute -bottom-1 -right-1 p-1 bg-blue-600 rounded-full text-white hover:bg-blue-700 cursor-pointer">
+                  <CameraIcon className="h-4 w-4" />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleAvatarUpload(e, false)}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Full Name

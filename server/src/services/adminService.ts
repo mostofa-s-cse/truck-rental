@@ -229,32 +229,13 @@ export class AdminService {
   }
 
   static async getSystemSettings() {
-    const settings = await prisma.systemSetting.findMany();
-    
-    const settingsMap = settings.reduce((acc, setting) => {
-      let value: any = setting.value;
-      
-      switch (setting.type) {
-        case 'number':
-          value = parseFloat(setting.value);
-          break;
-        case 'boolean':
-          value = setting.value === 'true';
-          break;
-        case 'json':
-          try {
-            value = JSON.parse(setting.value);
-          } catch {
-            value = setting.value;
-          }
-          break;
+    const settings = await prisma.systemSetting.findMany({
+      orderBy: {
+        key: 'asc'
       }
-      
-      acc[setting.key] = value;
-      return acc;
-    }, {} as Record<string, any>);
-
-    return settingsMap;
+    });
+    
+    return settings;
   }
 
   static async updateSystemSetting(key: string, value: any, type: string) {

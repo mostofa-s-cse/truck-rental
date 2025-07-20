@@ -53,7 +53,7 @@ const Navigation = () => {
           { name: 'User Management', href: '/dashboard/admin/users' },
           { name: 'Driver Management', href: '/dashboard/admin/drivers' },
           { name: 'System Settings', href: '/dashboard/admin/settings' },
-          { name: 'Profile', href: '/profile' },
+          { name: 'Profile', href: '/dashboard/admin/profile' },
           { name: 'Sign out', action: handleLogout, isAction: true }
         ];
       case 'DRIVER':
