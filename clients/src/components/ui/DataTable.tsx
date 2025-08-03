@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { 
   ChevronLeftIcon, 
   ChevronRightIcon,
@@ -15,6 +15,7 @@ import {
 } from '@heroicons/react/24/outline';
 import Button from './Button';
 
+// Types
 export interface Column<T> {
   key: keyof T | string;
   header: string;
@@ -57,6 +58,200 @@ export interface DataTableProps<T> {
   initialSearchQuery?: string;
 }
 
+// Action button configuration
+const ACTION_CONFIG = {
+  view: { icon: EyeIcon, color: 'text-blue-600 hover:text-blue-900', title: 'View' },
+  edit: { icon: PencilIcon, color: 'text-green-600 hover:text-green-900', title: 'Edit' },
+  activate: { icon: CheckCircleIcon, color: 'text-green-600 hover:text-green-900', title: 'Activate' },
+  deactivate: { icon: XCircleIcon, color: 'text-yellow-600 hover:text-yellow-900', title: 'Deactivate' },
+  verify: { icon: CheckCircleIcon, color: 'text-green-600 hover:text-green-900', title: 'Verify' },
+  unverify: { icon: XCircleIcon, color: 'text-yellow-600 hover:text-yellow-900', title: 'Unverify' },
+  delete: { icon: TrashIcon, color: 'text-red-600 hover:text-red-900', title: 'Delete' }
+} as const;
+
+// Utility functions
+const getNestedValue = (obj: unknown, path: string): unknown => {
+  const keys = path.split('.');
+  let current: unknown = obj;
+  
+  for (const key of keys) {
+    if (current && typeof current === 'object' && key in current) {
+      current = (current as Record<string, unknown>)[key];
+    } else {
+      return undefined;
+    }
+  }
+  
+  return current;
+};
+
+const formatValue = (value: unknown): React.ReactNode => {
+  if (typeof value === 'boolean') {
+    return (
+      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+        value ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+      }`}>
+        {value ? 'Yes' : 'No'}
+      </span>
+    );
+  }
+
+  if (typeof value === 'string' && value.includes('T')) {
+    try {
+      return new Date(value).toLocaleDateString();
+    } catch {
+      return value;
+    }
+  }
+
+  return value?.toString() || '-';
+};
+
+// Sub-components
+const SearchInput = ({ 
+  value, 
+  onChange, 
+  onSearch, 
+  placeholder 
+}: { 
+  value: string; 
+  onChange: (value: string) => void; 
+  onSearch?: (query: string) => void; 
+  placeholder: string; 
+}) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    onChange(newValue);
+  };
+
+  return (
+    <div className="relative flex">
+      <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+      <input
+        type="text"
+        placeholder={placeholder}
+        value={value}
+        onChange={handleChange}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && onSearch) {
+            onSearch(value);
+          }
+        }}
+        className="pl-10 pr-20 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-500 bg-white"
+      />
+      {onSearch && (
+        <button
+          onClick={() => onSearch(value)}
+          className="px-4 py-2 bg-blue-600 text-white border border-blue-600 rounded-r-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          Search
+        </button>
+      )}
+    </div>
+  );
+};
+
+const ActionButton = <T,>({ 
+  action, 
+  row, 
+  type 
+}: { 
+  action: (row: T) => void; 
+  row: T; 
+  type: keyof typeof ACTION_CONFIG; 
+}) => {
+  const config = ACTION_CONFIG[type];
+  const Icon = config.icon;
+  
+  return (
+    <button
+      onClick={() => action(row)}
+      className={config.color}
+      title={config.title}
+    >
+      <Icon className="h-4 w-4" />
+    </button>
+  );
+};
+
+const LoadingRow = ({ colSpan }: { colSpan: number }) => (
+  <tr>
+    <td colSpan={colSpan} className="px-6 py-12 text-center">
+      <div className="flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <span className="ml-2 text-gray-600">Loading...</span>
+      </div>
+    </td>
+  </tr>
+);
+
+const EmptyRow = ({ colSpan, message }: { colSpan: number; message: string }) => (
+  <tr>
+    <td colSpan={colSpan} className="px-6 py-12 text-center">
+      <div className="text-gray-500">
+        <div className="text-lg font-medium mb-2">{message}</div>
+        <p className="text-sm">No data available to display</p>
+      </div>
+    </td>
+  </tr>
+);
+
+const PaginationInfo = ({ pagination }: { pagination: NonNullable<DataTableProps<unknown>['pagination']> }) => (
+  <span className="text-sm text-gray-700">
+    Showing {((pagination.page - 1) * pagination.limit) + 1} to{' '}
+    {Math.min(pagination.page * pagination.limit, pagination.total)} of{' '}
+    {pagination.total} results
+  </span>
+);
+
+const PageSizeSelector = ({ 
+  value, 
+  onChange 
+}: { 
+  value: number; 
+  onChange: (value: number) => void; 
+}) => (
+  <select
+    value={value}
+    onChange={(e) => onChange(Number(e.target.value))}
+    className="border border-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+  >
+    <option value={10}>10</option>
+    <option value={25}>25</option>
+    <option value={50}>50</option>
+    <option value={100}>100</option>
+  </select>
+);
+
+const PaginationControls = ({ 
+  pagination, 
+  onPageChange 
+}: { 
+  pagination: NonNullable<DataTableProps<unknown>['pagination']>; 
+  onPageChange?: (page: number) => void; 
+}) => (
+  <div className="flex items-center space-x-2">
+    <button
+      onClick={() => onPageChange?.(pagination.page - 1)}
+      disabled={pagination.page <= 1}
+      className="px-3 py-1 border border-gray-300 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 text-gray-900 bg-white"
+    >
+      <ChevronLeftIcon className="h-4 w-4" />
+    </button>
+    <span className="text-sm text-gray-700">
+      Page {pagination.page} of {pagination.totalPages}
+    </span>
+    <button
+      onClick={() => onPageChange?.(pagination.page + 1)}
+      disabled={pagination.page >= pagination.totalPages}
+      className="px-3 py-1 border border-gray-300 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 text-gray-900 bg-white"
+    >
+      <ChevronRightIcon className="h-4 w-4" />
+    </button>
+  </div>
+);
+
+// Main component
 export default function DataTable<T extends { id: string | number }>({
   data,
   columns,
@@ -77,44 +272,33 @@ export default function DataTable<T extends { id: string | number }>({
   className = '',
   initialSearchQuery = ''
 }: DataTableProps<T>) {
-
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
   const [sortKey, setSortKey] = useState<string>('');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
-  useEffect(() => {
-    if (onSearch) {
-      const timeoutId = setTimeout(() => {
-        onSearch(searchQuery);
-      }, 300);
-      return () => clearTimeout(timeoutId);
-    }
-  }, [searchQuery, onSearch]);
+  // Memoized values
+  const hasActions = useMemo(() => actions && Object.keys(actions).length > 0, [actions]);
+  const colSpan = useMemo(() => columns.length + (hasActions ? 1 : 0), [columns.length, hasActions]);
+  const availableActions = useMemo(() => {
+    if (!actions) return [];
+    return Object.entries(actions).filter(([, handler]) => handler !== undefined);
+  }, [actions]);
 
-  const handleSort = (key: string) => {
+  // Callbacks
+  const handleSort = useCallback((key: string) => {
     if (!onSort) return;
     
     const newDirection = sortKey === key && sortDirection === 'asc' ? 'desc' : 'asc';
     setSortKey(key);
     setSortDirection(newDirection);
     onSort(key, newDirection);
-  };
+  }, [onSort, sortKey, sortDirection]);
 
-  const renderCell = (column: Column<T>, row: T) => {
+  const renderCell = useCallback((column: Column<T>, row: T) => {
     let value: unknown;
     
     if (typeof column.key === 'string' && column.key.includes('.')) {
-      const keys = column.key.split('.');
-      let current: unknown = row;
-      for (const key of keys) {
-        if (current && typeof current === 'object' && key in current) {
-          current = (current as Record<string, unknown>)[key];
-        } else {
-          current = undefined;
-          break;
-        }
-      }
-      value = current;
+      value = getNestedValue(row, column.key);
     } else {
       value = row[column.key as keyof T];
     }
@@ -123,26 +307,10 @@ export default function DataTable<T extends { id: string | number }>({
       return column.render(value, row);
     }
 
-    if (typeof value === 'boolean') {
-      return (
-        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-          value ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-        }`}>
-          {value ? 'Yes' : 'No'}
-        </span>
-      );
-    }
+    return formatValue(value);
+  }, []);
 
-    if (typeof value === 'string' && value.includes('T')) {
-      try {
-        return new Date(value).toLocaleDateString();
-      } catch {
-        return value;
-      }
-    }
 
-    return value?.toString() || '-';
-  };
 
   return (
     <div className={`bg-white rounded-lg shadow ${className}`}>
@@ -151,16 +319,12 @@ export default function DataTable<T extends { id: string | number }>({
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             {showSearch && (
-              <div className="relative">
-                <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder={searchPlaceholder}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-500 bg-white"
-                />
-              </div>
+              <SearchInput
+                value={searchQuery}
+                onChange={setSearchQuery}
+                onSearch={onSearch}
+                placeholder={searchPlaceholder}
+              />
             )}
             {showFilters && (
               <Button variant="outline" size="sm">
@@ -201,7 +365,7 @@ export default function DataTable<T extends { id: string | number }>({
                   </div>
                 </th>
               ))}
-              {actions && Object.keys(actions).length > 0 && (
+              {hasActions && (
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
                 </th>
@@ -210,23 +374,9 @@ export default function DataTable<T extends { id: string | number }>({
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {loading ? (
-              <tr>
-                <td colSpan={columns.length + (actions ? 1 : 0)} className="px-6 py-12 text-center">
-                  <div className="flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                    <span className="ml-2 text-gray-600">Loading...</span>
-                  </div>
-                </td>
-              </tr>
+              <LoadingRow colSpan={colSpan} />
             ) : data.length === 0 ? (
-              <tr>
-                <td colSpan={columns.length + (actions ? 1 : 0)} className="px-6 py-12 text-center">
-                  <div className="text-gray-500">
-                    <div className="text-lg font-medium mb-2">{emptyMessage}</div>
-                    <p className="text-sm">No data available to display</p>
-                  </div>
-                </td>
-              </tr>
+              <EmptyRow colSpan={colSpan} message={emptyMessage} />
             ) : (
               data.map((row) => (
                 <tr key={row.id} className="hover:bg-gray-50">
@@ -235,72 +385,17 @@ export default function DataTable<T extends { id: string | number }>({
                       {renderCell(column, row)}
                     </td>
                   ))}
-                  {actions && (
+                  {hasActions && (
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex items-center space-x-2">
-                        {actions.view && (
-                          <button
-                            onClick={() => actions.view!(row)}
-                            className="text-blue-600 hover:text-blue-900"
-                            title="View"
-                          >
-                            <EyeIcon className="h-4 w-4" />
-                          </button>
-                        )}
-                        {actions.edit && (
-                          <button
-                            onClick={() => actions.edit!(row)}
-                            className="text-green-600 hover:text-green-900"
-                            title="Edit"
-                          >
-                            <PencilIcon className="h-4 w-4" />
-                          </button>
-                        )}
-                        {actions.activate && (
-                          <button
-                            onClick={() => actions.activate!(row)}
-                            className="text-green-600 hover:text-green-900"
-                            title="Activate"
-                          >
-                            <CheckCircleIcon className="h-4 w-4" />
-                          </button>
-                        )}
-                        {actions.deactivate && (
-                          <button
-                            onClick={() => actions.deactivate!(row)}
-                            className="text-yellow-600 hover:text-yellow-900"
-                            title="Deactivate"
-                          >
-                            <XCircleIcon className="h-4 w-4" />
-                          </button>
-                        )}
-                        {actions.verify && (
-                          <button
-                            onClick={() => actions.verify!(row)}
-                            className="text-green-600 hover:text-green-900"
-                            title="Verify"
-                          >
-                            <CheckCircleIcon className="h-4 w-4" />
-                          </button>
-                        )}
-                        {actions.unverify && (
-                          <button
-                            onClick={() => actions.unverify!(row)}
-                            className="text-yellow-600 hover:text-yellow-900"
-                            title="Unverify"
-                          >
-                            <XCircleIcon className="h-4 w-4" />
-                          </button>
-                        )}
-                        {actions.delete && (
-                          <button
-                            onClick={() => actions.delete!(row)}
-                            className="text-red-600 hover:text-red-900"
-                            title="Delete"
-                          >
-                            <TrashIcon className="h-4 w-4" />
-                          </button>
-                        )}
+                        {availableActions.map(([type, action]) => (
+                          <ActionButton
+                            key={type}
+                            action={action}
+                            row={row}
+                            type={type as keyof typeof ACTION_CONFIG}
+                          />
+                        ))}
                       </div>
                     </td>
                   )}
@@ -316,41 +411,12 @@ export default function DataTable<T extends { id: string | number }>({
         <div className="px-6 py-3 border-t border-gray-200">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-700">
-                Showing {((pagination.page - 1) * pagination.limit) + 1} to{' '}
-                {Math.min(pagination.page * pagination.limit, pagination.total)} of{' '}
-                {pagination.total} results
-              </span>
-              <select
-                value={pagination.limit}
-                onChange={(e) => onLimitChange?.(Number(e.target.value))}
-                className="border border-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
-              >
-                <option value={10}>10</option>
-                <option value={25}>25</option>
-                <option value={50}>50</option>
-                <option value={100}>100</option>
-              </select>
+              <PaginationInfo pagination={pagination} />
+              {onLimitChange && (
+                <PageSizeSelector value={pagination.limit} onChange={onLimitChange} />
+              )}
             </div>
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => onPageChange?.(pagination.page - 1)}
-                disabled={pagination.page <= 1}
-                className="px-3 py-1 border border-gray-300 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 text-gray-900 bg-white"
-              >
-                <ChevronLeftIcon className="h-4 w-4" />
-              </button>
-              <span className="text-sm text-gray-700">
-                Page {pagination.page} of {pagination.totalPages}
-              </span>
-              <button
-                onClick={() => onPageChange?.(pagination.page + 1)}
-                disabled={pagination.page >= pagination.totalPages}
-                className="px-3 py-1 border border-gray-300 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 text-gray-900 bg-white"
-              >
-                <ChevronRightIcon className="h-4 w-4" />
-              </button>
-            </div>
+            <PaginationControls pagination={pagination} onPageChange={onPageChange} />
           </div>
         </div>
       )}

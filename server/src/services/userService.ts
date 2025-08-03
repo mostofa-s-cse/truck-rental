@@ -8,16 +8,23 @@ export class UserService {
     const skip = (page - 1) * limit;
     
     let where: any = {};
+    let countWhere: any = {};
     
     if (role) {
       where.role = role;
+      countWhere.role = role;
     }
     
     if (search) {
       where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { email: { contains: search, mode: 'insensitive' } },
-        { phone: { contains: search, mode: 'insensitive' } }
+        { name: { contains: search } },
+        { email: { contains: search } },
+        { phone: { contains: search } }
+      ];
+      countWhere.OR = [
+        { name: { contains: search } },
+        { email: { contains: search } },
+        { phone: { contains: search } }
       ];
     }
 
@@ -47,7 +54,7 @@ export class UserService {
           createdAt: 'desc'
         }
       }),
-      prisma.user.count({ where })
+      prisma.user.count({ where: countWhere })
     ]);
 
     // Transform the data to match the expected format
@@ -207,15 +214,25 @@ export class UserService {
 
     logDatabase('select', 'users', { query, page, limit, operation: 'search' });
 
+    const where = {
+      OR: [
+        { name: { contains: query } },
+        { email: { contains: query } },
+        { phone: { contains: query } }
+      ]
+    };
+
+    const countWhere = {
+      OR: [
+        { name: { contains: query } },
+        { email: { contains: query } },
+        { phone: { contains: query } }
+      ]
+    };
+
     const [users, total] = await Promise.all([
       prisma.user.findMany({
-        where: {
-          OR: [
-            { name: { contains: query } },
-            { email: { contains: query } },
-            { phone: { contains: query } }
-          ]
-        },
+        where,
         skip,
         take: limit,
         select: {
@@ -233,13 +250,7 @@ export class UserService {
         }
       }),
       prisma.user.count({
-        where: {
-          OR: [
-            { name: { contains: query } },
-            { email: { contains: query } },
-            { phone: { contains: query } }
-          ]
-        }
+        where: countWhere
       })
     ]);
 
