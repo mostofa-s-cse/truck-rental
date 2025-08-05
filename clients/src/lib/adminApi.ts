@@ -72,6 +72,7 @@ export interface Booking {
     id: string;
     name: string;
     email: string;
+    phone?: string;
   };
   driver?: {
     user: {
@@ -79,6 +80,7 @@ export interface Booking {
       name: string;
       email: string;
     };
+    truckType: string;
   };
   source: string;
   destination: string;
@@ -321,14 +323,24 @@ export const adminApi = {
     if (status) params.append('status', status);
 
     const response = await apiClient.getClient().get(`/bookings?${params.toString()}`);
+    
+    // Handle both possible response structures
+    const bookings = response.data.data.bookings || response.data.data;
+    const pagination = response.data.data.page ? {
+      page: response.data.data.page,
+      limit: response.data.data.limit,
+      total: response.data.data.total,
+      totalPages: response.data.data.totalPages
+    } : {
+      page: 1,
+      limit: bookings.length,
+      total: bookings.length,
+      totalPages: 1
+    };
+    
     return {
-      data: response.data.data.bookings || response.data.data,
-      pagination: {
-        page: response.data.data.page,
-        limit: response.data.data.limit,
-        total: response.data.data.total,
-        totalPages: response.data.data.totalPages
-      }
+      data: bookings,
+      pagination
     };
   },
 

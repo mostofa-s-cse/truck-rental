@@ -226,15 +226,21 @@ export class BookingService {
     };
   }
 
-  static async getAllBookings(page = 1, limit = 10, status?: BookingStatus) {
+  static async getAllBookings(page = 1, limit = 10, status?: BookingStatus, search?: string) {
     const skip = (page - 1) * limit;
-    const where = status ? { status } : {};
+    
+    // Build where clause for filtering
+    let where: any = {};
+    
+    if (status) {
+      where.status = status;
+    }
 
-    const [bookings, total] = await Promise.all([
+    // For search, we'll fetch all bookings and filter them in the application
+    // This ensures we can search across all fields including nested relations
+    const [allBookings, total] = await Promise.all([
       prisma.booking.findMany({
         where,
-        skip,
-        take: limit,
         include: {
           user: {
             select: {
@@ -264,12 +270,50 @@ export class BookingService {
       prisma.booking.count({ where })
     ]);
 
+    // Apply search filtering if search term is provided
+    let filteredBookings = allBookings;
+    let finalTotal = total;
+    
+    if (search && search.trim()) {
+      const searchTerm = search.trim().toLowerCase();
+      
+      filteredBookings = allBookings.filter(booking => {
+        // Check booking ID
+        const bookingId = booking.id.toLowerCase();
+        
+        // Check user name and email
+        const userName = booking.user.name.toLowerCase();
+        const userEmail = booking.user.email.toLowerCase();
+        
+        // Check driver name and email (if driver exists)
+        const driverName = booking.driver?.user.name.toLowerCase() || '';
+        const driverEmail = booking.driver?.user.email.toLowerCase() || '';
+        
+        // Check source and destination
+        const source = booking.source.toLowerCase();
+        const destination = booking.destination.toLowerCase();
+        
+        return bookingId.includes(searchTerm) || 
+               userName.includes(searchTerm) || 
+               userEmail.includes(searchTerm) || 
+               driverName.includes(searchTerm) || 
+               driverEmail.includes(searchTerm) ||
+               source.includes(searchTerm) || 
+               destination.includes(searchTerm);
+      });
+      
+      finalTotal = filteredBookings.length;
+    }
+
+    // Apply pagination to filtered results
+    const paginatedBookings = filteredBookings.slice(skip, skip + limit);
+
     return {
-      bookings,
-      total,
+      bookings: paginatedBookings,
+      total: finalTotal,
       page,
       limit,
-      totalPages: Math.ceil(total / limit)
+      totalPages: Math.ceil(finalTotal / limit)
     };
   }
 

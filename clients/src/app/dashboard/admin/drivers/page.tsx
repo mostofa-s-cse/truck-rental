@@ -14,12 +14,9 @@ import {
   UserCircleIcon,
   MapPinIcon,
   StarIcon,
-  CheckCircleIcon,
-  XCircleIcon,
   EnvelopeIcon,
   PhoneIcon,
   CalendarIcon,
-  CameraIcon
 } from '@heroicons/react/24/outline';
 
 // Types for form data
