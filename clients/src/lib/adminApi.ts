@@ -98,15 +98,24 @@ export interface Driver {
     id: string;
     name: string;
     email: string;
+    phone?: string;
   };
   truckType: string;
   capacity: number;
+  quality: string;
+  license: string;
+  registration: string;
+  location: string;
+  latitude?: number;
+  longitude?: number;
   rating: number;
+  totalTrips: number;
   isVerified: boolean;
   isAvailable: boolean;
   totalBookings: number;
   completedBookings: number;
   totalRevenue: number;
+  createdAt: string;
 }
 
 export interface User {
@@ -283,6 +292,19 @@ export const adminApi = {
 
   deleteDriver: async (driverId: string): Promise<void> => {
     await apiClient.getClient().delete(`/drivers/${driverId}`);
+  },
+
+  createDriver: async (driverData: {
+    userId: string;
+    truckType: string;
+    capacity: number;
+    quality: string;
+    license: string;
+    registration: string;
+    location: string;
+  }): Promise<Driver> => {
+    const response = await apiClient.getClient().post('/drivers', driverData);
+    return response.data.data;
   },
 
   getPendingVerifications: async (): Promise<Driver[]> => {

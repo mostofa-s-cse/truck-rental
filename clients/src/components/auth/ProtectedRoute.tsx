@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAppSelector } from '@/hooks/redux';
 
@@ -12,8 +12,15 @@ interface ProtectedRouteProps {
 export default function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
   const { user, loading, isInitialized } = useAppSelector((state) => state.auth);
   const router = useRouter();
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isClient) return;
+    
     console.log('ProtectedRoute: useEffect triggered');
     console.log('ProtectedRoute: loading:', loading);
     console.log('ProtectedRoute: isInitialized:', isInitialized);
@@ -51,10 +58,10 @@ export default function ProtectedRoute({ children, requiredRole }: ProtectedRout
         }
       }
     }
-  }, [user, loading, router, requiredRole]);
+  }, [user, loading, router, requiredRole, isClient]);
 
-  // Show loading while checking authentication
-  if (!isInitialized || loading) {
+  // Show loading while checking authentication or if not client yet
+  if (!isClient || !isInitialized || loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">

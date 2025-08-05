@@ -235,11 +235,38 @@ export class DriverService {
     return driver;
   }
 
-  static async getAllDrivers(page = 1, limit = 10) {
+  static async getAllDrivers(page = 1, limit = 10, search?: string, status?: string) {
     const skip = (page - 1) * limit;
+    
+    let where: any = {};
+    let countWhere: any = {};
+    
+    // Handle search
+    if (search) {
+      where.OR = [
+        { user: { name: { contains: search } } },
+        { user: { email: { contains: search } } },
+        { location: { contains: search } }
+      ];
+      countWhere.OR = [
+        { user: { name: { contains: search } } },
+        { user: { email: { contains: search } } },
+        { location: { contains: search } }
+      ];
+    }
+    
+    // Handle status filter
+    if (status === 'verified') {
+      where.isVerified = true;
+      countWhere.isVerified = true;
+    } else if (status === 'pending') {
+      where.isVerified = false;
+      countWhere.isVerified = false;
+    }
 
     const [drivers, total] = await Promise.all([
       prisma.driver.findMany({
+        where,
         skip,
         take: limit,
         include: {
@@ -251,17 +278,30 @@ export class DriverService {
               phone: true,
               avatar: true
             }
+          },
+          _count: {
+            select: {
+              bookings: true
+            }
           }
         },
         orderBy: {
           createdAt: 'desc'
         }
       }),
-      prisma.driver.count()
+      prisma.driver.count({ where: countWhere })
     ]);
 
+    // Transform the data to match the expected format
+    const transformedDrivers = drivers.map(driver => ({
+      ...driver,
+      totalBookings: driver._count.bookings,
+      completedBookings: 0, // This would need to be calculated from bookings if needed
+      totalRevenue: 0 // This would need to be calculated from bookings if needed
+    }));
+
     return {
-      drivers,
+      drivers: transformedDrivers,
       total,
       page,
       limit,

@@ -24,7 +24,8 @@ import {
   InformationCircleIcon,
   ArrowRightEndOnRectangleIcon,
   ChartBarIcon,
-  CurrencyDollarIcon
+  CurrencyDollarIcon,
+  ArrowTopRightOnSquareIcon
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
@@ -45,9 +46,7 @@ interface MenuItem {
 }
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ 
-  children, 
-  title = "Dashboard",
-  subtitle 
+  children,
 }) => {
   const { user } = useAppSelector((state) => state.auth);
   const { successToast } = useSweetAlert();
@@ -298,10 +297,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           
           <div className="flex-1 px-4 flex justify-between">
             <div className="flex-1 flex items-center">
-              <h1 className="text-2xl font-semibold text-gray-900">{title}</h1>
-              {subtitle && (
-                <span className="ml-4 text-sm text-gray-500">{subtitle}</span>
-              )}
+              <Link href="/" className="text-sm font-semibold text-blue-500 flex items-center">Visit Site <ArrowTopRightOnSquareIcon className="h-4 w-4 ml-1" /></Link>
             </div>
             
             <div className="ml-4 flex items-center md:ml-6 space-x-4">

@@ -59,46 +59,6 @@ const getInitialCreateFormData = (): CreateFormData => ({
 });
 
 // Sub-components
-const RoleFilter = ({ 
-  value, 
-  onChange 
-}: { 
-  value: string; 
-  onChange: (role: string) => void; 
-}) => (
-  <div className="bg-white rounded-lg shadow p-4">
-    <div className="flex items-center justify-between">
-      <div className="flex items-center space-x-4">
-        <label className="text-sm font-medium text-gray-700">Filter by Role:</label>
-        <select
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
-        >
-          <option value="">All Roles</option>
-          <option value="ADMIN">Admin</option>
-          <option value="DRIVER">Driver</option>
-          <option value="USER">User</option>
-        </select>
-      </div>
-      {value && (
-        <div className="flex items-center space-x-2">
-          <span className="text-sm text-gray-500">Active filter:</span>
-          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getRoleColor(value)}`}>
-            {value}
-          </span>
-          <button
-            onClick={() => onChange('')}
-            className="text-gray-400 hover:text-gray-600"
-            title="Clear filter"
-          >
-            ×
-          </button>
-        </div>
-      )}
-    </div>
-  </div>
-);
 
 const AvatarUpload = ({ 
   avatar, 
@@ -293,13 +253,16 @@ export default function AdminUsersPage() {
 
   // State
   const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [totalUsers, setTotalUsers] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [filterRole, setFilterRole] = useState<string>('');
+  const [isClient, setIsClient] = useState(false);
+  const [pendingFilterChange, setPendingFilterChange] = useState<{ roleFilter: string; shouldResetPage: boolean } | null>(null);
+  const [pendingURLUpdate, setPendingURLUpdate] = useState<{ page: number; limit: number; search: string; role: string } | null>(null);
 
   // Modal states
   const [showEditModal, setShowEditModal] = useState(false);
@@ -311,8 +274,46 @@ export default function AdminUsersPage() {
   const [editFormData, setEditFormData] = useState<FormData>(getInitialFormData());
   const [createFormData, setCreateFormData] = useState<CreateFormData>(getInitialCreateFormData());
 
+  // Handle pending filter changes
+  useEffect(() => {
+    if (pendingFilterChange) {
+      setFilterRole(pendingFilterChange.roleFilter);
+      if (pendingFilterChange.shouldResetPage) {
+        setCurrentPage(1);
+      }
+      setPendingFilterChange(null);
+    }
+  }, [pendingFilterChange]);
+
+  // Handle pending URL updates
+  useEffect(() => {
+    if (pendingURLUpdate) {
+      const { page, limit, search, role } = pendingURLUpdate;
+      const params = new URLSearchParams();
+      if (page > 1) params.set('page', page.toString());
+      if (limit !== 10) params.set('limit', limit.toString());
+      if (search) params.set('search', search);
+      if (role) params.set('role', role);
+      const query = params.toString() ? `?${params.toString()}` : '';
+      router.push(`${pathname}${query}`, { scroll: false });
+      setPendingURLUpdate(null);
+    }
+  }, [pendingURLUpdate, router, pathname]);
+
+  // Update URL function - now schedules updates instead of immediate execution
+  const updateURL = useCallback((page: number, limit: number, search: string, role: string) => {
+    setPendingURLUpdate({ page, limit, search, role });
+  }, []);
+
+  // Set client flag to prevent hydration issues
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
   // Sync local state with URL params
   useEffect(() => {
+    if (!isClient) return;
+    
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
     const search = searchParams.get('search') || '';
@@ -322,23 +323,13 @@ export default function AdminUsersPage() {
     setPageSize(limit);
     setSearchQuery(search);
     setFilterRole(role);
-  }, [searchParams]);
-
-  // Update URL
-  const updateURL = useCallback((page: number, limit: number, search: string, role: string) => {
-    const params = new URLSearchParams();
-    if (page > 1) params.set('page', page.toString());
-    if (limit !== 10) params.set('limit', limit.toString());
-    if (search) params.set('search', search);
-    if (role) params.set('role', role);
-    const query = params.toString() ? `?${params.toString()}` : '';
-    router.push(`${pathname}${query}`, { scroll: false });
-  }, [router, pathname]);
+  }, [searchParams, isClient]);
 
   // Fetch users when dependencies change
   useEffect(() => {
+    if (!isClient) return;
     fetchUsers();
-  }, [currentPage, pageSize, searchQuery, filterRole]);
+  }, [currentPage, pageSize, searchQuery, filterRole, isClient]);
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -372,12 +363,29 @@ export default function AdminUsersPage() {
     updateURL(1, size, searchQuery, filterRole);
   }, [searchQuery, filterRole, updateURL]);
 
-  const handleRoleFilterChange = useCallback((newRole: string) => {
-    setFilterRole(newRole);
-    setCurrentPage(1);
-    setSearchQuery(''); // Reset search when role filter changes
-    updateURL(1, pageSize, '', newRole);
-  }, [pageSize, updateURL]);
+
+
+  const handleFilterChange = useCallback((filters: Record<string, string | boolean>) => {
+    try {
+      console.log('Users page handleFilterChange called:', filters);
+      
+      // Extract role filter from the filters object
+      const roleFilter = filters.role as string || '';
+      
+      console.log('Extracted role filter:', roleFilter);
+      
+      // Update URL with new filters immediately
+      updateURL(1, pageSize, searchQuery, roleFilter);
+      
+      // Schedule state updates for next render cycle
+      setPendingFilterChange({ roleFilter, shouldResetPage: true });
+      
+      console.log('Filter changes applied successfully');
+      
+    } catch (error) {
+      console.error('Error in handleFilterChange:', error);
+    }
+  }, [pageSize, searchQuery, updateURL]);
 
   const handleEditUser = useCallback(async () => {
     if (!selectedUser) return;
@@ -514,13 +522,43 @@ export default function AdminUsersPage() {
     delete: handleDeleteUser
   }), [handleViewUser, handleEditUserClick, handleDeleteUser]);
 
+  // Don't render until client is ready to prevent hydration issues
+  if (!isClient) {
+    return (
+      <ProtectedRoute requiredRole="ADMIN">
+        <DashboardLayout title="User Management" subtitle="Manage all user accounts">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading...</p>
+            </div>
+          </div>
+        </DashboardLayout>
+      </ProtectedRoute>
+    );
+  }
+
   return (
     <ProtectedRoute requiredRole="ADMIN">
       <DashboardLayout title="User Management" subtitle="Manage all user accounts">
         <div className="space-y-6">
-          {/* Filters */}
-          <RoleFilter value={filterRole} onChange={handleRoleFilterChange} />
-
+          <div className="flex items-start justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">User Management</h2>
+              <p className="text-sm text-gray-500 mt-2">Manage all user accounts</p>
+            </div>
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <UserCircleIcon className="h-6 w-6 text-blue-600" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Total Users</p>
+                  <p className="text-2xl font-bold text-gray-900">{totalUsers}</p>
+                </div>
+              </div>
+            </div>
+          </div>
           {/* DataTable */}
           <DataTable
             data={users}
@@ -530,10 +568,23 @@ export default function AdminUsersPage() {
             onPageChange={handlePageChange}
             onLimitChange={handlePageSizeChange}
             onSearch={handleSearch}
+            onFilter={handleFilterChange}
             searchPlaceholder="Search users by name or email..."
-            showAddButton={true}
-            addButtonText="Create User"
-            onAdd={() => setShowCreateModal(true)}
+            showSearch={true}
+            showFilters={true}
+            filterOptions={[
+              {
+                key: 'role',
+                label: 'Role',
+                type: 'select',
+                options: [
+                  { value: 'USER', label: 'User' },
+                  { value: 'DRIVER', label: 'Driver' },
+                  { value: 'ADMIN', label: 'Admin' }
+                ],
+                placeholder: 'Select role'
+              }
+            ]}
             actions={actions}
             emptyMessage="No users found"
             initialSearchQuery={searchQuery}
