@@ -160,11 +160,12 @@ export class PaymentController {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
       const status = req.query.status as string;
+      const search = req.query.search as string;
       const userId = (req as any).user?.userId || 'anonymous';
       
-      logDatabase('select', 'payments', { page, limit, status, requestedBy: userId, operation: 'get_all_payments' });
+      logDatabase('select', 'payments', { page, limit, status, search, requestedBy: userId, operation: 'get_all_payments' });
       
-      const result = await PaymentService.getAllPayments(page, limit, status);
+      const result = await PaymentService.getAllPayments(page, limit, status, search);
 
       const response: ApiResponse = {
         success: true,
@@ -181,7 +182,8 @@ export class PaymentController {
         userId,
         page: req.query.page,
         limit: req.query.limit,
-        status: req.query.status
+        status: req.query.status,
+        search: req.query.search
       });
 
       const response: ApiResponse = {

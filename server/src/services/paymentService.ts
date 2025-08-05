@@ -175,15 +175,21 @@ export class PaymentService {
     return payment;
   }
 
-  static async getAllPayments(page = 1, limit = 10, status?: string) {
+  static async getAllPayments(page = 1, limit = 10, status?: string, search?: string) {
     const skip = (page - 1) * limit;
-    const where = status ? { status } : {};
+    
+    // Build where clause for filtering
+    let where: any = {};
+    
+    if (status) {
+      where.status = status;
+    }
 
-    const [payments, total] = await Promise.all([
+    // For search, we'll fetch all payments and filter them in the application
+    // This ensures we can search across all fields including nested relations
+    const [allPayments, total] = await Promise.all([
       prisma.payment?.findMany({
         where,
-        skip,
-        take: limit,
         include: {
           booking: {
             include: {
@@ -215,12 +221,52 @@ export class PaymentService {
       prisma.payment?.count({ where })
     ]);
 
+    // Apply search filtering if search term is provided
+    let filteredPayments = allPayments;
+    let finalTotal = total;
+    
+    if (search && search.trim()) {
+      const searchTerm = search.trim().toLowerCase();
+      
+      filteredPayments = allPayments.filter(payment => {
+        // Check payment ID
+        const paymentId = payment.id.toLowerCase();
+        
+        // Check booking ID
+        const bookingId = payment.bookingId.toLowerCase();
+        
+        // Check transaction ID
+        const transactionId = payment.transactionId?.toLowerCase() || '';
+        
+        // Check user name and email
+        const userName = payment.booking.user.name.toLowerCase();
+        const userEmail = payment.booking.user.email.toLowerCase();
+        
+        // Check driver name and email (if driver exists)
+        const driverName = payment.booking.driver?.user.name.toLowerCase() || '';
+        const driverEmail = payment.booking.driver?.user.email.toLowerCase() || '';
+        
+        return paymentId.includes(searchTerm) || 
+               bookingId.includes(searchTerm) || 
+               transactionId.includes(searchTerm) ||
+               userName.includes(searchTerm) || 
+               userEmail.includes(searchTerm) || 
+               driverName.includes(searchTerm) || 
+               driverEmail.includes(searchTerm);
+      });
+      
+      finalTotal = filteredPayments.length;
+    }
+
+    // Apply pagination to filtered results
+    const paginatedPayments = filteredPayments.slice(skip, skip + limit);
+
     return {
-      payments,
-      total,
+      payments: paginatedPayments,
+      total: finalTotal,
       page,
       limit,
-      totalPages: Math.ceil(total / limit)
+      totalPages: Math.ceil(finalTotal / limit)
     };
   }
 
