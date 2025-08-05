@@ -170,6 +170,7 @@ export interface Review {
     id: string;
     name: string;
     email: string;
+    phone?: string;
   };
   driver: {
     user: {
@@ -177,6 +178,7 @@ export interface Review {
       name: string;
       email: string;
     };
+    truckType: string;
   };
 }
 
@@ -389,11 +391,12 @@ export const adminApi = {
   },
 
   // Reviews Management
-  getReviews: async (page: number = 1, limit: number = 10, search?: string): Promise<PaginatedResponse<Review>> => {
+  getReviews: async (page: number = 1, limit: number = 10, search?: string, rating?: string): Promise<PaginatedResponse<Review>> => {
     const params = new URLSearchParams();
     params.append('page', page.toString());
     params.append('limit', limit.toString());
     if (search) params.append('search', search);
+    if (rating) params.append('rating', rating);
 
     const response = await apiClient.getClient().get(`/reviews?${params.toString()}`);
     return {
