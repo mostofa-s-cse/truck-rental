@@ -18,12 +18,40 @@ export interface AdminDashboardStats {
 
 export interface BookingAnalytics {
   totalBookings: number;
-  statusCounts: Record<string, number>;
-  revenue: number;
-  dailyStats: Array<{
+  completedBookings: number;
+  pendingBookings: number;
+  cancelledBookings: number;
+  totalRevenue: number;
+  averageFare: number;
+  bookingTrends: Array<{
     date: string;
-    count: number;
+    bookings: number;
     revenue: number;
+    completed: number;
+    cancelled: number;
+  }>;
+  statusDistribution: Array<{
+    status: string;
+    count: number;
+    percentage: number;
+    color: string;
+  }>;
+  topRoutes: Array<{
+    route: string;
+    bookings: number;
+    revenue: number;
+    avgFare: number;
+  }>;
+  peakHours: Array<{
+    hour: string;
+    bookings: number;
+    percentage: number;
+  }>;
+  monthlyComparison: Array<{
+    month: string;
+    bookings: number;
+    revenue: number;
+    growth: number;
   }>;
 }
 
@@ -64,6 +92,55 @@ export interface RevenueReport {
     revenue: number;
     bookings: number;
   }>;
+}
+
+export interface RevenueAnalytics {
+  totalRevenue: number;
+  todayRevenue: number;
+  monthlyRevenue: number;
+  yearlyRevenue: number;
+  revenueGrowth: number;
+  averageOrderValue: number;
+  revenueByMethod: {
+    method: string;
+    revenue: number;
+    percentage: number;
+    icon: React.ElementType;
+  }[];
+  revenueByMonth: {
+    month: string;
+    revenue: number;
+    growth: number;
+  }[];
+  revenueByDay: {
+    day: string;
+    revenue: number;
+    bookings: number;
+  }[];
+  topRevenueRoutes: {
+    route: string;
+    revenue: number;
+    bookings: number;
+    avgFare: number;
+  }[];
+  revenueByStatus: {
+    status: string;
+    revenue: number;
+    percentage: number;
+    color: string;
+  }[];
+  paymentMethodDistribution: {
+    method: string;
+    count: number;
+    revenue: number;
+    percentage: number;
+  }[];
+  revenueTrends: {
+    date: string;
+    revenue: number;
+    bookings: number;
+    avgFare: number;
+  }[];
 }
 
 export interface Booking {
@@ -444,6 +521,45 @@ export const adminApi = {
     });
 
     const response = await apiClient.getClient().get(`/admin/reports/bookings?${params.toString()}`);
+    return response.data.data;
+  },
+
+  // Revenue Analytics
+  getRevenueAnalytics: async (filters: {
+    timeRange?: string;
+    paymentMethod?: string;
+    status?: string;
+    startDate?: string;
+    endDate?: string;
+    minAmount?: string;
+    maxAmount?: string;
+    route?: string;
+  }): Promise<RevenueAnalytics> => {
+    const params = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value) params.append(key, value);
+    });
+
+    const response = await apiClient.getClient().get(`/dashboard/admin/analytics/revenue?${params.toString()}`);
+    return response.data.data;
+  },
+
+  // Booking Analytics
+  getBookingAnalyticsData: async (filters: {
+    timeRange?: string;
+    status?: string;
+    driverId?: string;
+    userId?: string;
+    startDate?: string;
+    endDate?: string;
+    route?: string;
+  }): Promise<BookingAnalytics> => {
+    const params = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value) params.append(key, value);
+    });
+
+    const response = await apiClient.getClient().get(`/dashboard/admin/analytics/bookings?${params.toString()}`);
     return response.data.data;
   }
 }; 

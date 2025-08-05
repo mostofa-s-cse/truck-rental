@@ -15,11 +15,6 @@ import {
   TruckIcon,
   MapPinIcon,
   CurrencyDollarIcon,
-  ClockIcon,
-  CheckCircleIcon,
-  XCircleIcon,
-  EnvelopeIcon,
-  PhoneIcon
 } from '@heroicons/react/24/outline';
 
 // Utility functions
@@ -385,7 +380,7 @@ export default function AdminBookingsPage() {
       )
     },
     {
-      key: 'date',
+      key: 'createdAt',
       header: 'Date',
       render: (value) => formatDate(value as string)
     }

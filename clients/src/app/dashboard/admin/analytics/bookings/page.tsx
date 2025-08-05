@@ -1,9 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import DashboardLayout from '@/components/ui/DashboardLayout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { useSweetAlert } from '@/hooks/useSweetAlert';
+import Button from '@/components/ui/Button';
+import Pagination from '@/components/ui/Pagination';
 import { 
   CalendarIcon, 
   CurrencyDollarIcon,
@@ -11,129 +14,271 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   ExclamationTriangleIcon,
+  DocumentArrowDownIcon,
+  FunnelIcon,
 } from '@heroicons/react/24/outline';
 import { TrendingUpIcon } from 'lucide-react';
-import { adminApi } from '@/lib/adminApi';
+import { downloadPDF, PDFGenerator } from '@/utils/pdfGenerator';
+import { adminApi, BookingAnalytics } from '@/lib/adminApi';
 
-interface BookingAnalytics {
-  totalBookings: number;
-  completedBookings: number;
-  pendingBookings: number;
-  cancelledBookings: number;
-  totalRevenue: number;
-  averageFare: number;
-  bookingTrends: any[];
-  statusDistribution: any[];
-  topRoutes: any[];
-  peakHours: any[];
-  monthlyComparison: any[];
+interface FilterOptions {
+  timeRange: 'day' | 'week' | 'month' | 'year';
+  status?: string;
+  driverId?: string;
+  userId?: string;
+  startDate?: string;
+  endDate?: string;
+  route?: string;
+  page?: number;
+  limit?: number;
 }
 
 export default function BookingAnalyticsPage() {
-  const { errorToast } = useSweetAlert();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const { errorToast, successToast } = useSweetAlert();
   
   // State
   const [loading, setLoading] = useState(true);
   const [analyticsData, setAnalyticsData] = useState<BookingAnalytics | null>(null);
-  const [timeRange, setTimeRange] = useState<'day' | 'week' | 'month' | 'year'>('month');
+  const [isClient, setIsClient] = useState(false);
+  const [pendingURLUpdate, setPendingURLUpdate] = useState<FilterOptions | null>(null);
+  const [generatingReport, setGeneratingReport] = useState(false);
 
+  // Filter state
+  const [filters, setFilters] = useState<FilterOptions>({
+    timeRange: 'month',
+    page: 1,
+    limit: 10
+  });
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  // Set client flag to prevent hydration issues
   useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  // Handle pending URL updates
+  useEffect(() => {
+    if (pendingURLUpdate && isClient) {
+      const params = new URLSearchParams();
+      Object.entries(pendingURLUpdate).forEach(([key, value]) => {
+        if (value) params.set(key, value);
+      });
+      const query = params.toString() ? `?${params.toString()}` : '';
+      router.push(`${pathname}${query}`, { scroll: false });
+      setPendingURLUpdate(null);
+    }
+  }, [pendingURLUpdate, router, pathname, isClient]);
+
+  // Sync local state with URL params
+  useEffect(() => {
+    if (!isClient) return;
+    
+    const timeRange = (searchParams.get('timeRange') as 'day' | 'week' | 'month' | 'year') || 'month';
+    const status = searchParams.get('status') || undefined;
+    const driverId = searchParams.get('driverId') || undefined;
+    const userId = searchParams.get('userId') || undefined;
+    const startDate = searchParams.get('startDate') || undefined;
+    const endDate = searchParams.get('endDate') || undefined;
+    const route = searchParams.get('route') || undefined;
+
+    setFilters({
+      timeRange,
+      status,
+      driverId,
+      userId,
+      startDate,
+      endDate,
+      route
+    });
+  }, [searchParams, isClient]);
+
+  // Fetch analytics when filters change
+  useEffect(() => {
+    if (!isClient) return;
     fetchBookingAnalytics();
-  }, [timeRange]);
+  }, [filters, isClient]);
+
+  const updateURL = useCallback((newFilters: FilterOptions) => {
+    setPendingURLUpdate(newFilters);
+  }, []);
 
   const fetchBookingAnalytics = async () => {
     try {
       setLoading(true);
     
+      console.log('Fetching booking analytics with filters:', filters);
       
-      // Mock data for detailed analytics (replace with real API calls)
-      const mockData: BookingAnalytics = {
-        totalBookings: 1250,
-        completedBookings: 980,
-        pendingBookings: 45,
-        cancelledBookings: 25,
-        totalRevenue: 45600,
-        averageFare: 85.50,
-        bookingTrends: [
-          { date: '2024-01-01', bookings: 45, revenue: 1250, completed: 38, cancelled: 2 },
-          { date: '2024-01-02', bookings: 52, revenue: 1400, completed: 45, cancelled: 1 },
-          { date: '2024-01-03', bookings: 38, revenue: 980, completed: 32, cancelled: 3 },
-          { date: '2024-01-04', bookings: 61, revenue: 1650, completed: 55, cancelled: 2 },
-          { date: '2024-01-05', bookings: 48, revenue: 1320, completed: 42, cancelled: 1 },
-          { date: '2024-01-06', bookings: 55, revenue: 1480, completed: 48, cancelled: 2 },
-          { date: '2024-01-07', bookings: 42, revenue: 1150, completed: 38, cancelled: 1 }
-        ],
-        statusDistribution: [
-          { status: 'COMPLETED', count: 980, percentage: 78.4, color: 'bg-green-500' },
-          { status: 'PENDING', count: 45, percentage: 3.6, color: 'bg-yellow-500' },
-          { status: 'CONFIRMED', count: 180, percentage: 14.4, color: 'bg-blue-500' },
-          { status: 'IN_PROGRESS', count: 20, percentage: 1.6, color: 'bg-purple-500' },
-          { status: 'CANCELLED', count: 25, percentage: 2.0, color: 'bg-red-500' }
-        ],
-        topRoutes: [
-          { route: 'Downtown → Airport', bookings: 156, revenue: 12480, avgFare: 80 },
-          { route: 'Airport → Downtown', bookings: 142, revenue: 11360, avgFare: 80 },
-          { route: 'City Center → Suburbs', bookings: 98, revenue: 8820, avgFare: 90 },
-          { route: 'Suburbs → City Center', bookings: 85, revenue: 7650, avgFare: 90 },
-          { route: 'Port → Warehouse', bookings: 72, revenue: 6480, avgFare: 90 }
-        ],
-        peakHours: [
-          { hour: '08:00', bookings: 45, percentage: 12.5 },
-          { hour: '09:00', bookings: 52, percentage: 14.4 },
-          { hour: '10:00', bookings: 38, percentage: 10.6 },
-          { hour: '11:00', bookings: 61, percentage: 16.9 },
-          { hour: '12:00', bookings: 48, percentage: 13.3 },
-          { hour: '13:00', bookings: 55, percentage: 15.3 },
-          { hour: '14:00', bookings: 42, percentage: 11.7 },
-          { hour: '15:00', bookings: 38, percentage: 10.6 },
-          { hour: '16:00', bookings: 52, percentage: 14.4 },
-          { hour: '17:00', bookings: 45, percentage: 12.5 }
-        ],
-        monthlyComparison: [
-          { month: 'Jan', bookings: 450, revenue: 12500, growth: 0 },
-          { month: 'Feb', bookings: 520, revenue: 13800, growth: 15.6 },
-          { month: 'Mar', bookings: 480, revenue: 14200, growth: -7.7 },
-          { month: 'Apr', bookings: 580, revenue: 15600, growth: 20.8 },
-          { month: 'May', bookings: 620, revenue: 16800, growth: 6.9 },
-          { month: 'Jun', bookings: 650, revenue: 17500, growth: 4.8 }
-        ]
-      };
-
-      setAnalyticsData(mockData);
-    } catch (error) {
+      // Call the API with filters
+      const data = await adminApi.getBookingAnalyticsData(filters);
+      
+      setAnalyticsData(data);
+    } catch (error: unknown) {
       console.error('Error fetching booking analytics:', error);
-      errorToast('Failed to fetch booking analytics');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      errorToast(`Failed to fetch booking analytics: ${errorMessage}`);
+      
+      // Set analytics data to null when API fails - no fallback data
+      setAnalyticsData(null);
     } finally {
       setLoading(false);
     }
   };
 
+  const handleFilterChange = useCallback((key: keyof FilterOptions, value: string) => {
+    const newFilters = { ...filters, [key]: value };
+    if (key === 'page' || key === 'limit') {
+      newFilters.page = 1; // Reset to first page when changing filters
+    }
+    setFilters(newFilters);
+    updateURL(newFilters);
+  }, [filters, updateURL]);
+
+  const handlePageChange = useCallback((page: number) => {
+    const newFilters = { ...filters, page };
+    setFilters(newFilters);
+    setCurrentPage(page);
+    updateURL(newFilters);
+  }, [filters, updateURL]);
+
+  const handleItemsPerPageChange = useCallback((limit: number) => {
+    const newFilters = { ...filters, limit, page: 1 };
+    setFilters(newFilters);
+    setItemsPerPage(limit);
+    setCurrentPage(1);
+    updateURL(newFilters);
+  }, [filters, updateURL]);
+
+  const handleGenerateReport = useCallback(async () => {
+    try {
+      setGeneratingReport(true);
+      
+      // Create PDF report data
+      const reportData = {
+        title: 'Booking Analytics Report',
+        subtitle: 'Comprehensive booking insights and trends',
+        generatedAt: new Date().toISOString(),
+        filters: filters as unknown as Record<string, unknown>,
+        sections: [
+          PDFGenerator.createMetricsSection('Overview', {
+            'Total Bookings': analyticsData?.totalBookings || 0,
+            'Completed Bookings': analyticsData?.completedBookings || 0,
+            'Pending Bookings': analyticsData?.pendingBookings || 0,
+            'Cancelled Bookings': analyticsData?.cancelledBookings || 0,
+            'Total Revenue': `$${analyticsData?.totalRevenue || 0}`,
+            'Average Fare': `$${analyticsData?.averageFare || 0}`
+          }),
+          PDFGenerator.createTableSection('Status Distribution', 
+            (analyticsData?.statusDistribution || []).map((status: { status: string; count: number; percentage: number }) => ({
+              'Status': status.status,
+              'Count': status.count,
+              'Percentage': `${status.percentage}%`
+            }))
+          ),
+          PDFGenerator.createTableSection('Top Routes', 
+            (analyticsData?.topRoutes || []).map((route: { route: string; bookings: number; revenue: number; avgFare: number }, index: number) => ({
+              'Rank': index + 1,
+              'Route': route.route,
+              'Bookings': route.bookings,
+              'Revenue': `$${route.revenue}`,
+              'Avg Fare': `$${route.avgFare}`
+            }))
+          ),
+          PDFGenerator.createTableSection('Peak Hours', 
+            (analyticsData?.peakHours || []).map((hour: { hour: string; bookings: number; percentage: number }) => ({
+              'Hour': hour.hour,
+              'Bookings': hour.bookings,
+              'Percentage': `${hour.percentage}%`
+            }))
+          ),
+          PDFGenerator.createTableSection('Monthly Comparison', 
+            (analyticsData?.monthlyComparison || []).map((month: { month: string; bookings: number; revenue: number; growth: number }) => ({
+              'Month': month.month,
+              'Bookings': month.bookings,
+              'Revenue': `$${month.revenue}`,
+              'Growth': `${month.growth}%`
+            }))
+          )
+        ]
+      };
+
+      // Generate and download PDF
+      await downloadPDF(reportData, 'booking-analytics-report');
+      
+      successToast('PDF report generated and downloaded successfully');
+    } catch (error) {
+      console.error('Error generating PDF report:', error);
+      errorToast('Failed to generate PDF report');
+    } finally {
+      setGeneratingReport(false);
+    }
+  }, [filters, analyticsData, successToast, errorToast]);
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'COMPLETED': return CheckCircleIcon;
       case 'PENDING': return ClockIcon;
-      case 'CONFIRMED': return ExclamationTriangleIcon;
-      case 'IN_PROGRESS': return TrendingUpIcon;
       case 'CANCELLED': return XCircleIcon;
+      case 'IN_PROGRESS': return ExclamationTriangleIcon;
       default: return ClockIcon;
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'COMPLETED': return 'text-green-600';
-      case 'PENDING': return 'text-yellow-600';
-      case 'CONFIRMED': return 'text-blue-600';
-      case 'IN_PROGRESS': return 'text-purple-600';
-      case 'CANCELLED': return 'text-red-600';
-      default: return 'text-gray-600';
+      case 'COMPLETED': return 'bg-green-100 text-green-800';
+      case 'PENDING': return 'bg-yellow-100 text-yellow-800';
+      case 'CANCELLED': return 'bg-red-100 text-red-800';
+      case 'IN_PROGRESS': return 'bg-blue-100 text-blue-800';
+      case 'CONFIRMED': return 'bg-purple-100 text-purple-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(amount);
+  };
+
+  // Calculate paginated booking trends data
+  const paginatedBookingTrends = useMemo(() => {
+    if (!analyticsData) return { trends: [], totalPages: 0 };
+    
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const trends = analyticsData.bookingTrends?.slice(startIndex, endIndex) || [];
+    const totalPages = Math.ceil((analyticsData.bookingTrends?.length || 0) / itemsPerPage);
+    
+    return { trends, totalPages };
+  }, [analyticsData, currentPage, itemsPerPage]);
+
+  // Don't render until client is ready to prevent hydration issues
+  if (!isClient) {
+    return (
+      <ProtectedRoute requiredRole="ADMIN">
+        <DashboardLayout title="Booking Analytics" subtitle="Comprehensive booking insights">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading...</p>
+            </div>
+          </div>
+        </DashboardLayout>
+      </ProtectedRoute>
+    );
+  }
 
   if (loading) {
     return (
       <ProtectedRoute requiredRole="ADMIN">
-        <DashboardLayout title="Booking Analytics" subtitle="Detailed booking performance insights">
+        <DashboardLayout title="Booking Analytics" subtitle="Comprehensive booking insights">
           <div className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
           </div>
@@ -145,7 +290,7 @@ export default function BookingAnalyticsPage() {
   if (!analyticsData) {
     return (
       <ProtectedRoute requiredRole="ADMIN">
-        <DashboardLayout title="Booking Analytics" subtitle="Detailed booking performance insights">
+        <DashboardLayout title="Booking Analytics" subtitle="Comprehensive booking insights">
           <div className="text-center py-12">
             <p className="text-gray-500">No booking analytics data available</p>
           </div>
@@ -156,22 +301,83 @@ export default function BookingAnalyticsPage() {
 
   return (
     <ProtectedRoute requiredRole="ADMIN">
-      <DashboardLayout title="Booking Analytics" subtitle="Detailed booking performance insights">
+      <DashboardLayout title="Booking Analytics" subtitle="Comprehensive booking insights">
         <div className="space-y-6">
-          {/* Time Range Selector */}
-          <div className="bg-white rounded-lg shadow p-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-medium text-gray-900">Time Range</h3>
-              <select
-                value={timeRange}
-                onChange={(e) => setTimeRange(e.target.value as any)}
-                className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
-              >
-                <option value="day">Last 24 Hours</option>
-                <option value="week">Last 7 Days</option>
-                <option value="month">Last 30 Days</option>
-                <option value="year">Last Year</option>
-              </select>
+          {/* Header with Report Generation */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">Booking Analytics</h2>
+              <p className="text-sm text-gray-500 mt-2">Comprehensive booking insights and trends</p>
+            </div>
+            <Button
+              onClick={handleGenerateReport}
+              disabled={generatingReport}
+              className="flex items-center space-x-2"
+            >
+              <DocumentArrowDownIcon className="h-5 w-5" />
+              <span>{generatingReport ? 'Generating...' : 'Generate Report'}</span>
+            </Button>
+          </div>
+
+          {/* Enhanced Filters */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-medium text-gray-900 flex items-center">
+                <FunnelIcon className="h-5 w-5 mr-2" />
+                Filters
+              </h3>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Time Range</label>
+                <select
+                  value={filters.timeRange}
+                  onChange={(e) => handleFilterChange('timeRange', e.target.value)}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="day">Last 24 Hours</option>
+                  <option value="week">Last 7 Days</option>
+                  <option value="month">Last 30 Days</option>
+                  <option value="year">Last Year</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select
+                  value={filters.status || ''}
+                  onChange={(e) => handleFilterChange('status', e.target.value)}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">All Status</option>
+                  <option value="COMPLETED">Completed</option>
+                  <option value="PENDING">Pending</option>
+                  <option value="CONFIRMED">Confirmed</option>
+                  <option value="IN_PROGRESS">In Progress</option>
+                  <option value="CANCELLED">Cancelled</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Route</label>
+                <input
+                  type="text"
+                  value={filters.route || ''}
+                  onChange={(e) => handleFilterChange('route', e.target.value)}
+                  placeholder="Search routes..."
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                <input
+                  type="date"
+                  value={filters.startDate || ''}
+                  onChange={(e) => handleFilterChange('startDate', e.target.value)}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
             </div>
           </div>
 
@@ -184,7 +390,7 @@ export default function BookingAnalyticsPage() {
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Total Bookings</p>
-                  <p className="text-2xl font-bold text-gray-900">{analyticsData.totalBookings}</p>
+                  <p className="text-2xl font-bold text-gray-900">{analyticsData?.totalBookings || 0}</p>
                   <div className="flex items-center mt-1">
                     <TrendingUpIcon className="h-4 w-4 text-green-500 mr-1" />
                     <span className="text-sm text-green-600">+15% from last period</span>
@@ -200,8 +406,8 @@ export default function BookingAnalyticsPage() {
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Completed</p>
-                  <p className="text-2xl font-bold text-gray-900">{analyticsData.completedBookings}</p>
-                  <p className="text-sm text-gray-500">{((analyticsData.completedBookings / analyticsData.totalBookings) * 100).toFixed(1)}% completion rate</p>
+                  <p className="text-2xl font-bold text-gray-900">{analyticsData?.completedBookings || 0}</p>
+                  <p className="text-sm text-gray-500">{analyticsData?.totalBookings ? ((analyticsData?.completedBookings || 0) / analyticsData.totalBookings * 100).toFixed(1) : '0'}% completion rate</p>
                 </div>
               </div>
             </div>
@@ -213,8 +419,8 @@ export default function BookingAnalyticsPage() {
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-                  <p className="text-2xl font-bold text-gray-900">${analyticsData.totalRevenue.toLocaleString()}</p>
-                  <p className="text-sm text-gray-500">Avg: ${analyticsData.averageFare}</p>
+                  <p className="text-2xl font-bold text-gray-900">${analyticsData?.totalRevenue?.toLocaleString() || '0'}</p>
+                  <p className="text-sm text-gray-500">Avg: ${analyticsData?.averageFare || '0'}</p>
                 </div>
               </div>
             </div>
@@ -226,33 +432,126 @@ export default function BookingAnalyticsPage() {
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Cancelled</p>
-                  <p className="text-2xl font-bold text-gray-900">{analyticsData.cancelledBookings}</p>
-                  <p className="text-sm text-gray-500">{((analyticsData.cancelledBookings / analyticsData.totalBookings) * 100).toFixed(1)}% cancellation rate</p>
+                  <p className="text-2xl font-bold text-gray-900">{analyticsData?.cancelledBookings || 0}</p>
+                  <p className="text-sm text-gray-500">{analyticsData?.totalBookings ? ((analyticsData?.cancelledBookings || 0) / analyticsData.totalBookings * 100).toFixed(1) : '0'}% cancellation rate</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Key Metrics */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <CalendarIcon className="h-6 w-6 text-blue-600" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Total Bookings</p>
+                  <p className="text-2xl font-bold text-gray-900">{analyticsData?.totalBookings || 0}</p>
+                  <div className="flex items-center mt-1">
+                    <span className="text-sm text-gray-600">All time</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center">
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <CheckCircleIcon className="h-6 w-6 text-green-600" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Completed</p>
+                  <p className="text-2xl font-bold text-gray-900">{analyticsData?.completedBookings || 0}</p>
+                  <div className="flex items-center mt-1">
+                    <span className="text-sm text-green-600">
+                      {analyticsData?.totalBookings ? ((analyticsData?.completedBookings || 0) / analyticsData.totalBookings * 100).toFixed(1) : '0'}% success rate
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center">
+                <div className="p-2 bg-yellow-100 rounded-lg">
+                  <CurrencyDollarIcon className="h-6 w-6 text-yellow-600" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Total Revenue</p>
+                  <p className="text-2xl font-bold text-gray-900">{formatCurrency(analyticsData?.totalRevenue || 0)}</p>
+                  <div className="flex items-center mt-1">
+                    <span className="text-sm text-gray-600">Avg: {formatCurrency(analyticsData?.averageFare || 0)} per booking</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center">
+                <div className="p-2 bg-red-100 rounded-lg">
+                  <XCircleIcon className="h-6 w-6 text-red-600" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Cancelled</p>
+                  <p className="text-2xl font-bold text-gray-900">{analyticsData?.cancelledBookings || 0}</p>
+                  <div className="flex items-center mt-1">
+                    <span className="text-sm text-red-600">
+                      {analyticsData?.totalBookings ? ((analyticsData?.cancelledBookings || 0) / analyticsData.totalBookings * 100).toFixed(1) : '0'}% cancellation rate
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Booking Trends Chart */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Booking Trends</h3>
-            <div className="space-y-3">
-              {analyticsData.bookingTrends.map((trend, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center space-x-4">
-                    <span className="text-sm text-gray-600">{trend.date}</span>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-sm font-medium text-gray-900">{trend.bookings} bookings</span>
-                      <span className="text-sm text-green-600">${trend.revenue}</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm text-green-600">{trend.completed} completed</span>
-                    <span className="text-sm text-red-600">{trend.cancelled} cancelled</span>
-                  </div>
-                </div>
-              ))}
+          <div className="bg-white rounded-lg shadow">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-medium text-gray-900">Booking Trends</h3>
             </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Bookings</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Revenue</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Completed</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cancelled</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Success Rate</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {(paginatedBookingTrends.trends || []).map((trend, index) => (
+                    <tr key={index}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{trend.date}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{trend.bookings}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600">${trend.revenue}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600">{trend.completed}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-red-600">{trend.cancelled}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {trend.bookings > 0 ? ((trend.completed / trend.bookings) * 100).toFixed(1) : '0'}%
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {/* Pagination */}
+            {paginatedBookingTrends.totalPages > 1 && (
+              <div className="px-6 py-4 border-t border-gray-200">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={paginatedBookingTrends.totalPages}
+                  totalItems={analyticsData.bookingTrends?.length || 0}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={handlePageChange}
+                  onItemsPerPageChange={handleItemsPerPageChange}
+                />
+              </div>
+            )}
           </div>
 
           {/* Status Distribution and Top Routes */}
@@ -261,7 +560,7 @@ export default function BookingAnalyticsPage() {
             <div className="bg-white rounded-lg shadow p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Booking Status Distribution</h3>
               <div className="space-y-4">
-                {analyticsData.statusDistribution.map((status, index) => {
+                {(analyticsData?.statusDistribution || []).map((status, index) => {
                   const Icon = getStatusIcon(status.status);
                   return (
                     <div key={index} className="flex items-center justify-between">
@@ -288,7 +587,7 @@ export default function BookingAnalyticsPage() {
             <div className="bg-white rounded-lg shadow p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Top Routes</h3>
               <div className="space-y-4">
-                {analyticsData.topRoutes.map((route, index) => (
+                {(analyticsData?.topRoutes || []).map((route, index) => (
                   <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div className="flex items-center">
                       <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
@@ -315,14 +614,14 @@ export default function BookingAnalyticsPage() {
             <div className="bg-white rounded-lg shadow p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Peak Booking Hours</h3>
               <div className="space-y-3">
-                {analyticsData.peakHours.map((hour, index) => (
+                {(analyticsData?.peakHours || []).map((hour, index) => (
                   <div key={index} className="flex items-center justify-between">
                     <span className="text-sm text-gray-600">{hour.hour}</span>
                     <div className="flex items-center space-x-3">
                       <div className="w-24 bg-gray-200 rounded-full h-2">
                         <div 
                           className="bg-blue-500 h-2 rounded-full"
-                          style={{ width: `${(hour.bookings / Math.max(...analyticsData.peakHours.map(h => h.bookings))) * 100}%` }}
+                          style={{ width: `${(hour.bookings / Math.max(...(analyticsData?.peakHours || []).map(h => h.bookings))) * 100}%` }}
                         ></div>
                       </div>
                       <span className="text-sm font-medium text-gray-900">{hour.bookings} ({hour.percentage}%)</span>
@@ -336,7 +635,7 @@ export default function BookingAnalyticsPage() {
             <div className="bg-white rounded-lg shadow p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Monthly Comparison</h3>
               <div className="space-y-3">
-                {analyticsData.monthlyComparison.map((month, index) => (
+                {(analyticsData?.monthlyComparison || []).map((month, index) => (
                   <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <span className="text-sm text-gray-600">{month.month}</span>
                     <div className="flex items-center space-x-4">

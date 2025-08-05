@@ -17,7 +17,6 @@ import {
   ClockIcon,
   ExclamationTriangleIcon,
   UserCircleIcon,
-  CalendarIcon
 } from '@heroicons/react/24/outline';
 
 // Utility functions
@@ -52,15 +51,15 @@ const PaymentDetails = ({ payment }: { payment: Payment }) => (
     <div className="flex items-center justify-between">
       <div>
         <h3 className="text-lg font-medium text-gray-900">
-          Payment #{payment.id.slice(-8).toUpperCase()}
+          Payment #{payment.id?.slice(-8).toUpperCase() || 'N/A'}
         </h3>
-        <p className="text-sm text-gray-500">
-          Created on {formatDate(payment.createdAt)}
-        </p>
+                  <p className="text-sm text-gray-500">
+            Created on {payment.createdAt ? formatDate(payment.createdAt) : 'Unknown'}
+          </p>
       </div>
-      <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(payment.status)}`}>
-        {payment.status}
-      </span>
+                <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(payment.status || 'UNKNOWN')}`}>
+            {payment.status || 'UNKNOWN'}
+          </span>
     </div>
 
     {/* Payment Information */}
@@ -69,17 +68,17 @@ const PaymentDetails = ({ payment }: { payment: Payment }) => (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700">Booking ID</label>
-          <p className="text-sm text-gray-900">#{payment.bookingId.slice(-8).toUpperCase()}</p>
+          <p className="text-sm text-gray-900">#{payment.bookingId?.slice(-8).toUpperCase() || 'N/A'}</p>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700">Amount</label>
-          <p className="text-sm font-medium text-gray-900">${payment.amount}</p>
+          <p className="text-sm font-medium text-gray-900">${payment.amount || 0}</p>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700">Payment Method</label>
           <div className="flex items-center">
             <span className="mr-2">{getMethodIcon(payment.method)}</span>
-            <p className="text-sm text-gray-900">{payment.method.replace('_', ' ')}</p>
+            <p className="text-sm text-gray-900">{payment.method?.replace('_', ' ') || 'Unknown'}</p>
           </div>
         </div>
         <div>
@@ -88,16 +87,16 @@ const PaymentDetails = ({ payment }: { payment: Payment }) => (
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700">Created At</label>
-          <p className="text-sm text-gray-900">{formatDateTime(payment.createdAt)}</p>
+          <p className="text-sm text-gray-900">{payment.createdAt ? formatDateTime(payment.createdAt) : 'Unknown'}</p>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700">Updated At</label>
-          <p className="text-sm text-gray-900">{formatDateTime(payment.updatedAt)}</p>
+          <p className="text-sm text-gray-900">{payment.updatedAt ? formatDateTime(payment.updatedAt) : 'Unknown'}</p>
         </div>
         {payment.processedAt && (
           <div>
             <label className="block text-sm font-medium text-gray-700">Processed At</label>
-            <p className="text-sm text-gray-900">{formatDateTime(payment.processedAt)}</p>
+            <p className="text-sm text-gray-900">{payment.processedAt ? formatDateTime(payment.processedAt) : 'Unknown'}</p>
           </div>
         )}
       </div>
@@ -109,8 +108,8 @@ const PaymentDetails = ({ payment }: { payment: Payment }) => (
       <div className="flex items-center">
         <UserCircleIcon className="h-8 w-8 text-blue-600 mr-3" />
         <div>
-          <p className="text-sm font-medium text-gray-900">{payment.user.name}</p>
-          <p className="text-sm text-gray-500">{payment.user.email}</p>
+          <p className="text-sm font-medium text-gray-900">{payment.user?.name || 'Unknown'}</p>
+          <p className="text-sm text-gray-500">{payment.user?.email || 'No email'}</p>
         </div>
       </div>
     </div>
