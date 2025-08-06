@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import DashboardLayout from '@/components/ui/DashboardLayout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
@@ -117,7 +117,7 @@ const PaymentDetails = ({ payment }: { payment: Payment }) => (
 );
 
 // Main component
-export default function AdminPaymentsPage() {
+function AdminPaymentsContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -197,11 +197,6 @@ export default function AdminPaymentsPage() {
   }, [searchParams, isClient]);
 
   // Fetch payments when dependencies change
-  useEffect(() => {
-    if (!isClient) return;
-    fetchPayments();
-  }, [currentPage, pageSize, searchQuery, filterStatus, filterMethod, isClient]);
-
   const fetchPayments = useCallback(async () => {
     try {
       setLoading(true);
@@ -215,7 +210,13 @@ export default function AdminPaymentsPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, pageSize, searchQuery, filterStatus, filterMethod, errorToast]);
+  }, [currentPage, pageSize, searchQuery, filterStatus, errorToast]);
+
+  // Fetch payments when dependencies change
+  useEffect(() => {
+    if (!isClient) return;
+    fetchPayments();
+  }, [currentPage, pageSize, searchQuery, filterStatus, filterMethod, isClient, fetchPayments]);
 
   const handleSearch = useCallback((query: string) => {
     setSearchQuery(query);
@@ -511,4 +512,29 @@ export default function AdminPaymentsPage() {
       </DashboardLayout>
     </ProtectedRoute>
   );
-} 
+}
+
+// Loading component for Suspense fallback
+function AdminPaymentsLoading() {
+  return (
+    <ProtectedRoute requiredRole="ADMIN">
+      <DashboardLayout title="Payment Management" subtitle="Manage all payments in the system">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading payments...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    </ProtectedRoute>
+  );
+}
+
+// Main export with Suspense wrapper
+export default function AdminPaymentsPage() {
+  return (
+    <Suspense fallback={<AdminPaymentsLoading />}>
+      <AdminPaymentsContent />
+    </Suspense>
+  );
+}

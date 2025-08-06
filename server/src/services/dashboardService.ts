@@ -435,12 +435,19 @@ export class DashboardService {
 
   static async getRevenueAnalytics(filters: any) {
     try {
+      console.log('Server received filters:', filters);
+      console.log('Payment method filter:', filters.paymentMethod);
+      
       // Build where clause based on filters
       const whereClause: any = {};
       
-      if (filters.paymentMethod) {
-        whereClause.paymentMethod = filters.paymentMethod;
+      if (filters.paymentMethod && filters.paymentMethod !== '') {
+        whereClause.payment = {
+          paymentMethod: filters.paymentMethod
+        };
       }
+      
+      console.log('Final where clause:', JSON.stringify(whereClause, null, 2));
       
       if (filters.status) {
         whereClause.status = filters.status;
@@ -482,6 +489,9 @@ export class DashboardService {
         },
         orderBy: { createdAt: 'desc' }
       });
+      
+      console.log(`Found ${bookings.length} bookings with filters`);
+      console.log('Sample booking payment methods:', bookings.slice(0, 3).map(b => b.payment?.paymentMethod));
 
       // Calculate total revenue
       const totalRevenue = bookings.reduce((sum, booking) => sum + booking.fare, 0);

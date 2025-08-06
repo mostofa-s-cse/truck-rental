@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import Image from 'next/image';
 import { useAppSelector } from '@/hooks/redux';
 import DashboardLayout from '@/components/ui/DashboardLayout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
@@ -9,15 +10,10 @@ import Modal from '@/components/ui/Modal';
 import { useSweetAlert } from '@/hooks/useSweetAlert';
 import { 
   UserCircleIcon, 
-  EnvelopeIcon,
-  PhoneIcon,
-  MapPinIcon,
   PencilIcon,
   CameraIcon,
   CheckCircleIcon,
-  StarIcon,
-  CalendarIcon,
-  CurrencyDollarIcon
+  StarIcon
 } from '@heroicons/react/24/outline';
 import { BellIcon, KeyIcon, ShieldCheckIcon } from 'lucide-react';
 
@@ -41,7 +37,11 @@ interface UserProfile {
   };
   security: {
     lastLogin: string;
-    loginHistory: any[];
+    loginHistory: Array<{
+      date: string;
+      ip: string;
+      device: string;
+    }>;
     twoFactorEnabled: boolean;
   };
   stats: {
@@ -91,11 +91,7 @@ export default function UserProfilePage() {
     timezone: 'UTC'
   });
 
-  useEffect(() => {
-    fetchProfileData();
-  }, []);
-
-  const fetchProfileData = async () => {
+  const fetchProfileData = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -110,7 +106,7 @@ export default function UserProfilePage() {
         address: '123 User Street',
         city: 'User City',
         country: 'United States',
-        bio: 'Regular customer who frequently uses truck booking services for business and personal needs.',
+        bio: 'Regular user of the truck booking service.',
         preferences: {
           emailNotifications: true,
           smsNotifications: false,
@@ -128,9 +124,9 @@ export default function UserProfilePage() {
           twoFactorEnabled: false
         },
         stats: {
-          totalBookings: 25,
-          totalSpent: 1250.50,
-          averageRating: 4.6,
+          totalBookings: 24,
+          totalSpent: 1245.75,
+          averageRating: 4.7,
           favoriteDrivers: 3
         }
       };
@@ -152,7 +148,11 @@ export default function UserProfilePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, errorToast]);
+
+  useEffect(() => {
+    fetchProfileData();
+  }, [fetchProfileData]);
 
   const handleSaveProfile = async () => {
     try {
@@ -333,9 +333,11 @@ export default function UserProfilePage() {
               <div className="flex items-center space-x-4">
                 <div className="relative">
                   {profile.avatar ? (
-                    <img 
+                    <Image 
                       src={profile.avatar} 
                       alt={profile.name}
+                      width={80}
+                      height={80}
                       className="h-20 w-20 rounded-full object-cover"
                     />
                   ) : (
@@ -732,9 +734,11 @@ export default function UserProfilePage() {
             <div className="text-center">
               <div className="mx-auto w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center mb-4">
                 {profile.avatar ? (
-                  <img 
+                  <Image 
                     src={profile.avatar} 
                     alt="Current avatar"
+                    width={96}
+                    height={96}
                     className="w-24 h-24 rounded-full object-cover"
                   />
                 ) : (

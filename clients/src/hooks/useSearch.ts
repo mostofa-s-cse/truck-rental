@@ -11,7 +11,7 @@ import {
   clearSearch,
 } from '@/store/slices/searchSlice';
 
-// Define the SearchFilters interface to match the slice
+// Import the SearchResult type from the slice
 interface SearchFilters {
   truckType?: 'MINI_TRUCK' | 'PICKUP' | 'LORRY' | 'TRUCK';
   capacity?: number;
@@ -25,8 +25,16 @@ interface SearchFilters {
   quality?: 'EXCELLENT' | 'GOOD' | 'AVERAGE' | 'POOR';
 }
 
-// Define a generic type for search results
-type SearchResult = Record<string, unknown>;
+// Define SearchResult to match the slice interface
+interface SearchResult {
+  id: string;
+  name: string;
+  type: string;
+  rating: number;
+  location: string;
+  price: number;
+  available: boolean;
+}
 
 export const useSearch = () => {
   const dispatch = useAppDispatch();

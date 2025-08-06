@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import DashboardLayout from '@/components/ui/DashboardLayout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
@@ -146,7 +146,7 @@ const BookingDetails = ({ booking }: { booking: Booking }) => (
 );
 
 // Main component
-export default function AdminBookingsPage() {
+function AdminBookingsContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -220,12 +220,6 @@ export default function AdminBookingsPage() {
     setFilterStatus(status);
   }, [searchParams, isClient]);
 
-  // Fetch bookings when dependencies change
-  useEffect(() => {
-    if (!isClient) return;
-    fetchBookings();
-  }, [currentPage, pageSize, searchQuery, filterStatus, isClient]);
-
   const fetchBookings = useCallback(async () => {
     try {
       setLoading(true);
@@ -240,6 +234,12 @@ export default function AdminBookingsPage() {
       setLoading(false);
     }
   }, [currentPage, pageSize, searchQuery, filterStatus, errorToast]);
+
+  // Fetch bookings when dependencies change
+  useEffect(() => {
+    if (!isClient) return;
+    fetchBookings();
+  }, [currentPage, pageSize, searchQuery, filterStatus, isClient, fetchBookings]);
 
   const handleSearch = useCallback((query: string) => {
     setSearchQuery(query);
@@ -520,4 +520,29 @@ export default function AdminBookingsPage() {
       </DashboardLayout>
     </ProtectedRoute>
   );
-} 
+}
+
+// Loading component for Suspense fallback
+function AdminBookingsLoading() {
+  return (
+    <ProtectedRoute requiredRole="ADMIN">
+      <DashboardLayout title="Booking Management" subtitle="Manage all bookings in the system">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading bookings...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    </ProtectedRoute>
+  );
+}
+
+// Main export with Suspense wrapper
+export default function AdminBookingsPage() {
+  return (
+    <Suspense fallback={<AdminBookingsLoading />}>
+      <AdminBookingsContent />
+    </Suspense>
+  );
+}

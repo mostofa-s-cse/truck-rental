@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+import Image from 'next/image';
 import { useAppSelector } from '@/hooks/redux';
 import DashboardLayout from '@/components/ui/DashboardLayout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
@@ -103,11 +104,7 @@ export default function DriverProfilePage() {
     timezone: 'UTC'
   });
 
-  useEffect(() => {
-    fetchProfileData();
-  }, []);
-
-  const fetchProfileData = async () => {
+  const fetchProfileData = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -173,7 +170,11 @@ export default function DriverProfilePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, errorToast]);
+
+  useEffect(() => {
+    fetchProfileData();
+  }, [fetchProfileData]);
 
   const handleSaveProfile = async () => {
     try {
@@ -384,9 +385,11 @@ export default function DriverProfilePage() {
               <div className="flex items-center space-x-4">
                 <div className="relative">
                   {profile.avatar ? (
-                    <img 
+                    <Image 
                       src={profile.avatar} 
                       alt={profile.name}
+                      width={80}
+                      height={80}
                       className="h-20 w-20 rounded-full object-cover"
                     />
                   ) : (
@@ -861,9 +864,11 @@ export default function DriverProfilePage() {
             <div className="text-center">
               <div className="mx-auto w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center mb-4">
                 {profile.avatar ? (
-                  <img 
+                  <Image 
                     src={profile.avatar} 
                     alt="Current avatar"
+                    width={96}
+                    height={96}
                     className="w-24 h-24 rounded-full object-cover"
                   />
                 ) : (

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import DashboardLayout from '@/components/ui/DashboardLayout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
@@ -32,7 +32,7 @@ interface FilterOptions {
   limit?: number;
 }
 
-export default function DriverAnalyticsPage() {
+function DriverAnalyticsContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -99,17 +99,11 @@ export default function DriverAnalyticsPage() {
     });
   }, [searchParams, isClient]);
 
-  // Fetch analytics when filters change
-  useEffect(() => {
-    if (!isClient) return;
-    fetchDriverAnalytics();
-  }, [filters, isClient]);
-
   const updateURL = useCallback((newFilters: FilterOptions) => {
     setPendingURLUpdate(newFilters);
   }, []);
 
-  const fetchDriverAnalytics = async () => {
+  const fetchDriverAnalytics = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -174,7 +168,13 @@ export default function DriverAnalyticsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters, errorToast]);
+
+  // Fetch analytics when filters change
+  useEffect(() => {
+    if (!isClient) return;
+    fetchDriverAnalytics();
+  }, [filters, isClient, fetchDriverAnalytics]);
 
   const handleFilterChange = useCallback((key: keyof FilterOptions, value: string) => {
     const newFilters = { ...filters, [key]: value };
@@ -585,4 +585,29 @@ export default function DriverAnalyticsPage() {
       </DashboardLayout>
     </ProtectedRoute>
   );
-} 
+}
+
+// Loading component for Suspense fallback
+function DriverAnalyticsLoading() {
+  return (
+    <ProtectedRoute requiredRole="ADMIN">
+      <DashboardLayout title="Driver Analytics" subtitle="Comprehensive driver analytics and insights">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading driver analytics...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    </ProtectedRoute>
+  );
+}
+
+// Main export with Suspense wrapper
+export default function DriverAnalyticsPage() {
+  return (
+    <Suspense fallback={<DriverAnalyticsLoading />}>
+      <DriverAnalyticsContent />
+    </Suspense>
+  );
+}

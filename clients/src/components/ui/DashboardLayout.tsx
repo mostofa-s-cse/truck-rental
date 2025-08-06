@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAppSelector, useAppDispatch } from '@/hooks/redux';
 import { useSweetAlert } from '@/hooks/useSweetAlert';
 import { 
@@ -63,7 +63,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     router.push('/login');
   };
 
-  const getMenuItems = (): MenuItem[] => {
+  const getMenuItems = useCallback((): MenuItem[] => {
     // Admin-specific menu items
     if (user?.role === 'ADMIN') {
       return [
@@ -174,9 +174,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         ]
       }
     ];
-  };
+  }, [user?.role]);
 
-  const menuItems = useMemo(() => getMenuItems(), [user?.role]);
+  const menuItems = useMemo(() => getMenuItems(), [getMenuItems]);
 
   useEffect(() => {
     const activeMenuItem = menuItems.find(item => 
@@ -191,7 +191,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         return newSet;
       });
     }
-  }, [pathname]);
+  }, [pathname, menuItems]);
 
   const isActiveMenuItem = (href: string): boolean => {
     if (href === pathname) return true;

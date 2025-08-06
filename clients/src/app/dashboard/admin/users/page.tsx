@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, Suspense } from 'react';
+import Image from 'next/image';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import DashboardLayout from '@/components/ui/DashboardLayout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
@@ -83,9 +84,11 @@ const AvatarUpload = ({
     <div className="text-center">
       <div className="mx-auto w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mb-4 relative">
         {avatar ? (
-          <img 
+          <Image 
             src={avatar} 
             alt="User avatar"
+            width={80}
+            height={80}
             className="w-20 h-20 rounded-full object-cover"
           />
         ) : (
@@ -245,7 +248,7 @@ const UserDetails = ({ user }: { user: User }) => (
 );
 
 // Main component
-export default function AdminUsersPage() {
+function AdminUsersContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -326,11 +329,6 @@ export default function AdminUsersPage() {
   }, [searchParams, isClient]);
 
   // Fetch users when dependencies change
-  useEffect(() => {
-    if (!isClient) return;
-    fetchUsers();
-  }, [currentPage, pageSize, searchQuery, filterRole, isClient]);
-
   const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
@@ -345,6 +343,12 @@ export default function AdminUsersPage() {
       setLoading(false);
     }
   }, [currentPage, pageSize, searchQuery, filterRole, errorToast]);
+
+  // Fetch users when dependencies change
+  useEffect(() => {
+    if (!isClient) return;
+    fetchUsers();
+  }, [currentPage, pageSize, searchQuery, filterRole, isClient, fetchUsers]);
 
   const handleSearch = useCallback((query: string) => {
     setSearchQuery(query);
@@ -733,4 +737,29 @@ export default function AdminUsersPage() {
       </DashboardLayout>
     </ProtectedRoute>
   );
-} 
+}
+
+// Loading component for Suspense fallback
+function AdminUsersLoading() {
+  return (
+    <ProtectedRoute requiredRole="ADMIN">
+      <DashboardLayout title="User Management" subtitle="Manage all users in the system">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading users...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    </ProtectedRoute>
+  );
+}
+
+// Main export with Suspense wrapper
+export default function AdminUsersPage() {
+  return (
+    <Suspense fallback={<AdminUsersLoading />}>
+      <AdminUsersContent />
+    </Suspense>
+  );
+}

@@ -79,10 +79,6 @@ export default function AdminSettingsPage() {
   const [selectedSettings, setSelectedSettings] = useState<Set<string>>(new Set());
   const [refreshKey, setRefreshKey] = useState(0);
 
-  useEffect(() => {
-    fetchSettings();
-  }, [refreshKey]);
-
   // Auto-refresh settings every 5 minutes
   useEffect(() => {
     const interval = setInterval(() => {
@@ -109,6 +105,10 @@ export default function AdminSettingsPage() {
       setLoading(false);
     }
   }, [showAdvanced, errorToast]);
+
+  useEffect(() => {
+    fetchSettings();
+  }, [refreshKey, fetchSettings]);
 
   const fetchSettingHistory = async () => {
     try {
@@ -281,7 +281,7 @@ export default function AdminSettingsPage() {
     );
 
     if (!result) return;
-  }, [selectedSettings, editValues, settings, successToast, errorToast]);
+  }, [selectedSettings, editValues, settings, successToast, errorToast, withConfirmation]);
 
   const handleExportSettings = useCallback(async () => {
     try {
@@ -365,7 +365,7 @@ export default function AdminSettingsPage() {
     } finally {
       setSaving(false);
     }
-  }, [fetchSettings, successToast, errorToast]);
+  }, [fetchSettings, successToast, errorToast, withConfirmation]);
 
   const formatSettingName = (key: string) => {
     return key

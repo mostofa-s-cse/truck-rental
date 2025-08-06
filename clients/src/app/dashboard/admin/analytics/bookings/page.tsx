@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import DashboardLayout from '@/components/ui/DashboardLayout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
@@ -33,7 +33,7 @@ interface FilterOptions {
   limit?: number;
 }
 
-export default function BookingAnalyticsPage() {
+function BookingAnalyticsContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -98,17 +98,11 @@ export default function BookingAnalyticsPage() {
     });
   }, [searchParams, isClient]);
 
-  // Fetch analytics when filters change
-  useEffect(() => {
-    if (!isClient) return;
-    fetchBookingAnalytics();
-  }, [filters, isClient]);
-
   const updateURL = useCallback((newFilters: FilterOptions) => {
     setPendingURLUpdate(newFilters);
   }, []);
 
-  const fetchBookingAnalytics = async () => {
+  const fetchBookingAnalytics = useCallback(async () => {
     try {
       setLoading(true);
     
@@ -128,7 +122,13 @@ export default function BookingAnalyticsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters, errorToast]);
+
+  // Fetch analytics when filters change
+  useEffect(() => {
+    if (!isClient) return;
+    fetchBookingAnalytics();
+  }, [filters, isClient, fetchBookingAnalytics]);
 
   const handleFilterChange = useCallback((key: keyof FilterOptions, value: string) => {
     const newFilters = { ...filters, [key]: value };
@@ -654,4 +654,29 @@ export default function BookingAnalyticsPage() {
       </DashboardLayout>
     </ProtectedRoute>
   );
-} 
+}
+
+// Loading component for Suspense fallback
+function BookingAnalyticsLoading() {
+  return (
+    <ProtectedRoute requiredRole="ADMIN">
+      <DashboardLayout title="Booking Analytics" subtitle="Comprehensive booking analytics and insights">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading analytics...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    </ProtectedRoute>
+  );
+}
+
+// Main export with Suspense wrapper
+export default function BookingAnalyticsPage() {
+  return (
+    <Suspense fallback={<BookingAnalyticsLoading />}>
+      <BookingAnalyticsContent />
+    </Suspense>
+  );
+}

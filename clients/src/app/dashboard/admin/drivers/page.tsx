@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import DashboardLayout from '@/components/ui/DashboardLayout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
@@ -307,7 +307,7 @@ const DriverDetails = ({ driver }: { driver: Driver }) => (
 );
 
 // Main component
-export default function AdminDriversPage() {
+function AdminDriversContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -387,12 +387,6 @@ export default function AdminDriversPage() {
     setFilterVerified(verified);
   }, [searchParams, isClient]);
 
-  // Fetch drivers when dependencies change
-  useEffect(() => {
-    if (!isClient) return;
-    fetchDrivers();
-  }, [currentPage, pageSize, searchQuery, filterVerified, isClient]);
-
   const fetchDrivers = useCallback(async () => {
     try {
       setLoading(true);
@@ -407,6 +401,12 @@ export default function AdminDriversPage() {
       setLoading(false);
     }
   }, [currentPage, pageSize, searchQuery, filterVerified, errorToast]);
+
+  // Fetch drivers when dependencies change
+  useEffect(() => {
+    if (!isClient) return;
+    fetchDrivers();
+  }, [currentPage, pageSize, searchQuery, filterVerified, isClient, fetchDrivers]);
 
   const handleSearch = useCallback((query: string) => {
     setSearchQuery(query);
@@ -864,4 +864,29 @@ export default function AdminDriversPage() {
       </DashboardLayout>
     </ProtectedRoute>
   );
-} 
+}
+
+// Loading component for Suspense fallback
+function AdminDriversLoading() {
+  return (
+    <ProtectedRoute requiredRole="ADMIN">
+      <DashboardLayout title="Driver Management" subtitle="Manage all drivers in the system">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading drivers...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    </ProtectedRoute>
+  );
+}
+
+// Main export with Suspense wrapper
+export default function AdminDriversPage() {
+  return (
+    <Suspense fallback={<AdminDriversLoading />}>
+      <AdminDriversContent />
+    </Suspense>
+  );
+}

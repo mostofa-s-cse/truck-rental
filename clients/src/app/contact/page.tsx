@@ -28,7 +28,7 @@ export default function ContactPage() {
       icon: <Mail className="w-6 h-6 text-green-600" />,
       title: 'Email',
       details: ['support@truckrental.com', 'info@truckrental.com'],
-      description: 'Send us an email and we\'ll respond within 24 hours'
+      description: 'Send us an email and we&apos;ll respond within 24 hours'
     },
     {
       icon: <MapPin className="w-6 h-6 text-red-600" />,
@@ -40,7 +40,7 @@ export default function ContactPage() {
       icon: <Clock className="w-6 h-6 text-purple-600" />,
       title: 'Business Hours',
       details: ['Monday - Friday: 9:00 AM - 6:00 PM', 'Saturday: 10:00 AM - 4:00 PM'],
-      description: 'We\'re here to help during these hours'
+      description: 'We&apos;re here to help during these hours'
     }
   ];
 
@@ -67,7 +67,7 @@ export default function ContactPage() {
     },
     {
       question: 'How do I track my shipment?',
-      answer: 'Once your booking is confirmed, you\'ll receive a tracking link that allows you to monitor your shipment in real-time through our platform.'
+      answer: 'Once your booking is confirmed, you&apos;ll receive a tracking link that allows you to monitor your shipment in real-time through our platform.'
     }
   ];
 
@@ -100,7 +100,7 @@ export default function ContactPage() {
         subject: '',
         message: ''
       });
-      showNotification('Message sent successfully! We\'ll get back to you soon.', 'success');
+      showNotification('Message sent successfully! We&apos;ll get back to you soon.', 'success');
     }, 2000);
   };
 
@@ -119,7 +119,7 @@ export default function ContactPage() {
               Contact Us
             </h1>
             <p className="text-xl md:text-2xl mb-8 text-blue-100 max-w-3xl mx-auto">
-              We're here to help! Get in touch with us for any questions, 
+              We&apos;re here to help! Get in touch with us for any questions, 
               support, or feedback about our services.
             </p>
           </div>
@@ -139,7 +139,7 @@ export default function ContactPage() {
                   Message Sent Successfully!
                 </h3>
                 <p className="text-green-700 mb-6">
-                  Thank you for contacting us. We'll get back to you within 24 hours.
+                  Thank you for contacting us. We&apos;ll get back to you within 24 hours.
                 </p>
                 <Button onClick={resetForm} className="bg-green-600 text-white hover:bg-green-700">
                   Send Another Message
@@ -324,7 +324,7 @@ export default function ContactPage() {
 
           <div className="text-center mt-12">
             <p className="text-gray-600 mb-4">
-              Still have questions? We're here to help!
+              Still have questions? We&apos;re here to help!
             </p>
             <Button className="bg-blue-600 text-white hover:bg-blue-700">
               <MessageCircle className="w-4 h-4 mr-2" />

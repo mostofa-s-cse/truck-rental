@@ -58,7 +58,7 @@ export default function ProtectedRoute({ children, requiredRole }: ProtectedRout
         }
       }
     }
-  }, [user, loading, router, requiredRole, isClient]);
+  }, [user, loading, router, requiredRole, isClient, isInitialized]);
 
   // Show loading while checking authentication or if not client yet
   if (!isClient || !isInitialized || loading) {

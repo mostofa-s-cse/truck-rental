@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAppSelector } from '@/hooks/redux';
 import DashboardLayout from '@/components/ui/DashboardLayout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
@@ -11,11 +11,9 @@ import {
   CogIcon,
   UserCircleIcon,
   EnvelopeIcon,
-  DevicePhoneMobileIcon,
-  GlobeAltIcon,
-  ClockIcon
+  DevicePhoneMobileIcon
 } from '@heroicons/react/24/outline';
-import { ShieldCheckIcon, BellIcon, KeyIcon } from 'lucide-react';
+import { ShieldCheckIcon, BellIcon } from 'lucide-react';
 
 interface UserSettings {
   account: {
@@ -68,7 +66,7 @@ interface UserSettings {
 
 export default function UserSettingsPage() {
   const { user } = useAppSelector((state) => state.auth);
-  const { successToast, errorToast, confirmDialog } = useSweetAlert();
+  const { successToast, errorToast, question } = useSweetAlert();
   
   // State
   const [loading, setLoading] = useState(true);
@@ -78,7 +76,6 @@ export default function UserSettingsPage() {
   
   // Modal states
   const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [showTwoFactorModal, setShowTwoFactorModal] = useState(false);
   
   // Password change form
   const [passwordForm, setPasswordForm] = useState({
@@ -87,11 +84,7 @@ export default function UserSettingsPage() {
     confirmPassword: ''
   });
 
-  useEffect(() => {
-    fetchSettings();
-  }, []);
-
-  const fetchSettings = async () => {
+  const fetchSettings = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -128,18 +121,18 @@ export default function UserSettingsPage() {
             bookingUpdates: true,
             driverArrivals: true,
             nearbyDrivers: true,
-            specialOffers: true
+            specialOffers: false
           }
         },
         privacy: {
           profileVisibility: 'public',
           locationSharing: true,
           contactInfoSharing: true,
-          analyticsSharing: true
+          analyticsSharing: false
         },
         preferences: {
           defaultTruckType: 'MINI_TRUCK',
-          preferredPaymentMethod: 'CASH',
+          preferredPaymentMethod: 'CARD',
           autoSaveAddresses: true,
           showFareEstimates: true
         }
@@ -152,7 +145,11 @@ export default function UserSettingsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, errorToast]);
+
+  useEffect(() => {
+    fetchSettings();
+  }, [fetchSettings]);
 
   const handleSaveSettings = async (section: keyof UserSettings) => {
     try {
@@ -211,14 +208,14 @@ export default function UserSettingsPage() {
   const handleToggleTwoFactor = async () => {
     if (!settings) return;
 
-    const confirmed = await confirmDialog(
-      settings.security.twoFactorEnabled ? 'Disable Two-Factor Authentication' : 'Enable Two-Factor Authentication',
+    const result = await question(
       settings.security.twoFactorEnabled 
         ? 'Are you sure you want to disable two-factor authentication? This will make your account less secure.'
-        : 'Are you sure you want to enable two-factor authentication? You will need to set up an authenticator app.'
+        : 'Are you sure you want to enable two-factor authentication? You will need to set up an authenticator app.',
+      settings.security.twoFactorEnabled ? 'Disable Two-Factor Authentication' : 'Enable Two-Factor Authentication'
     );
 
-    if (!confirmed) return;
+    if (!result.isConfirmed) return;
 
     try {
       setSaving(true);
@@ -243,7 +240,7 @@ export default function UserSettingsPage() {
     }
   };
 
-  const updateSettings = (section: keyof UserSettings, updates: any) => {
+  const updateSettings = (section: keyof UserSettings, updates: Partial<UserSettings[keyof UserSettings]>) => {
     if (!settings) return;
     
     setSettings({
@@ -300,7 +297,7 @@ export default function UserSettingsPage() {
                   return (
                     <button
                       key={tab.id}
-                      onClick={() => setActiveTab(tab.id as any)}
+                      onClick={() => setActiveTab(tab.id as 'account' | 'security' | 'notifications' | 'privacy' | 'preferences')}
                       className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 ${
                         activeTab === tab.id
                           ? 'border-blue-500 text-blue-600'
@@ -407,7 +404,7 @@ export default function UserSettingsPage() {
                           </span>
                           <Button
                             onClick={handleToggleTwoFactor}
-                            variant={settings.security.twoFactorEnabled ? 'outline' : 'default'}
+                            variant={settings.security.twoFactorEnabled ? 'outline' : 'primary'}
                             size="sm"
                           >
                             {settings.security.twoFactorEnabled ? 'Disable' : 'Enable'}
@@ -572,7 +569,7 @@ export default function UserSettingsPage() {
                         <label className="block text-sm font-medium text-gray-700 mb-1">Profile Visibility</label>
                         <select
                           value={settings.privacy.profileVisibility}
-                          onChange={(e) => updateSettings('privacy', { profileVisibility: e.target.value as any })}
+                          onChange={(e) => updateSettings('privacy', { profileVisibility: e.target.value as 'public' | 'private' | 'drivers' })}
                           className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
                           <option value="public">Public</option>

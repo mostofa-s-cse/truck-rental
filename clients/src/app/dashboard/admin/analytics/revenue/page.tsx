@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import DashboardLayout from '@/components/ui/DashboardLayout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
@@ -34,7 +34,7 @@ interface FilterOptions {
   limit?: number;
 }
 
-export default function RevenueAnalyticsPage() {
+function RevenueAnalyticsContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -101,21 +101,16 @@ export default function RevenueAnalyticsPage() {
     });
   }, [searchParams, isClient]);
 
-  // Fetch analytics when filters change
-  useEffect(() => {
-    if (!isClient) return;
-    fetchRevenueAnalytics();
-  }, [filters, isClient]);
-
   const updateURL = useCallback((newFilters: FilterOptions) => {
     setPendingURLUpdate(newFilters);
   }, []);
 
-  const fetchRevenueAnalytics = async () => {
+  const fetchRevenueAnalytics = useCallback(async () => {
     try {
       setLoading(true);
       
       console.log('Fetching revenue analytics with filters:', filters);
+      console.log('Payment method filter:', filters.paymentMethod);
       
       // Call the API with filters
       const data = await adminApi.getRevenueAnalytics(filters);
@@ -150,72 +145,23 @@ export default function RevenueAnalyticsPage() {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       errorToast(`Failed to fetch revenue analytics: ${errorMessage}`);
       
-      // Provide fallback data when API fails
-      const fallbackData: RevenueAnalytics = {
-        totalRevenue: 45600,
-        todayRevenue: 1250,
-        monthlyRevenue: 15600,
-        yearlyRevenue: 175000,
-        revenueGrowth: 15.8,
-        averageOrderValue: 85.50,
-        revenueByMethod: [
-          { method: 'CASH', revenue: 22800, percentage: 50, icon: BanknotesIcon },
-          { method: 'CARD', revenue: 18240, percentage: 40, icon: CreditCardIcon },
-          { method: 'MOBILE_MONEY', revenue: 4560, percentage: 10, icon: DevicePhoneMobileIcon }
-        ],
-        revenueByMonth: [
-          { month: 'Jan', revenue: 12500, growth: 0 },
-          { month: 'Feb', revenue: 13800, growth: 15.6 },
-          { month: 'Mar', revenue: 14200, growth: -7.7 },
-          { month: 'Apr', revenue: 15600, growth: 20.8 },
-          { month: 'May', revenue: 16800, growth: 6.9 },
-          { month: 'Jun', revenue: 17500, growth: 4.8 }
-        ],
-        revenueByDay: [
-          { day: 'Sun', revenue: 5200, bookings: 65 },
-          { day: 'Mon', revenue: 6800, bookings: 85 },
-          { day: 'Tue', revenue: 7200, bookings: 90 },
-          { day: 'Wed', revenue: 7800, bookings: 98 },
-          { day: 'Thu', revenue: 8200, bookings: 102 },
-          { day: 'Fri', revenue: 8800, bookings: 110 },
-          { day: 'Sat', revenue: 5600, bookings: 70 }
-        ],
-        topRevenueRoutes: [
-          { route: 'Downtown to Airport', revenue: 12480, bookings: 156, avgFare: 80 },
-          { route: 'Airport to Downtown', revenue: 11360, bookings: 142, avgFare: 80 },
-          { route: 'City Center to Suburbs', revenue: 8820, bookings: 98, avgFare: 90 },
-          { route: 'Suburbs to City Center', revenue: 7650, bookings: 85, avgFare: 90 },
-          { route: 'Port to Warehouse', revenue: 6480, bookings: 72, avgFare: 90 }
-        ],
-        revenueByStatus: [
-          { status: 'COMPLETED', revenue: 41040, percentage: 90, color: 'bg-green-500' },
-          { status: 'PENDING', revenue: 2280, percentage: 5, color: 'bg-yellow-500' },
-          { status: 'CANCELLED', revenue: 2280, percentage: 5, color: 'bg-red-500' }
-        ],
-        paymentMethodDistribution: [
-          { method: 'CASH', count: 267, revenue: 22800, percentage: 50 },
-          { method: 'CARD', count: 213, revenue: 18240, percentage: 40 },
-          { method: 'MOBILE_MONEY', count: 53, revenue: 4560, percentage: 10 }
-        ],
-        revenueTrends: [
-          { date: '2024-01-01', revenue: 1250, bookings: 15, avgFare: 83.33 },
-          { date: '2024-01-02', revenue: 1400, bookings: 17, avgFare: 82.35 },
-          { date: '2024-01-03', revenue: 980, bookings: 12, avgFare: 81.67 },
-          { date: '2024-01-04', revenue: 1650, bookings: 20, avgFare: 82.50 },
-          { date: '2024-01-05', revenue: 1320, bookings: 16, avgFare: 82.50 },
-          { date: '2024-01-06', revenue: 1480, bookings: 18, avgFare: 82.22 },
-          { date: '2024-01-07', revenue: 1150, bookings: 14, avgFare: 82.14 }
-        ]
-      };
-      
-      setAnalyticsData(fallbackData);
+      // Set analytics data to null when API fails - no fallback data
+      setAnalyticsData(null);
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters, errorToast]);
+
+  // Fetch analytics when filters change
+  useEffect(() => {
+    if (!isClient) return;
+    fetchRevenueAnalytics();
+  }, [filters, isClient, fetchRevenueAnalytics]);
 
   const handleFilterChange = useCallback((key: keyof FilterOptions, value: string) => {
-    const newFilters = { ...filters, [key]: value };
+    // Convert empty strings to undefined for proper filtering
+    const filterValue = value === '' ? undefined : value;
+    const newFilters = { ...filters, [key]: filterValue };
     if (key === 'page' || key === 'limit') {
       newFilters.page = 1; // Reset to first page when changing filters
     }
@@ -427,13 +373,13 @@ export default function RevenueAnalyticsPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
                 <select
                   value={filters.paymentMethod || ''}
-                  onChange={(e) => handleFilterChange('paymentMethod', e.target.value)}
+                  onChange={(e) => handleFilterChange('paymentMethod', e.target.value || '')}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">All Methods</option>
                   <option value="CASH">Cash</option>
                   <option value="CARD">Card</option>
-                  <option value="MOBILE_MONEY">Mobile Money</option>
+                  <option value="MOBILE_BANKING">Mobile Banking</option>
                 </select>
               </div>
               
@@ -699,4 +645,29 @@ export default function RevenueAnalyticsPage() {
       </DashboardLayout>
     </ProtectedRoute>
   );
-} 
+}
+
+// Loading component for Suspense fallback
+function RevenueAnalyticsLoading() {
+  return (
+    <ProtectedRoute requiredRole="ADMIN">
+      <DashboardLayout title="Revenue Analytics" subtitle="Comprehensive revenue analytics and insights">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading revenue analytics...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    </ProtectedRoute>
+  );
+}
+
+// Main export with Suspense wrapper
+export default function RevenueAnalyticsPage() {
+  return (
+    <Suspense fallback={<RevenueAnalyticsLoading />}>
+      <RevenueAnalyticsContent />
+    </Suspense>
+  );
+}
