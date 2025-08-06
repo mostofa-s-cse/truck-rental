@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useAppSelector } from '@/hooks/redux';
+import { useState, useEffect, useCallback } from 'react';
 import DashboardLayout from '@/components/ui/DashboardLayout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import DataTable, { Column } from '@/components/ui/DataTable';
@@ -16,8 +15,7 @@ import {
   CurrencyDollarIcon,
   TruckIcon,
   PhoneIcon,
-  StarIcon,
-  ClockIcon
+  StarIcon
 } from '@heroicons/react/24/outline';
 
 interface Booking {
@@ -44,8 +42,7 @@ interface Booking {
 }
 
 export default function UserBookingsPage() {
-  const { user } = useAppSelector((state) => state.auth);
-  const { successToast, errorToast, confirmDialog } = useSweetAlert();
+  const { successToast, errorToast, question } = useSweetAlert();
   
   // State
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -59,14 +56,9 @@ export default function UserBookingsPage() {
   
   // Modal states
   const [showViewModal, setShowViewModal] = useState(false);
-  const [showCancelModal, setShowCancelModal] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
 
-  useEffect(() => {
-    fetchBookings();
-  }, [currentPage, pageSize, searchQuery, filterStatus]);
-
-  const fetchBookings = async () => {
+  const fetchBookings = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -142,8 +134,8 @@ export default function UserBookingsPage() {
             rating: 4.2,
             truckType: 'TRUCK'
           },
-          source: 'Office Complex',
-          destination: 'Residential Area',
+          source: 'Shopping Mall',
+          destination: 'Office Building',
           date: '2024-01-18',
           fare: 95,
           status: 'PENDING',
@@ -161,27 +153,52 @@ export default function UserBookingsPage() {
             rating: 4.7,
             truckType: 'MINI_TRUCK'
           },
-          source: 'Shopping Mall',
-          destination: 'Business District',
+          source: 'Industrial Zone',
+          destination: 'Residential Area',
           date: '2024-01-19',
           fare: 110,
           status: 'CANCELLED',
-          createdAt: '2024-01-18T11:30:00Z',
+          createdAt: '2024-01-18T14:15:00Z',
           paymentMethod: 'CASH',
           paymentStatus: 'REFUNDED'
         }
       ];
 
-      setBookings(mockBookings);
-      setTotalBookings(mockBookings.length);
-      setTotalPages(Math.ceil(mockBookings.length / pageSize));
+      // Filter bookings based on search query and status
+      let filteredBookings = mockBookings;
+      
+      if (searchQuery) {
+        filteredBookings = filteredBookings.filter(booking =>
+          booking.driver.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          booking.source.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          booking.destination.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          booking.id.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+      }
+      
+      if (filterStatus) {
+        filteredBookings = filteredBookings.filter(booking => booking.status === filterStatus);
+      }
+
+      // Calculate pagination
+      const startIndex = (currentPage - 1) * pageSize;
+      const endIndex = startIndex + pageSize;
+      const paginatedBookings = filteredBookings.slice(startIndex, endIndex);
+
+      setBookings(paginatedBookings);
+      setTotalBookings(filteredBookings.length);
+      setTotalPages(Math.ceil(filteredBookings.length / pageSize));
     } catch (error) {
       console.error('Error fetching bookings:', error);
       errorToast('Failed to fetch bookings');
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, pageSize, searchQuery, filterStatus, errorToast]);
+
+  useEffect(() => {
+    fetchBookings();
+  }, [fetchBookings]);
 
   const handleSearch = async (query: string) => {
     setSearchQuery(query);
@@ -197,18 +214,23 @@ export default function UserBookingsPage() {
     setCurrentPage(1);
   };
 
+  const handleFilterChange = (filters: Record<string, string | boolean>) => {
+    const statusFilter = filters.status as string;
+    setFilterStatus(statusFilter || '');
+  };
+
   const handleViewBooking = (booking: Booking) => {
     setSelectedBooking(booking);
     setShowViewModal(true);
   };
 
   const handleCancelBooking = async (booking: Booking) => {
-    const confirmed = await confirmDialog(
-      'Cancel Booking',
-      `Are you sure you want to cancel this booking with ${booking.driver.name}?`
+    const result = await question(
+      `Are you sure you want to cancel this booking with ${booking.driver.name}?`,
+      'Cancel Booking'
     );
 
-    if (!confirmed) return;
+    if (!result.isConfirmed) return;
 
     try {
       await userApi.cancelBooking(booking.id);
@@ -246,7 +268,7 @@ export default function UserBookingsPage() {
     {
       key: 'id',
       header: 'Booking ID',
-      render: (value) => `#${value.slice(-8).toUpperCase()}`
+      render: (value) => `#${(value as string).slice(-8).toUpperCase()}`
     },
     {
       key: 'driver.name',
@@ -270,8 +292,8 @@ export default function UserBookingsPage() {
         <div className="flex items-center">
           <MapPinIcon className="h-4 w-4 text-gray-400 mr-1" />
           <div className="text-sm">
-            <div className="text-gray-900">{row.source}</div>
-            <div className="text-gray-500">→ {row.destination}</div>
+            <div className="text-gray-900">From: {row.source}</div>
+            <div className="text-gray-600">To: {row.destination}</div>
           </div>
         </div>
       )
@@ -282,7 +304,7 @@ export default function UserBookingsPage() {
       render: (value) => (
         <div className="flex items-center">
           <CurrencyDollarIcon className="h-4 w-4 text-green-500 mr-1" />
-          <span className="text-sm font-medium text-gray-900">${value}</span>
+          <span className="text-sm font-medium text-gray-900">${value as number}</span>
         </div>
       )
     },
@@ -297,11 +319,12 @@ export default function UserBookingsPage() {
           'COMPLETED': 'bg-green-100 text-green-800',
           'CANCELLED': 'bg-red-100 text-red-800'
         };
+        const statusValue = value as string;
         return (
           <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-            statusColors[value as keyof typeof statusColors] || 'bg-gray-100 text-gray-800'
+            statusColors[statusValue as keyof typeof statusColors] || 'bg-gray-100 text-gray-800'
           }`}>
-            {value.replace('_', ' ')}
+            {statusValue.replace('_', ' ')}
           </span>
         );
       }
@@ -309,16 +332,33 @@ export default function UserBookingsPage() {
     {
       key: 'date',
       header: 'Date',
-      render: (value) => new Date(value).toLocaleDateString()
+      render: (value) => new Date(value as string).toLocaleDateString()
     }
   ];
 
+  const pagination = {
+    page: currentPage,
+    limit: pageSize,
+    total: totalBookings,
+    totalPages: totalPages
+  };
+
+  const actions = {
+    view: handleViewBooking,
+    cancel: handleCancelBooking,
+    rate: handleRateDriver
+  };
+
   return (
     <ProtectedRoute requiredRole="USER">
-      <DashboardLayout title="My Bookings" subtitle="Manage your bookings and track your trips">
+      <DashboardLayout title="My Bookings" subtitle="View and manage your booking history">
         <div className="space-y-6">
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="flex items-start justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">My Bookings</h2>
+              <p className="text-sm text-gray-500 mt-2">View and manage your booking history</p>
+            </div>
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex items-center">
                 <div className="p-2 bg-blue-100 rounded-lg">
@@ -332,47 +372,37 @@ export default function UserBookingsPage() {
             </div>
           </div>
 
-          {/* Filters */}
-          <div className="bg-white rounded-lg shadow p-4">
-            <div className="flex items-center space-x-4">
-              <label className="text-sm font-medium text-gray-700">Filter by Status:</label>
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
-              >
-                <option value="">All Status</option>
-                <option value="PENDING">Pending</option>
-                <option value="CONFIRMED">Confirmed</option>
-                <option value="IN_PROGRESS">In Progress</option>
-                <option value="COMPLETED">Completed</option>
-                <option value="CANCELLED">Cancelled</option>
-              </select>
-            </div>
-          </div>
-
           {/* DataTable */}
           <DataTable
             data={bookings}
             columns={columns}
             loading={loading}
-            pagination={{
-              page: currentPage,
-              limit: pageSize,
-              total: totalBookings,
-              totalPages: totalPages
-            }}
+            pagination={pagination}
             onPageChange={handlePageChange}
             onLimitChange={handlePageSizeChange}
             onSearch={handleSearch}
-            searchPlaceholder="Search bookings by driver name or location..."
-            showAddButton={false}
-            actions={{
-              view: handleViewBooking,
-              cancel: handleCancelBooking,
-              rate: handleRateDriver
-            }}
+            onFilter={handleFilterChange}
+            searchPlaceholder="Search by Booking ID, Driver name, or Route..."
+            showSearch={true}
+            showFilters={true}
+            filterOptions={[
+              {
+                key: 'status',
+                label: 'Booking Status',
+                type: 'select',
+                options: [
+                  { value: 'PENDING', label: 'Pending' },
+                  { value: 'CONFIRMED', label: 'Confirmed' },
+                  { value: 'IN_PROGRESS', label: 'In Progress' },
+                  { value: 'COMPLETED', label: 'Completed' },
+                  { value: 'CANCELLED', label: 'Cancelled' }
+                ],
+                placeholder: 'Select booking status'
+              }
+            ]}
+            actions={actions}
             emptyMessage="No bookings found"
+            initialSearchQuery={searchQuery}
           />
         </div>
 
@@ -385,139 +415,67 @@ export default function UserBookingsPage() {
         >
           {selectedBooking && (
             <div className="space-y-6">
-              {/* Booking Header */}
-              <div className="flex items-center justify-between">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <h3 className="text-lg font-medium text-gray-900">
-                    Booking #{selectedBooking.id.slice(-8).toUpperCase()}
-                  </h3>
-                  <p className="text-sm text-gray-500">
-                    Created on {new Date(selectedBooking.createdAt).toLocaleDateString()}
-                  </p>
-                </div>
-                <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                  selectedBooking.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
-                  selectedBooking.status === 'CONFIRMED' ? 'bg-blue-100 text-blue-800' :
-                  selectedBooking.status === 'IN_PROGRESS' ? 'bg-purple-100 text-purple-800' :
-                  selectedBooking.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
-                  'bg-red-100 text-red-800'
-                }`}>
-                  {selectedBooking.status.replace('_', ' ')}
-                </span>
-              </div>
-
-              {/* Driver Information */}
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h4 className="text-sm font-medium text-gray-700 mb-3">Driver Information</h4>
-                <div className="flex items-center mb-3">
-                  <UserCircleIcon className="h-8 w-8 text-blue-600 mr-3" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{selectedBooking.driver.name}</p>
-                    <p className="text-sm text-gray-500">{selectedBooking.driver.email}</p>
-                    <div className="flex items-center mt-1">
-                      <PhoneIcon className="h-4 w-4 text-gray-400 mr-1" />
-                      <span className="text-sm text-gray-500">{selectedBooking.driver.phone}</span>
+                  <h4 className="text-lg font-medium text-gray-900 mb-4">Driver Information</h4>
+                  <div className="space-y-3">
+                    <div className="flex items-center">
+                      <UserCircleIcon className="h-5 w-5 text-gray-400 mr-2" />
+                      <span className="text-sm text-gray-600">{selectedBooking.driver.name}</span>
+                    </div>
+                    <div className="flex items-center">
+                      <PhoneIcon className="h-5 w-5 text-gray-400 mr-2" />
+                      <span className="text-sm text-gray-600">{selectedBooking.driver.phone}</span>
+                    </div>
+                    <div className="flex items-center">
+                      <TruckIcon className="h-5 w-5 text-gray-400 mr-2" />
+                      <span className="text-sm text-gray-600">{selectedBooking.driver.truckType.replace('_', ' ')}</span>
+                    </div>
+                    <div className="flex items-center">
+                      {renderStars(selectedBooking.driver.rating)}
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <TruckIcon className="h-4 w-4 text-gray-400 mr-1" />
-                    <span className="text-sm text-gray-600">{selectedBooking.driver.truckType.replace('_', ' ')}</span>
-                  </div>
-                  {renderStars(selectedBooking.driver.rating)}
-                </div>
-              </div>
-
-              {/* Trip Details */}
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h4 className="text-sm font-medium text-gray-700 mb-3">Trip Details</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">From</label>
-                    <p className="text-sm text-gray-900">{selectedBooking.source}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">To</label>
-                    <p className="text-sm text-gray-900">{selectedBooking.destination}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Date</label>
-                    <p className="text-sm text-gray-900">{new Date(selectedBooking.date).toLocaleDateString()}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Fare</label>
-                    <p className="text-sm font-medium text-gray-900">${selectedBooking.fare}</p>
-                  </div>
-                  {selectedBooking.pickupTime && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Pickup Time</label>
-                      <p className="text-sm text-gray-900">{new Date(selectedBooking.pickupTime).toLocaleString()}</p>
+                <div>
+                  <h4 className="text-lg font-medium text-gray-900 mb-4">Booking Information</h4>
+                  <div className="space-y-3">
+                    <div className="flex items-center">
+                      <MapPinIcon className="h-5 w-5 text-gray-400 mr-2" />
+                      <div className="text-sm">
+                        <div className="text-gray-900">From: {selectedBooking.source}</div>
+                        <div className="text-gray-600">To: {selectedBooking.destination}</div>
+                      </div>
                     </div>
-                  )}
-                  {selectedBooking.completedAt && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Completed At</label>
-                      <p className="text-sm text-gray-900">{new Date(selectedBooking.completedAt).toLocaleString()}</p>
+                    <div className="flex items-center">
+                      <CalendarIcon className="h-5 w-5 text-gray-400 mr-2" />
+                      <span className="text-sm text-gray-600">{new Date(selectedBooking.date).toLocaleDateString()}</span>
                     </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Payment Information */}
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h4 className="text-sm font-medium text-gray-700 mb-3">Payment Information</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Payment Method</label>
-                    <p className="text-sm text-gray-900">{selectedBooking.paymentMethod.replace('_', ' ')}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Payment Status</label>
-                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                      selectedBooking.paymentStatus === 'PAID' ? 'bg-green-100 text-green-800' :
-                      selectedBooking.paymentStatus === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
-                      {selectedBooking.paymentStatus}
-                    </span>
+                    <div className="flex items-center">
+                      <CurrencyDollarIcon className="h-5 w-5 text-gray-400 mr-2" />
+                      <span className="text-sm text-gray-600">${selectedBooking.fare}</span>
+                    </div>
                   </div>
                 </div>
               </div>
-
-              {/* Action Buttons */}
-              {selectedBooking.status === 'PENDING' && (
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h4 className="text-sm font-medium text-gray-700 mb-3">Actions</h4>
-                  <Button
-                    variant="outline"
-                    onClick={() => handleCancelBooking(selectedBooking)}
-                    className="w-full"
-                  >
-                    Cancel Booking
-                  </Button>
-                </div>
-              )}
-
-              {selectedBooking.status === 'COMPLETED' && (
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h4 className="text-sm font-medium text-gray-700 mb-3">Actions</h4>
-                  <Button
-                    onClick={() => handleRateDriver(selectedBooking)}
-                    className="w-full"
-                  >
-                    Rate Driver
-                  </Button>
-                </div>
-              )}
-
-              <div className="flex justify-end pt-4">
+              
+              <div className="flex justify-end space-x-3">
                 <Button
                   variant="outline"
                   onClick={() => setShowViewModal(false)}
                 >
                   Close
                 </Button>
+                {selectedBooking.status === 'PENDING' && (
+                  <Button
+                    variant="danger"
+                    onClick={() => {
+                      handleCancelBooking(selectedBooking);
+                      setShowViewModal(false);
+                    }}
+                  >
+                    Cancel Booking
+                  </Button>
+                )}
               </div>
             </div>
           )}

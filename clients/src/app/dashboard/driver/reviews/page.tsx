@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react'; 
+import { useState, useEffect, useCallback } from 'react'; 
 import DashboardLayout from '@/components/ui/DashboardLayout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import DataTable, { Column } from '@/components/ui/DataTable';
@@ -42,7 +42,6 @@ export default function DriverReviewsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [totalReviews, setTotalReviews] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [filterRating, setFilterRating] = useState<string>('');
   
@@ -61,11 +60,7 @@ export default function DriverReviewsPage() {
     oneStarReviews: 0
   });
 
-  useEffect(() => {
-    fetchReviews();
-  }, [currentPage, pageSize, searchQuery, filterRating]);
-
-  const fetchReviews = async () => {
+  const fetchReviews = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -104,7 +99,7 @@ export default function DriverReviewsPage() {
           createdAt: '2024-01-14T15:45:00Z',
           booking: {
             source: 'Residential Area',
-            destination: 'Shopping Center',
+            destination: 'Business District',
             date: '2024-01-14',
             fare: 120
           }
@@ -119,13 +114,13 @@ export default function DriverReviewsPage() {
             avatar: undefined
           },
           rating: 5,
-          comment: 'Outstanding experience! The driver went above and beyond to ensure my goods were transported safely. Very reliable service.',
-          createdAt: '2024-01-13T09:20:00Z',
+          comment: 'Outstanding experience! The driver was punctual, professional, and the delivery was completed perfectly. Will definitely book again.',
+          createdAt: '2024-01-13T09:15:00Z',
           booking: {
             source: 'Warehouse District',
-            destination: 'Port Area',
+            destination: 'Retail Center',
             date: '2024-01-13',
-            fare: 150
+            fare: 95
           }
         },
         {
@@ -138,13 +133,13 @@ export default function DriverReviewsPage() {
             avatar: undefined
           },
           rating: 3,
-          comment: 'Service was okay. Driver was a bit late but the delivery was completed. Room for improvement.',
-          createdAt: '2024-01-12T14:15:00Z',
+          comment: 'Service was okay. Driver arrived a bit late but the delivery was completed. Could be improved.',
+          createdAt: '2024-01-12T14:20:00Z',
           booking: {
             source: 'Office Complex',
-            destination: 'Residential Area',
+            destination: 'Storage Facility',
             date: '2024-01-12',
-            fare: 95
+            fare: 75
           }
         },
         {
@@ -157,20 +152,42 @@ export default function DriverReviewsPage() {
             avatar: undefined
           },
           rating: 5,
-          comment: 'Perfect service! The driver was extremely professional, the truck was spotless, and everything was delivered on time. Five stars!',
+          comment: 'Excellent driver! Very professional, on time, and handled everything perfectly. Highly recommend!',
           createdAt: '2024-01-11T11:30:00Z',
           booking: {
             source: 'Shopping Mall',
-            destination: 'Business District',
+            destination: 'Distribution Center',
             date: '2024-01-11',
             fare: 110
           }
         }
       ];
 
+      // Filter reviews based on search query and rating filter
+      let filteredReviews = mockReviews;
+      
+      if (searchQuery) {
+        filteredReviews = filteredReviews.filter(review =>
+          review.user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          review.comment.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+      }
+
+      if (filterRating) {
+        filteredReviews = filteredReviews.filter(review =>
+          review.rating === parseInt(filterRating)
+        );
+      }
+
+      // Calculate pagination
+      const totalPages = Math.ceil(filteredReviews.length / pageSize);
+      const startIndex = (currentPage - 1) * pageSize;
+      const endIndex = startIndex + pageSize;
+      const paginatedReviews = filteredReviews.slice(startIndex, endIndex);
+
       // Calculate stats
-      const totalReviews = mockReviews.length;
-      const averageRating = mockReviews.reduce((sum, review) => sum + review.rating, 0) / totalReviews;
+      const totalReviewsCount = mockReviews.length;
+      const averageRating = mockReviews.reduce((sum, review) => sum + review.rating, 0) / totalReviewsCount;
       const fiveStarReviews = mockReviews.filter(review => review.rating === 5).length;
       const fourStarReviews = mockReviews.filter(review => review.rating === 4).length;
       const threeStarReviews = mockReviews.filter(review => review.rating === 3).length;
@@ -178,7 +195,7 @@ export default function DriverReviewsPage() {
       const oneStarReviews = mockReviews.filter(review => review.rating === 1).length;
 
       setStats({
-        totalReviews,
+        totalReviews: totalReviewsCount,
         averageRating,
         fiveStarReviews,
         fourStarReviews,
@@ -187,16 +204,19 @@ export default function DriverReviewsPage() {
         oneStarReviews
       });
 
-      setReviews(mockReviews);
-      setTotalReviews(totalReviews);
-      setTotalPages(Math.ceil(totalReviews / pageSize));
+      setReviews(paginatedReviews);
+      setTotalPages(totalPages);
     } catch (error) {
       console.error('Error fetching reviews:', error);
       errorToast('Failed to fetch reviews');
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, pageSize, searchQuery, filterRating, errorToast]);
+
+  useEffect(() => {
+    fetchReviews();
+  }, [fetchReviews]);
 
   const handleSearch = async (query: string) => {
     setSearchQuery(query);
@@ -259,14 +279,14 @@ export default function DriverReviewsPage() {
     {
       key: 'rating',
       header: 'Rating',
-      render: (value) => renderStars(value)
+      render: (value) => renderStars(value as number)
     },
     {
       key: 'comment',
       header: 'Comment',
       render: (value) => (
         <div className="max-w-xs">
-          <p className="text-sm text-gray-900 truncate">{value}</p>
+          <p className="text-sm text-gray-900 truncate">{value as string}</p>
         </div>
       )
     },
@@ -283,7 +303,7 @@ export default function DriverReviewsPage() {
     {
       key: 'createdAt',
       header: 'Date',
-      render: (value) => new Date(value).toLocaleDateString()
+      render: (value) => new Date(value as string).toLocaleDateString()
     }
   ];
 
@@ -296,7 +316,7 @@ export default function DriverReviewsPage() {
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex items-center">
                 <div className="p-2 bg-blue-100 rounded-lg">
-                  <StarIcon className="h-6 w-6 text-blue-600" />
+                  <ChatBubbleLeftIcon className="h-6 w-6 text-blue-600" />
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Total Reviews</p>
@@ -314,7 +334,9 @@ export default function DriverReviewsPage() {
                   <p className="text-sm font-medium text-gray-600">Average Rating</p>
                   <div className="flex items-center">
                     <p className="text-2xl font-bold text-gray-900">{stats.averageRating.toFixed(1)}</p>
-                    {renderStars(Math.round(stats.averageRating))}
+                    <div className="ml-2">
+                      {renderStars(Math.round(stats.averageRating))}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -328,20 +350,18 @@ export default function DriverReviewsPage() {
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">5-Star Reviews</p>
                   <p className="text-2xl font-bold text-gray-900">{stats.fiveStarReviews}</p>
-                  <p className="text-sm text-gray-500">{((stats.fiveStarReviews / stats.totalReviews) * 100).toFixed(0)}%</p>
                 </div>
               </div>
             </div>
 
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex items-center">
-                <div className="p-2 bg-purple-100 rounded-lg">
-                  <ChatBubbleLeftIcon className="h-6 w-6 text-purple-600" />
+                <div className="p-2 bg-orange-100 rounded-lg">
+                  <StarIcon className="h-6 w-6 text-orange-600" />
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">4-Star Reviews</p>
                   <p className="text-2xl font-bold text-gray-900">{stats.fourStarReviews}</p>
-                  <p className="text-sm text-gray-500">{((stats.fourStarReviews / stats.totalReviews) * 100).toFixed(0)}%</p>
                 </div>
               </div>
             </div>
@@ -351,73 +371,78 @@ export default function DriverReviewsPage() {
           <div className="bg-white rounded-lg shadow p-6">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Rating Distribution</h3>
             <div className="space-y-3">
-              {[
-                { stars: 5, count: stats.fiveStarReviews, color: 'bg-green-500' },
-                { stars: 4, count: stats.fourStarReviews, color: 'bg-blue-500' },
-                { stars: 3, count: stats.threeStarReviews, color: 'bg-yellow-500' },
-                { stars: 2, count: stats.twoStarReviews, color: 'bg-orange-500' },
-                { stars: 1, count: stats.oneStarReviews, color: 'bg-red-500' }
-              ].map((rating) => (
-                <div key={rating.stars} className="flex items-center">
-                  <div className="flex items-center w-16">
-                    <span className="text-sm font-medium text-gray-600">{rating.stars} stars</span>
-                  </div>
-                  <div className="flex-1 mx-4">
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div 
-                        className={`${rating.color} h-2 rounded-full`}
-                        style={{ width: `${(rating.count / stats.totalReviews) * 100}%` }}
-                      ></div>
+              {[5, 4, 3, 2, 1].map((rating) => {
+                const count = rating === 5 ? stats.fiveStarReviews :
+                             rating === 4 ? stats.fourStarReviews :
+                             rating === 3 ? stats.threeStarReviews :
+                             rating === 2 ? stats.twoStarReviews : stats.oneStarReviews;
+                const percentage = stats.totalReviews > 0 ? (count / stats.totalReviews) * 100 : 0;
+                
+                return (
+                  <div key={rating} className="flex items-center">
+                    <div className="flex items-center w-16">
+                      <span className="text-sm font-medium text-gray-600">{rating}</span>
+                      <StarIcon className="h-4 w-4 text-yellow-400 ml-1" />
+                    </div>
+                    <div className="flex-1 mx-4">
+                      <div className="bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-yellow-400 h-2 rounded-full" 
+                          style={{ width: `${percentage}%` }}
+                        />
+                      </div>
+                    </div>
+                    <div className="w-12 text-right">
+                      <span className="text-sm text-gray-600">{count}</span>
                     </div>
                   </div>
-                  <div className="w-12 text-right">
-                    <span className="text-sm text-gray-600">{rating.count}</span>
-                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Reviews Table */}
+          <div className="bg-white rounded-lg shadow">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-medium text-gray-900">Recent Reviews</h3>
+                <div className="flex items-center space-x-4">
+                  <select
+                    value={filterRating}
+                    onChange={(e) => setFilterRating(e.target.value)}
+                    className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">All Ratings</option>
+                    <option value="5">5 Stars</option>
+                    <option value="4">4 Stars</option>
+                    <option value="3">3 Stars</option>
+                    <option value="2">2 Stars</option>
+                    <option value="1">1 Star</option>
+                  </select>
                 </div>
-              ))}
+              </div>
             </div>
-          </div>
 
-          {/* Filters */}
-          <div className="bg-white rounded-lg shadow p-4">
-            <div className="flex items-center space-x-4">
-              <label className="text-sm font-medium text-gray-700">Filter by Rating:</label>
-              <select
-                value={filterRating}
-                onChange={(e) => setFilterRating(e.target.value)}
-                className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
-              >
-                <option value="">All Ratings</option>
-                <option value="5">5 Stars</option>
-                <option value="4">4 Stars</option>
-                <option value="3">3 Stars</option>
-                <option value="2">2 Stars</option>
-                <option value="1">1 Star</option>
-              </select>
-            </div>
+            <DataTable
+              data={reviews}
+              columns={columns}
+              loading={loading}
+              pagination={{
+                page: currentPage,
+                limit: pageSize,
+                total: reviews.length,
+                totalPages: totalPages
+              }}
+              onPageChange={handlePageChange}
+              onLimitChange={handlePageSizeChange}
+              onSearch={handleSearch}
+              searchPlaceholder="Search reviews by customer name or comment..."
+              actions={{
+                view: handleViewReview
+              }}
+              emptyMessage="No reviews found"
+            />
           </div>
-
-          {/* DataTable */}
-          <DataTable
-            data={reviews}
-            columns={columns}
-            loading={loading}
-            pagination={{
-              page: currentPage,
-              limit: pageSize,
-              total: totalReviews,
-              totalPages: totalPages
-            }}
-            onPageChange={handlePageChange}
-            onLimitChange={handlePageSizeChange}
-            onSearch={handleSearch}
-            searchPlaceholder="Search reviews by customer name or comment..."
-            showAddButton={false}
-            actions={{
-              view: handleViewReview
-            }}
-            emptyMessage="No reviews found"
-          />
         </div>
 
         {/* View Review Modal */}

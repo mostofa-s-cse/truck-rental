@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Truck, MapPin, Star, Search, Phone, MessageCircle, Loader2, Filter, X } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import { apiClient } from '@/lib/api';
@@ -32,62 +32,10 @@ export default function SearchPage() {
   const [availabilityFilter, setAvailabilityFilter] = useState('');
   const [verificationFilter, setVerificationFilter] = useState('');
 
-  // Load initial data
-  useEffect(() => {
-    loadInitialData();
-  }, []);
+  const hasActiveFilters = selectedTruckType || selectedQuality || minCapacity || maxCapacity || 
+                          minRating || maxRating || minTrips || maxTrips || availabilityFilter || verificationFilter;
 
-  // Auto-search when search query changes (debounced)
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      if (searchQuery.trim()) {
-        console.log('Auto-searching for:', searchQuery);
-        handleSearch();
-      } else {
-        // If search is empty, load initial data
-        console.log('Search empty, loading initial data');
-        loadInitialData();
-      }
-    }, 500); // 500ms debounce
-
-    return () => clearTimeout(timeoutId);
-  }, [searchQuery]);
-
-  // Auto-search when filters change
-  useEffect(() => {
-    if (hasActiveFilters) {
-      handleSearch();
-    }
-  }, [selectedTruckType, selectedQuality, minCapacity, minRating, availabilityFilter, verificationFilter]);
-
-  const loadInitialData = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      console.log('Loading initial data...');
-      
-      const response = await apiClient.getPopularTrucks(itemsPerPage);
-      console.log('Initial data response:', response);
-      
-      if (response.success && response.data) {
-        console.log('Setting initial drivers:', response.data.length);
-        setDrivers(response.data);
-        setTotalResults(response.data.length);
-        setHasMore(response.data.length >= itemsPerPage);
-      } else {
-        console.error('Failed to load initial data:', response.message);
-        setError(response.message || 'Failed to load trucks');
-      }
-    } catch (error) {
-      console.error('Error loading initial data:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      setError(`Failed to load trucks: ${errorMessage}`);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const buildSearchFilters = (): SearchFilters => {
+  const buildSearchFilters = useCallback((): SearchFilters => {
     const filters: SearchFilters = {};
     
     // Parse search query for location and truck type
@@ -135,10 +83,6 @@ export default function SearchPage() {
     if (selectedTruckType) filters.truckType = selectedTruckType;
     if (selectedQuality) filters.quality = selectedQuality;
     if (minCapacity) filters.capacity = parseFloat(minCapacity);
-    if (maxCapacity) {
-      // For max capacity, we need to filter in the frontend since API only supports min capacity
-      // This will be handled in the frontend filtering
-    }
     if (minRating) filters.rating = parseFloat(minRating);
     if (availabilityFilter === 'available') filters.availability = true;
     if (availabilityFilter === 'busy') filters.availability = false;
@@ -146,10 +90,10 @@ export default function SearchPage() {
     if (verificationFilter === 'unverified') filters.verified = false;
     
     return filters;
-  };
+  }, [searchQuery, selectedTruckType, selectedQuality, minCapacity, minRating, availabilityFilter, verificationFilter]);
 
   // Apply additional frontend filters that aren't supported by the API
-  const applyFrontendFilters = (drivers: Driver[]): Driver[] => {
+  const applyFrontendFilters = useCallback((drivers: Driver[]): Driver[] => {
     return drivers.filter(driver => {
       // Max capacity filter
       if (maxCapacity && driver.capacity > parseFloat(maxCapacity)) {
@@ -173,44 +117,102 @@ export default function SearchPage() {
       
       return true;
     });
-  };
+  }, [maxCapacity, maxRating, minTrips, maxTrips]);
 
-  const handleSearch = async () => {
+  const loadInitialData = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
-      setCurrentPage(1);
+      console.log('Loading initial data...');
+      
+      const response = await apiClient.getPopularTrucks(itemsPerPage);
+      console.log('Initial data response:', response);
+      
+      if (response.success && response.data) {
+        const drivers = response.data as Driver[];
+        console.log('Setting initial drivers:', drivers.length);
+        setDrivers(drivers);
+        setTotalResults(drivers.length);
+        setHasMore(drivers.length >= itemsPerPage);
+      } else {
+        console.error('Failed to load initial data:', response.message);
+        setError(response.message || 'Failed to load trucks');
+      }
+    } catch (error) {
+      console.error('Error loading initial data:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setError(`Failed to load trucks: ${errorMessage}`);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [itemsPerPage]);
+
+  const handleSearch = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      console.log('Searching with filters:', buildSearchFilters());
       
       const filters = buildSearchFilters();
-      console.log('Search query:', searchQuery);
-      console.log('Searching with filters:', filters);
-      
       const response = await apiClient.searchTrucks(filters, 1, itemsPerPage);
       console.log('Search response:', response);
       
       if (response.success && response.data) {
-        let filteredDrivers = response.data.drivers || [];
-        console.log('Initial drivers from API:', filteredDrivers.length);
+        // The API returns SearchResult with drivers array
+        const searchData = response.data as { drivers: Driver[]; total: number };
+        const drivers = searchData.drivers || [];
         
-        // Apply additional frontend filters
-        filteredDrivers = applyFrontendFilters(filteredDrivers);
-        console.log('After frontend filtering:', filteredDrivers.length);
+        // Apply additional frontend filters that aren't supported by the API
+        const filteredDrivers = applyFrontendFilters(drivers);
         
+        console.log('Setting search results:', filteredDrivers.length);
         setDrivers(filteredDrivers);
-        setTotalResults(filteredDrivers.length);
+        setTotalResults(filteredDrivers.length); // Use filtered count for accurate pagination
         setHasMore(filteredDrivers.length >= itemsPerPage);
+        setCurrentPage(1);
       } else {
         console.error('Search failed:', response.message);
         setError(response.message || 'Search failed');
       }
     } catch (error) {
-      console.error('Search error:', error);
+      console.error('Error during search:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       setError(`Search failed: ${errorMessage}`);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [itemsPerPage, buildSearchFilters, applyFrontendFilters]);
+
+  // Load initial data
+  useEffect(() => {
+    loadInitialData();
+  }, [loadInitialData]);
+
+  // Auto-search when search query changes (debounced)
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (searchQuery.trim()) {
+        console.log('Auto-searching for:', searchQuery);
+        handleSearch();
+      } else if (!hasActiveFilters) {
+        // If search is empty and no active filters, load initial data
+        console.log('Search empty, loading initial data');
+        loadInitialData();
+      }
+    }, 500); // 500ms debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery, handleSearch, loadInitialData, hasActiveFilters]);
+
+  // Auto-search when filters change
+  useEffect(() => {
+    if (hasActiveFilters) {
+      handleSearch();
+    } else if (!searchQuery.trim()) {
+      // If no active filters and no search query, load initial data
+      loadInitialData();
+    }
+  }, [selectedTruckType, selectedQuality, minCapacity, maxCapacity, minRating, maxRating, minTrips, maxTrips, availabilityFilter, verificationFilter, handleSearch, loadInitialData, searchQuery, hasActiveFilters]);
 
   const handleLoadMore = async () => {
     try {
@@ -221,7 +223,9 @@ export default function SearchPage() {
       const response = await apiClient.searchTrucks(filters, nextPage, itemsPerPage);
       
       if (response.success && response.data) {
-        let newDrivers = response.data.drivers || [];
+        // The searchTrucks API returns SearchResult with drivers array
+        const searchData = response.data as { drivers: Driver[]; total: number };
+        let newDrivers = searchData.drivers || [];
         
         // Apply additional frontend filters
         newDrivers = applyFrontendFilters(newDrivers);
@@ -253,13 +257,9 @@ export default function SearchPage() {
     setVerificationFilter('');
     setSearchQuery('');
     setCurrentPage(1);
+    setError(null);
     loadInitialData();
   };
-
-  const hasActiveFilters = selectedTruckType || selectedQuality || minCapacity || maxCapacity || 
-                          minRating || maxRating || minTrips || maxTrips || availabilityFilter || verificationFilter;
-
-
 
   const renderStars = (rating: number) => {
     return Array.from({ length: 5 }, (_, i) => (
@@ -485,150 +485,150 @@ export default function SearchPage() {
               </div>
             </div>
 
-        {/* Error State */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
-            <p className="text-red-600">{error}</p>
-          </div>
-        )}
+            {/* Error State */}
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
+                <p className="text-red-600">{error}</p>
+              </div>
+            )}
 
-        {/* Loading State */}
-        {isLoading && (
-          <div className="flex items-center justify-center py-12">
-            <div className="text-center">
-              <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
-              <p className="text-gray-600">Searching for trucks...</p>
-            </div>
-          </div>
-        )}
+            {/* Loading State */}
+            {isLoading && (
+              <div className="flex items-center justify-center py-12">
+                <div className="text-center">
+                  <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
+                  <p className="text-gray-600">Searching for trucks...</p>
+                </div>
+              </div>
+            )}
 
-        {/* Results */}
-        {!isLoading && (
-          <div className="space-y-6">
-            {drivers.map((driver) => (
-              <div key={driver.id} className="bg-white rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-4 mb-4">
-                      <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
-                        <Truck className="w-8 h-8 text-blue-600" />
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-900">
-                          {driver.user.name}
-                        </h3>
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <MapPin className="w-4 h-4" />
-                          {driver.location}
+            {/* Results */}
+            {!isLoading && (
+              <div className="space-y-6">
+                {drivers.map((driver) => (
+                  <div key={driver.id} className="bg-white rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-4 mb-4">
+                          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+                            <Truck className="w-8 h-8 text-blue-600" />
+                          </div>
+                          <div>
+                            <h3 className="text-lg font-semibold text-gray-900">
+                              {driver.user.name}
+                            </h3>
+                            <div className="flex items-center gap-2 text-sm text-gray-600">
+                              <MapPin className="w-4 h-4" />
+                              {driver.location}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                          <div>
+                            <span className="text-sm text-gray-500">Truck Type</span>
+                            <p className="font-medium text-gray-900">{driver.truckType.replace('_', ' ')}</p>
+                          </div>
+                          <div>
+                            <span className="text-sm text-gray-500">Capacity</span>
+                            <p className="font-medium text-gray-900">{driver.capacity} tons</p>
+                          </div>
+                          <div>
+                            <span className="text-sm text-gray-500">Quality</span>
+                            <p className="font-medium text-gray-900">{driver.quality}</p>
+                          </div>
+                          <div>
+                            <span className="text-sm text-gray-500">Trips</span>
+                            <p className="font-medium text-gray-900">{driver.totalTrips}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-4 mb-4">
+                          <div className="flex items-center gap-1">
+                            {renderStars(driver.rating)}
+                            <span className="ml-1 text-sm text-gray-600">
+                              {driver.rating.toFixed(1)}
+                            </span>
+                          </div>
+                          {driver.isVerified && (
+                            <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
+                              Verified
+                            </span>
+                          )}
+                          {driver.isAvailable ? (
+                            <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                              Available
+                            </span>
+                          ) : (
+                            <span className="bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full">
+                              Busy
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex gap-3">
+                          <Button className="bg-blue-600 text-white hover:bg-blue-700">
+                            Book Now
+                          </Button>
+                          <Button variant="outline" className="flex items-center gap-2">
+                            <Phone className="w-4 h-4" />
+                            Call
+                          </Button>
+                          <Button variant="outline" className="flex items-center gap-2">
+                            <MessageCircle className="w-4 h-4" />
+                            Message
+                          </Button>
                         </div>
                       </div>
                     </div>
-
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                      <div>
-                        <span className="text-sm text-gray-500">Truck Type</span>
-                        <p className="font-medium text-gray-900">{driver.truckType.replace('_', ' ')}</p>
-                      </div>
-                      <div>
-                        <span className="text-sm text-gray-500">Capacity</span>
-                        <p className="font-medium text-gray-900">{driver.capacity} tons</p>
-                      </div>
-                      <div>
-                        <span className="text-sm text-gray-500">Quality</span>
-                        <p className="font-medium text-gray-900">{driver.quality}</p>
-                      </div>
-                      <div>
-                        <span className="text-sm text-gray-500">Trips</span>
-                        <p className="font-medium text-gray-900">{driver.totalTrips}</p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-4 mb-4">
-                      <div className="flex items-center gap-1">
-                        {renderStars(driver.rating)}
-                        <span className="ml-1 text-sm text-gray-600">
-                          {driver.rating.toFixed(1)}
-                        </span>
-                      </div>
-                      {driver.isVerified && (
-                        <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
-                          Verified
-                        </span>
-                      )}
-                      {driver.isAvailable ? (
-                        <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-                          Available
-                        </span>
-                      ) : (
-                        <span className="bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full">
-                          Busy
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="flex gap-3">
-                      <Button className="bg-blue-600 text-white hover:bg-blue-700">
-                        Book Now
-                      </Button>
-                      <Button variant="outline" className="flex items-center gap-2">
-                        <Phone className="w-4 h-4" />
-                        Call
-                      </Button>
-                      <Button variant="outline" className="flex items-center gap-2">
-                        <MessageCircle className="w-4 h-4" />
-                        Message
-                      </Button>
-                    </div>
                   </div>
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
+            )}
 
-        {/* No Results */}
-        {!isLoading && drivers.length === 0 && (
-          <div className="text-center py-12">
-            <Truck className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No trucks found</h3>
-            <p className="text-gray-600">
-              Try adjusting your search criteria
-            </p>
-          </div>
-        )}
+            {/* No Results */}
+            {!isLoading && drivers.length === 0 && (
+              <div className="text-center py-12">
+                <Truck className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No trucks found</h3>
+                <p className="text-gray-600">
+                  Try adjusting your search criteria
+                </p>
+              </div>
+            )}
 
-        {/* Load More Button */}
-        {!isLoading && hasMore && (
-          <div className="flex justify-center mt-8">
-            <Button
-              onClick={handleLoadMore}
-              disabled={isLoadingMore}
-              variant="outline"
-              className="px-8 py-3"
-            >
-              {isLoadingMore ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Loading...
-                </>
-              ) : (
-                `Load More (${totalResults - drivers.length} remaining)`
-              )}
-            </Button>
-          </div>
-        )}
+            {/* Load More Button */}
+            {!isLoading && hasMore && (
+              <div className="flex justify-center mt-8">
+                <Button
+                  onClick={handleLoadMore}
+                  disabled={isLoadingMore}
+                  variant="outline"
+                  className="px-8 py-3"
+                >
+                  {isLoadingMore ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Loading...
+                    </>
+                  ) : (
+                    `Load More (${totalResults - drivers.length} remaining)`
+                  )}
+                </Button>
+              </div>
+            )}
 
-        {/* End of Results */}
-        {!isLoading && !hasMore && drivers.length > 0 && (
-          <div className="text-center mt-8 py-4">
-            <p className="text-gray-500 text-sm">
-              You&apos;ve reached the end of the results
-            </p>
+            {/* End of Results */}
+            {!isLoading && !hasMore && drivers.length > 0 && (
+              <div className="text-center mt-8 py-4">
+                <p className="text-gray-500 text-sm">
+                  You&apos;ve reached the end of the results
+                </p>
+              </div>
+            )}
           </div>
-        )}
-           </div>
-         </div>
-       </div>
-     </div>
-   );
- } 
+        </div>
+      </div>
+    </div>
+  );
+} 

@@ -208,11 +208,12 @@ export class BookingController {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
       const status = req.query.status as string;
+      const search = req.query.search as string;
       const userId = (req as any).user?.userId || 'anonymous';
       
-      logDatabase('select', 'bookings', { page, limit, status, requestedBy: userId, operation: 'all_bookings' });
+      logDatabase('select', 'bookings', { page, limit, status, search, requestedBy: userId, operation: 'all_bookings' });
       
-      const result = await BookingService.getAllBookings(page, limit, status as any);
+      const result = await BookingService.getAllBookings(page, limit, status as any, search);
 
       const response: ApiResponse = {
         success: true,
@@ -229,7 +230,8 @@ export class BookingController {
         userId,
         page: req.query.page,
         limit: req.query.limit,
-        status: req.query.status
+        status: req.query.status,
+        search: req.query.search
       });
 
       const response: ApiResponse = {

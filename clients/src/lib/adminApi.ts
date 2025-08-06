@@ -18,12 +18,40 @@ export interface AdminDashboardStats {
 
 export interface BookingAnalytics {
   totalBookings: number;
-  statusCounts: Record<string, number>;
-  revenue: number;
-  dailyStats: Array<{
+  completedBookings: number;
+  pendingBookings: number;
+  cancelledBookings: number;
+  totalRevenue: number;
+  averageFare: number;
+  bookingTrends: Array<{
     date: string;
-    count: number;
+    bookings: number;
     revenue: number;
+    completed: number;
+    cancelled: number;
+  }>;
+  statusDistribution: Array<{
+    status: string;
+    count: number;
+    percentage: number;
+    color: string;
+  }>;
+  topRoutes: Array<{
+    route: string;
+    bookings: number;
+    revenue: number;
+    avgFare: number;
+  }>;
+  peakHours: Array<{
+    hour: string;
+    bookings: number;
+    percentage: number;
+  }>;
+  monthlyComparison: Array<{
+    month: string;
+    bookings: number;
+    revenue: number;
+    growth: number;
   }>;
 }
 
@@ -66,12 +94,62 @@ export interface RevenueReport {
   }>;
 }
 
+export interface RevenueAnalytics {
+  totalRevenue: number;
+  todayRevenue: number;
+  monthlyRevenue: number;
+  yearlyRevenue: number;
+  revenueGrowth: number;
+  averageOrderValue: number;
+  revenueByMethod: {
+    method: string;
+    revenue: number;
+    percentage: number;
+    icon: React.ElementType;
+  }[];
+  revenueByMonth: {
+    month: string;
+    revenue: number;
+    growth: number;
+  }[];
+  revenueByDay: {
+    day: string;
+    revenue: number;
+    bookings: number;
+  }[];
+  topRevenueRoutes: {
+    route: string;
+    revenue: number;
+    bookings: number;
+    avgFare: number;
+  }[];
+  revenueByStatus: {
+    status: string;
+    revenue: number;
+    percentage: number;
+    color: string;
+  }[];
+  paymentMethodDistribution: {
+    method: string;
+    count: number;
+    revenue: number;
+    percentage: number;
+  }[];
+  revenueTrends: {
+    date: string;
+    revenue: number;
+    bookings: number;
+    avgFare: number;
+  }[];
+}
+
 export interface Booking {
   id: string;
   user: {
     id: string;
     name: string;
     email: string;
+    phone?: string;
   };
   driver?: {
     user: {
@@ -79,6 +157,7 @@ export interface Booking {
       name: string;
       email: string;
     };
+    truckType: string;
   };
   source: string;
   destination: string;
@@ -98,15 +177,24 @@ export interface Driver {
     id: string;
     name: string;
     email: string;
+    phone?: string;
   };
   truckType: string;
   capacity: number;
+  quality: string;
+  license: string;
+  registration: string;
+  location: string;
+  latitude?: number;
+  longitude?: number;
   rating: number;
+  totalTrips: number;
   isVerified: boolean;
   isAvailable: boolean;
   totalBookings: number;
   completedBookings: number;
   totalRevenue: number;
+  createdAt: string;
 }
 
 export interface User {
@@ -159,6 +247,7 @@ export interface Review {
     id: string;
     name: string;
     email: string;
+    phone?: string;
   };
   driver: {
     user: {
@@ -166,6 +255,7 @@ export interface Review {
       name: string;
       email: string;
     };
+    truckType: string;
   };
 }
 
@@ -285,6 +375,19 @@ export const adminApi = {
     await apiClient.getClient().delete(`/drivers/${driverId}`);
   },
 
+  createDriver: async (driverData: {
+    userId: string;
+    truckType: string;
+    capacity: number;
+    quality: string;
+    license: string;
+    registration: string;
+    location: string;
+  }): Promise<Driver> => {
+    const response = await apiClient.getClient().post('/drivers', driverData);
+    return response.data.data;
+  },
+
   getPendingVerifications: async (): Promise<Driver[]> => {
     const response = await apiClient.getClient().get('/admin/drivers/pending-verifications');
     return response.data.data;
@@ -299,14 +402,24 @@ export const adminApi = {
     if (status) params.append('status', status);
 
     const response = await apiClient.getClient().get(`/bookings?${params.toString()}`);
+    
+    // Handle both possible response structures
+    const bookings = response.data.data.bookings || response.data.data;
+    const pagination = response.data.data.page ? {
+      page: response.data.data.page,
+      limit: response.data.data.limit,
+      total: response.data.data.total,
+      totalPages: response.data.data.totalPages
+    } : {
+      page: 1,
+      limit: bookings.length,
+      total: bookings.length,
+      totalPages: 1
+    };
+    
     return {
-      data: response.data.data.bookings || response.data.data,
-      pagination: {
-        page: response.data.data.page,
-        limit: response.data.data.limit,
-        total: response.data.data.total,
-        totalPages: response.data.data.totalPages
-      }
+      data: bookings,
+      pagination
     };
   },
 
@@ -355,11 +468,12 @@ export const adminApi = {
   },
 
   // Reviews Management
-  getReviews: async (page: number = 1, limit: number = 10, search?: string): Promise<PaginatedResponse<Review>> => {
+  getReviews: async (page: number = 1, limit: number = 10, search?: string, rating?: string): Promise<PaginatedResponse<Review>> => {
     const params = new URLSearchParams();
     params.append('page', page.toString());
     params.append('limit', limit.toString());
     if (search) params.append('search', search);
+    if (rating) params.append('rating', rating);
 
     const response = await apiClient.getClient().get(`/reviews?${params.toString()}`);
     return {
@@ -407,6 +521,45 @@ export const adminApi = {
     });
 
     const response = await apiClient.getClient().get(`/admin/reports/bookings?${params.toString()}`);
+    return response.data.data;
+  },
+
+  // Revenue Analytics
+  getRevenueAnalytics: async (filters: {
+    timeRange?: string;
+    paymentMethod?: string;
+    status?: string;
+    startDate?: string;
+    endDate?: string;
+    minAmount?: string;
+    maxAmount?: string;
+    route?: string;
+  }): Promise<RevenueAnalytics> => {
+    const params = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value && value !== '') params.append(key, value);
+    });
+
+    const response = await apiClient.getClient().get(`/dashboard/admin/analytics/revenue?${params.toString()}`);
+    return response.data.data;
+  },
+
+  // Booking Analytics
+  getBookingAnalyticsData: async (filters: {
+    timeRange?: string;
+    status?: string;
+    driverId?: string;
+    userId?: string;
+    startDate?: string;
+    endDate?: string;
+    route?: string;
+  }): Promise<BookingAnalytics> => {
+    const params = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value) params.append(key, value);
+    });
+
+    const response = await apiClient.getClient().get(`/dashboard/admin/analytics/bookings?${params.toString()}`);
     return response.data.data;
   }
 }; 

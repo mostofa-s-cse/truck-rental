@@ -414,4 +414,70 @@ export class DashboardController {
       res.status(400).json(response);
     }
   }
+
+  static async getRevenueAnalytics(req: Request, res: Response) {
+    try {
+      const filters = req.query;
+      
+      logDatabase('select', 'revenue_analytics', { filters });
+      
+      const result = await DashboardService.getRevenueAnalytics(filters);
+
+      logDatabase('select_success', 'revenue_analytics', { filters });
+
+      const response: ApiResponse = {
+        success: true,
+        message: 'Revenue analytics retrieved successfully',
+        data: result
+      };
+
+      res.status(200).json(response);
+    } catch (error: any) {
+      logError(error, { 
+        operation: 'get_revenue_analytics',
+        query: req.query
+      });
+
+      const response: ApiResponse = {
+        success: false,
+        message: error.message || 'Failed to get revenue analytics',
+        error: error.message
+      };
+
+      res.status(400).json(response);
+    }
+  }
+
+  static async getBookingAnalytics(req: Request, res: Response) {
+    try {
+      const filters = req.query;
+      
+      logDatabase('select', 'booking_analytics', { filters });
+      
+      const result = await DashboardService.getBookingAnalytics(filters);
+
+      logDatabase('select_success', 'booking_analytics', { filters });
+
+      const response: ApiResponse = {
+        success: true,
+        message: 'Booking analytics retrieved successfully',
+        data: result
+      };
+
+      res.status(200).json(response);
+    } catch (error: any) {
+      logError(error, { 
+        operation: 'get_booking_analytics',
+        query: req.query
+      });
+
+      const response: ApiResponse = {
+        success: false,
+        message: error.message || 'Failed to get booking analytics',
+        error: error.message
+      };
+
+      res.status(400).json(response);
+    }
+  }
 } 

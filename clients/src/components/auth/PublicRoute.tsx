@@ -28,7 +28,7 @@ export default function PublicRoute({ children }: PublicRouteProps) {
       }
       router.push(dashboardPath);
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, isInitialized]);
 
   // Show loading while checking authentication
   if (!isInitialized || loading) {

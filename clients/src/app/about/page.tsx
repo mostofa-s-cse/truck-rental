@@ -1,6 +1,6 @@
 'use client';
 
-import { Truck, Users, Target, Award, Globe, Heart, Shield, Zap } from 'lucide-react';
+import { Users, Target, Globe, Heart, Shield, Zap } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import Link from 'next/link';
 
@@ -75,7 +75,7 @@ export default function AboutPage() {
             </h1>
             <p className="text-xl md:text-2xl mb-8 text-blue-100 max-w-3xl mx-auto">
               Connecting reliable drivers with customers who need transportation solutions. 
-              We're building the future of logistics, one delivery at a time.
+              We&apos;re building the future of logistics, one delivery at a time.
             </p>
           </div>
         </div>
@@ -95,7 +95,7 @@ export default function AboutPage() {
                 reliable transportation solutions.
               </p>
               <p className="text-lg text-gray-600 mb-8">
-                We believe that every delivery matters, and we're committed to making the 
+                We believe that every delivery matters, and we&apos;re committed to making the 
                 process as smooth and reliable as possible for both drivers and customers.
               </p>
               <div className="flex items-center gap-4">
@@ -271,8 +271,8 @@ export default function AboutPage() {
             Join Our Mission
           </h2>
           <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
-            Whether you're a driver looking to grow your business or a customer in need of 
-            reliable transportation, we're here to help you succeed.
+            Whether you&apos;re a driver looking to grow your business or a customer in need of 
+            reliable transportation, we&apos;re here to help you succeed.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/register">

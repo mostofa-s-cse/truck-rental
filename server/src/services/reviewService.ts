@@ -188,20 +188,27 @@ export class ReviewService {
     };
   }
 
-  static async getAllReviews(page = 1, limit = 10, rating?: number) {
+  static async getAllReviews(page = 1, limit = 10, rating?: number, search?: string) {
     const skip = (page - 1) * limit;
-    const where = rating ? { rating } : {};
+    
+    // Build where clause for filtering
+    let where: any = {};
+    
+    if (rating) {
+      where.rating = rating;
+    }
 
-    const [reviews, total] = await Promise.all([
+    // For search, we'll fetch all reviews and filter them in the application
+    // This ensures we can search across all fields including nested relations
+    const [allReviews, total] = await Promise.all([
       prisma.review.findMany({
         where,
-        skip,
-        take: limit,
         include: {
           user: {
             select: {
               id: true,
               name: true,
+              email: true,
               avatar: true
             }
           },
@@ -211,6 +218,7 @@ export class ReviewService {
                 select: {
                   id: true,
                   name: true,
+                  email: true,
                   avatar: true
                 }
               }
@@ -233,12 +241,52 @@ export class ReviewService {
       prisma.review.count({ where })
     ]);
 
+    // Apply search filtering if search term is provided
+    let filteredReviews = allReviews;
+    let finalTotal = total;
+    
+    if (search && search.trim()) {
+      const searchTerm = search.trim().toLowerCase();
+      
+      filteredReviews = allReviews.filter(review => {
+        // Check review ID
+        const reviewId = review.id.toLowerCase();
+        
+        // Check booking ID
+        const bookingId = review.bookingId.toLowerCase();
+        
+        // Check user name and email
+        const userName = review.user.name.toLowerCase();
+        const userEmail = review.user.email?.toLowerCase() || '';
+        
+        // Check driver name and email
+        const driverName = review.driver.user.name.toLowerCase();
+        const driverEmail = review.driver.user.email?.toLowerCase() || '';
+        
+        // Check comment
+        const comment = review.comment?.toLowerCase() || '';
+        
+        return reviewId.includes(searchTerm) || 
+               bookingId.includes(searchTerm) || 
+               userName.includes(searchTerm) || 
+               userEmail.includes(searchTerm) || 
+               driverName.includes(searchTerm) || 
+               driverEmail.includes(searchTerm) ||
+               comment.includes(searchTerm);
+      });
+      
+      finalTotal = filteredReviews.length;
+    }
+
+    // Apply pagination to filtered results
+    const paginatedReviews = filteredReviews.slice(skip, skip + limit);
+
     return {
-      reviews,
-      total,
+      reviews: paginatedReviews,
+      total: finalTotal,
       page,
       limit,
-      totalPages: Math.ceil(total / limit)
+      totalPages: Math.ceil(finalTotal / limit)
     };
   }
 

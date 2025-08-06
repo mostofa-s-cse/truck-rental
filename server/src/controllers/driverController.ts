@@ -265,11 +265,13 @@ export class DriverController {
     try {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
+      const search = req.query.search as string;
+      const status = req.query.status as string;
       const userId = (req as any).user?.userId || 'anonymous';
       
-      logDatabase('select', 'drivers', { page, limit, requestedBy: userId, operation: 'get_all_drivers' });
+      logDatabase('select', 'drivers', { page, limit, search, status, requestedBy: userId, operation: 'get_all_drivers' });
       
-      const result = await DriverService.getAllDrivers(page, limit);
+      const result = await DriverService.getAllDrivers(page, limit, search, status);
 
       const response: ApiResponse = {
         success: true,
@@ -285,7 +287,9 @@ export class DriverController {
         operation: 'get_all_drivers', 
         userId,
         page: req.query.page,
-        limit: req.query.limit
+        limit: req.query.limit,
+        search: req.query.search,
+        status: req.query.status
       });
 
       const response: ApiResponse = {

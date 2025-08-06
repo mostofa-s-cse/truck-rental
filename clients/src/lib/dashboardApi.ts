@@ -25,14 +25,20 @@ export interface UserStats {
 
 export interface Booking {
   id: string;
-  user?: string;
+  user?: {
+    name: string;
+    email: string;
+    phone?: string;
+  } | string;
   driver?: string;
   source: string;
   destination: string;
   fare: number;
   status: string;
   date: string;
+  createdAt?: string;
   pickupTime?: string;
+  completedAt?: string;
   distance?: number;
   rating?: number;
   driverRating?: number;
@@ -117,6 +123,14 @@ export const driverApi = {
 
   declineBooking: async (bookingId: string): Promise<void> => {
     await apiClient.getClient().put(`/driver/bookings/${bookingId}/decline`);
+  },
+
+  startTrip: async (bookingId: string): Promise<void> => {
+    await apiClient.getClient().put(`/driver/bookings/${bookingId}/start`);
+  },
+
+  completeTrip: async (bookingId: string): Promise<void> => {
+    await apiClient.getClient().put(`/driver/bookings/${bookingId}/complete`);
   }
 };
 
@@ -153,6 +167,10 @@ export const userApi = {
   }): Promise<{ fare: number; distance: number }> => {
     const response = await apiClient.getClient().post('/fare/calculate', params);
     return response.data;
+  },
+
+  cancelBooking: async (bookingId: string): Promise<void> => {
+    await apiClient.getClient().put(`/user/bookings/${bookingId}/cancel`);
   }
 };
 

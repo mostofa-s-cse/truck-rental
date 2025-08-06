@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { User, RegisterData, ApiResponse } from '@/types';
+import { User, RegisterData } from '@/types';
 import { apiClient } from '@/lib/api';
 import { setAuthData, getAuthData, clearAuthData } from '@/utils/auth';
 
@@ -27,7 +27,8 @@ export const loginUser = createAsyncThunk(
       const response = await apiClient.login({ email, password });
       
       if (response.success && response.data) {
-        const { user, token } = response.data;
+        const authData = response.data as { user: User; token: string };
+        const { user, token } = authData;
         
         // Store auth data using utility function
         setAuthData(user, token);
@@ -36,8 +37,9 @@ export const loginUser = createAsyncThunk(
       } else {
         return rejectWithValue(response.message || 'Login failed');
       }
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || error.message || 'Login failed');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Login failed';
+      return rejectWithValue(errorMessage);
     }
   }
 );
@@ -49,7 +51,8 @@ export const registerUser = createAsyncThunk(
       const response = await apiClient.register(userData);
       
       if (response.success && response.data) {
-        const { user, token } = response.data;
+        const authData = response.data as { user: User; token: string };
+        const { user, token } = authData;
         
         // Store auth data using utility function
         setAuthData(user, token);
@@ -58,8 +61,9 @@ export const registerUser = createAsyncThunk(
       } else {
         return rejectWithValue(response.message || 'Registration failed');
       }
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || error.message || 'Registration failed');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Registration failed';
+      return rejectWithValue(errorMessage);
     }
   }
 );
@@ -84,7 +88,7 @@ export const checkAuthStatus = createAsyncThunk(
       }
       
       return rejectWithValue('No stored auth data');
-    } catch (error) {
+    } catch {
       return rejectWithValue('Failed to check auth status');
     }
   }

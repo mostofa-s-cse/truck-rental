@@ -4,26 +4,24 @@ import { useState, useEffect } from 'react';
 import { useAppSelector } from '@/hooks/redux';
 import DashboardLayout from '@/components/ui/DashboardLayout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
-import { userApi, UserStats, Driver } from '@/lib/dashboardApi';
+import { userApi, UserStats, Driver, Booking } from '@/lib/dashboardApi';
 import { 
   CalendarIcon, 
   CurrencyDollarIcon,
   StarIcon,
   TruckIcon,
-  MapIcon,
   ClockIcon,
-  CheckCircleIcon,
-  XCircleIcon,
   PlusIcon,
   MagnifyingGlassIcon
 } from '@heroicons/react/24/outline';
 
-interface UserDashboardProps {}
+// Component props interface - currently no props needed
+type UserDashboardProps = Record<string, never>;
 
 export default function UserDashboard({}: UserDashboardProps) {
   const { user } = useAppSelector((state) => state.auth);
   const [stats, setStats] = useState<UserStats | null>(null);
-  const [recentBookings, setRecentBookings] = useState<any[]>([]);
+  const [recentBookings, setRecentBookings] = useState<Booking[]>([]);
   const [nearbyDrivers, setNearbyDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchParams, setSearchParams] = useState({
@@ -243,7 +241,7 @@ export default function UserDashboard({}: UserDashboardProps) {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {recentBookings.slice(0, 5).map((booking: any) => (
+                    {recentBookings.slice(0, 5).map((booking) => (
                       <div key={booking.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
                         <div>
                           <p className="font-medium text-gray-900">

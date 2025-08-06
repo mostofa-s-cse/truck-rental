@@ -13,10 +13,20 @@ interface SearchFilters {
   quality?: 'EXCELLENT' | 'GOOD' | 'AVERAGE' | 'POOR';
 }
 
+interface SearchResult {
+  id: string;
+  name: string;
+  type: string;
+  rating: number;
+  location: string;
+  price: number;
+  available: boolean;
+}
+
 interface SearchState {
   filters: SearchFilters;
   searchQuery: string;
-  searchResults: any[];
+  searchResults: SearchResult[];
   totalResults: number;
   currentPage: number;
   itemsPerPage: number;
@@ -50,7 +60,7 @@ const searchSlice = createSlice({
     setSearchQuery: (state, action: PayloadAction<string>) => {
       state.searchQuery = action.payload;
     },
-    setSearchResults: (state, action: PayloadAction<{ results: any[]; total: number }>) => {
+    setSearchResults: (state, action: PayloadAction<{ results: SearchResult[]; total: number }>) => {
       state.searchResults = action.payload.results;
       state.totalResults = action.payload.total;
     },

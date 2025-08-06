@@ -432,4 +432,442 @@ export class DashboardService {
       distance
     };
   }
+
+  static async getRevenueAnalytics(filters: any) {
+    try {
+      console.log('Server received filters:', filters);
+      console.log('Payment method filter:', filters.paymentMethod);
+      
+      // Build where clause based on filters
+      const whereClause: any = {};
+      
+      if (filters.paymentMethod && filters.paymentMethod !== '') {
+        whereClause.payment = {
+          paymentMethod: filters.paymentMethod
+        };
+      }
+      
+      console.log('Final where clause:', JSON.stringify(whereClause, null, 2));
+      
+      if (filters.status) {
+        whereClause.status = filters.status;
+      }
+      
+      if (filters.startDate || filters.endDate) {
+        whereClause.createdAt = {};
+        if (filters.startDate) {
+          whereClause.createdAt.gte = new Date(filters.startDate as string);
+        }
+        if (filters.endDate) {
+          whereClause.createdAt.lte = new Date(filters.endDate as string);
+        }
+      }
+
+      // Get all bookings with filters
+      const bookings = await prisma.booking.findMany({
+        where: whereClause,
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true
+            }
+          },
+          driver: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true
+                }
+              }
+            }
+          },
+          payment: true
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+      
+      console.log(`Found ${bookings.length} bookings with filters`);
+      console.log('Sample booking payment methods:', bookings.slice(0, 3).map(b => b.payment?.paymentMethod));
+
+      // Calculate total revenue
+      const totalRevenue = bookings.reduce((sum, booking) => sum + booking.fare, 0);
+      
+      // Calculate today's revenue
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayBookings = bookings.filter(booking => 
+        new Date(booking.createdAt) >= today
+      );
+      const todayRevenue = todayBookings.reduce((sum, booking) => sum + booking.fare, 0);
+
+      // Calculate monthly revenue
+      const monthStart = new Date();
+      monthStart.setDate(1);
+      monthStart.setHours(0, 0, 0, 0);
+      const monthlyBookings = bookings.filter(booking => 
+        new Date(booking.createdAt) >= monthStart
+      );
+      const monthlyRevenue = monthlyBookings.reduce((sum, booking) => sum + booking.fare, 0);
+
+      // Calculate yearly revenue
+      const yearStart = new Date();
+      yearStart.setMonth(0, 1);
+      yearStart.setHours(0, 0, 0, 0);
+      const yearlyBookings = bookings.filter(booking => 
+        new Date(booking.createdAt) >= yearStart
+      );
+      const yearlyRevenue = yearlyBookings.reduce((sum, booking) => sum + booking.fare, 0);
+
+      // Calculate average order value
+      const averageOrderValue = bookings.length > 0 ? totalRevenue / bookings.length : 0;
+
+      // Calculate revenue growth (mock calculation)
+      const revenueGrowth = 15.8; // This would be calculated based on previous period
+
+      // Revenue by payment method
+      const paymentMethodStats = new Map<string, { revenue: number; count: number }>();
+      bookings.forEach(booking => {
+        const method = booking.payment?.paymentMethod || 'UNKNOWN';
+        const current = paymentMethodStats.get(method) || { revenue: 0, count: 0 };
+        current.revenue += booking.fare;
+        current.count += 1;
+        paymentMethodStats.set(method, current);
+      });
+
+      const revenueByMethod = Array.from(paymentMethodStats.entries()).map(([method, stats]) => ({
+        method,
+        revenue: stats.revenue,
+        percentage: totalRevenue > 0 ? (stats.revenue / totalRevenue) * 100 : 0,
+        icon: 'CreditCardIcon' // This would be mapped based on method
+      }));
+
+      // Revenue by month (last 6 months)
+      const revenueByMonth = [];
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+      for (let i = 5; i >= 0; i--) {
+        const monthStart = new Date();
+        monthStart.setMonth(monthStart.getMonth() - i, 1);
+        monthStart.setHours(0, 0, 0, 0);
+        
+        const monthEnd = new Date(monthStart);
+        monthEnd.setMonth(monthEnd.getMonth() + 1, 0);
+        monthEnd.setHours(23, 59, 59, 999);
+
+        const monthBookings = bookings.filter(booking => {
+          const bookingDate = new Date(booking.createdAt);
+          return bookingDate >= monthStart && bookingDate <= monthEnd;
+        });
+
+        const monthRevenue = monthBookings.reduce((sum, booking) => sum + booking.fare, 0);
+        const growth = i === 5 ? 0 : 10 + Math.random() * 10; // Mock growth calculation
+
+        revenueByMonth.push({
+          month: months[i],
+          revenue: monthRevenue,
+          growth: Math.round(growth * 10) / 10
+        });
+      }
+
+      // Revenue by day of week
+      const revenueByDay = [];
+      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      for (let i = 0; i < 7; i++) {
+        const dayBookings = bookings.filter(booking => {
+          const bookingDate = new Date(booking.createdAt);
+          return bookingDate.getDay() === i;
+        });
+
+        const dayRevenue = dayBookings.reduce((sum, booking) => sum + booking.fare, 0);
+        revenueByDay.push({
+          day: days[i],
+          revenue: dayRevenue,
+          bookings: dayBookings.length
+        });
+      }
+
+      // Top revenue routes
+      const routeStats = new Map<string, { revenue: number; bookings: number; totalFare: number }>();
+      bookings.forEach(booking => {
+        const route = `${booking.source} to ${booking.destination}`;
+        const current = routeStats.get(route) || { revenue: 0, bookings: 0, totalFare: 0 };
+        current.revenue += booking.fare;
+        current.bookings += 1;
+        current.totalFare += booking.fare;
+        routeStats.set(route, current);
+      });
+
+      const topRevenueRoutes = Array.from(routeStats.entries())
+        .map(([route, stats]) => ({
+          route,
+          revenue: stats.revenue,
+          bookings: stats.bookings,
+          avgFare: stats.bookings > 0 ? Math.round(stats.totalFare / stats.bookings) : 0
+        }))
+        .sort((a, b) => b.revenue - a.revenue)
+        .slice(0, 5);
+
+      // Revenue by status
+      const statusStats = new Map<string, { revenue: number; count: number }>();
+      bookings.forEach(booking => {
+        const status = booking.status;
+        const current = statusStats.get(status) || { revenue: 0, count: 0 };
+        current.revenue += booking.fare;
+        current.count += 1;
+        statusStats.set(status, current);
+      });
+
+      const revenueByStatus = Array.from(statusStats.entries()).map(([status, stats]) => ({
+        status,
+        revenue: stats.revenue,
+        percentage: totalRevenue > 0 ? (stats.revenue / totalRevenue) * 100 : 0,
+        color: status === 'COMPLETED' ? 'bg-green-500' : 
+               status === 'PENDING' ? 'bg-yellow-500' : 'bg-blue-500'
+      }));
+
+      // Payment method distribution
+      const paymentMethodDistribution = Array.from(paymentMethodStats.entries()).map(([method, stats]) => ({
+        method,
+        count: stats.count,
+        revenue: stats.revenue,
+        percentage: bookings.length > 0 ? (stats.count / bookings.length) * 100 : 0
+      }));
+
+      // Revenue trends (last 7 days)
+      const revenueTrends = [];
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        date.setHours(0, 0, 0, 0);
+        
+        const nextDate = new Date(date);
+        nextDate.setDate(nextDate.getDate() + 1);
+
+        const dayBookings = bookings.filter(booking => {
+          const bookingDate = new Date(booking.createdAt);
+          return bookingDate >= date && bookingDate < nextDate;
+        });
+
+        const dayRevenue = dayBookings.reduce((sum, booking) => sum + booking.fare, 0);
+        const avgFare = dayBookings.length > 0 ? dayRevenue / dayBookings.length : 0;
+
+        revenueTrends.push({
+          date: date.toISOString().split('T')[0],
+          revenue: dayRevenue,
+          bookings: dayBookings.length,
+          avgFare: Math.round(avgFare * 100) / 100
+        });
+      }
+
+      return {
+        totalRevenue,
+        todayRevenue,
+        monthlyRevenue,
+        yearlyRevenue,
+        revenueGrowth,
+        averageOrderValue: Math.round(averageOrderValue * 100) / 100,
+        revenueByMethod,
+        revenueByMonth,
+        revenueByDay,
+        topRevenueRoutes,
+        revenueByStatus,
+        paymentMethodDistribution,
+        revenueTrends
+      };
+    } catch (error) {
+      console.error('Error in getRevenueAnalytics:', error);
+      throw new Error('Failed to get revenue analytics');
+    }
+  }
+
+  static async getBookingAnalytics(filters: any) {
+    try {
+      // Build where clause based on filters
+      const whereClause: any = {};
+      
+      if (filters.status) {
+        whereClause.status = filters.status;
+      }
+      
+      if (filters.driverId) {
+        whereClause.driverId = filters.driverId;
+      }
+      
+      if (filters.userId) {
+        whereClause.userId = filters.userId;
+      }
+      
+      if (filters.startDate || filters.endDate) {
+        whereClause.createdAt = {};
+        if (filters.startDate) {
+          whereClause.createdAt.gte = new Date(filters.startDate as string);
+        }
+        if (filters.endDate) {
+          whereClause.createdAt.lte = new Date(filters.endDate as string);
+        }
+      }
+
+      // Get all bookings with filters
+      const bookings = await prisma.booking.findMany({
+        where: whereClause,
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true
+            }
+          },
+          driver: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true
+                }
+              }
+            }
+          }
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+
+      // Calculate basic metrics
+      const totalBookings = bookings.length;
+      const completedBookings = bookings.filter(b => b.status === 'COMPLETED').length;
+      const pendingBookings = bookings.filter(b => b.status === 'PENDING').length;
+      const cancelledBookings = bookings.filter(b => b.status === 'CANCELLED').length;
+      const totalRevenue = bookings.reduce((sum, booking) => sum + booking.fare, 0);
+      const averageFare = totalBookings > 0 ? totalRevenue / totalBookings : 0;
+
+      // Booking trends (last 7 days)
+      const bookingTrends = [];
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        date.setHours(0, 0, 0, 0);
+        
+        const nextDate = new Date(date);
+        nextDate.setDate(nextDate.getDate() + 1);
+
+        const dayBookings = bookings.filter(booking => {
+          const bookingDate = new Date(booking.createdAt);
+          return bookingDate >= date && bookingDate < nextDate;
+        });
+
+        const dayRevenue = dayBookings.reduce((sum, booking) => sum + booking.fare, 0);
+        const completed = dayBookings.filter(b => b.status === 'COMPLETED').length;
+        const cancelled = dayBookings.filter(b => b.status === 'CANCELLED').length;
+
+        bookingTrends.push({
+          date: date.toISOString().split('T')[0],
+          bookings: dayBookings.length,
+          revenue: dayRevenue,
+          completed,
+          cancelled
+        });
+      }
+
+      // Status distribution
+      const statusCounts = new Map<string, number>();
+      bookings.forEach(booking => {
+        const status = booking.status;
+        statusCounts.set(status, (statusCounts.get(status) || 0) + 1);
+      });
+
+      const statusDistribution = Array.from(statusCounts.entries()).map(([status, count]) => ({
+        status,
+        count,
+        percentage: totalBookings > 0 ? (count / totalBookings) * 100 : 0,
+        color: status === 'COMPLETED' ? 'bg-green-500' : 
+               status === 'PENDING' ? 'bg-yellow-500' : 
+               status === 'CONFIRMED' ? 'bg-blue-500' : 
+               status === 'IN_PROGRESS' ? 'bg-purple-500' : 'bg-red-500'
+      }));
+
+      // Top routes
+      const routeStats = new Map<string, { bookings: number; revenue: number; totalFare: number }>();
+      bookings.forEach(booking => {
+        const route = `${booking.source} to ${booking.destination}`;
+        const current = routeStats.get(route) || { bookings: 0, revenue: 0, totalFare: 0 };
+        current.bookings += 1;
+        current.revenue += booking.fare;
+        current.totalFare += booking.fare;
+        routeStats.set(route, current);
+      });
+
+      const topRoutes = Array.from(routeStats.entries())
+        .map(([route, stats]) => ({
+          route,
+          bookings: stats.bookings,
+          revenue: stats.revenue,
+          avgFare: stats.bookings > 0 ? Math.round(stats.totalFare / stats.bookings) : 0
+        }))
+        .sort((a, b) => b.bookings - a.bookings)
+        .slice(0, 5);
+
+      // Peak hours (mock data for now)
+      const peakHours = [
+        { hour: '08:00', bookings: 45, percentage: 12.5 },
+        { hour: '09:00', bookings: 52, percentage: 14.4 },
+        { hour: '10:00', bookings: 38, percentage: 10.6 },
+        { hour: '11:00', bookings: 61, percentage: 16.9 },
+        { hour: '12:00', bookings: 48, percentage: 13.3 },
+        { hour: '13:00', bookings: 55, percentage: 15.3 },
+        { hour: '14:00', bookings: 42, percentage: 11.7 },
+        { hour: '15:00', bookings: 38, percentage: 10.6 },
+        { hour: '16:00', bookings: 52, percentage: 14.4 },
+        { hour: '17:00', bookings: 45, percentage: 12.5 }
+      ];
+
+      // Monthly comparison (last 6 months)
+      const monthlyComparison = [];
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+      for (let i = 5; i >= 0; i--) {
+        const monthStart = new Date();
+        monthStart.setMonth(monthStart.getMonth() - i, 1);
+        monthStart.setHours(0, 0, 0, 0);
+        
+        const monthEnd = new Date(monthStart);
+        monthEnd.setMonth(monthEnd.getMonth() + 1, 0);
+        monthEnd.setHours(23, 59, 59, 999);
+
+        const monthBookings = bookings.filter(booking => {
+          const bookingDate = new Date(booking.createdAt);
+          return bookingDate >= monthStart && bookingDate <= monthEnd;
+        });
+
+        const monthRevenue = monthBookings.reduce((sum, booking) => sum + booking.fare, 0);
+        const growth = i === 5 ? 0 : 10 + Math.random() * 10; // Mock growth calculation
+
+        monthlyComparison.push({
+          month: months[i],
+          bookings: monthBookings.length,
+          revenue: monthRevenue,
+          growth: Math.round(growth * 10) / 10
+        });
+      }
+
+      return {
+        totalBookings,
+        completedBookings,
+        pendingBookings,
+        cancelledBookings,
+        totalRevenue,
+        averageFare: Math.round(averageFare * 100) / 100,
+        bookingTrends,
+        statusDistribution,
+        topRoutes,
+        peakHours,
+        monthlyComparison
+      };
+    } catch (error) {
+      console.error('Error in getBookingAnalytics:', error);
+      throw new Error('Failed to get booking analytics');
+    }
+  }
 } 

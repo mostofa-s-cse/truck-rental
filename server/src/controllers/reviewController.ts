@@ -125,11 +125,12 @@ export class ReviewController {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
       const rating = req.query.rating ? parseInt(req.query.rating as string) : undefined;
+      const search = req.query.search as string;
       const userId = (req as any).user?.userId || 'anonymous';
       
-      logDatabase('select', 'reviews', { page, limit, rating, requestedBy: userId, operation: 'all_reviews' });
+      logDatabase('select', 'reviews', { page, limit, rating, search, requestedBy: userId, operation: 'all_reviews' });
       
-      const result = await ReviewService.getAllReviews(page, limit, rating);
+      const result = await ReviewService.getAllReviews(page, limit, rating, search);
 
       const response: ApiResponse = {
         success: true,
