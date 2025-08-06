@@ -167,6 +167,46 @@ class ApiClient {
     return response.data;
   }
 
+  // Payment methods
+  async createPaymentSession(paymentRequest: {
+    bookingId: string;
+    amount: number;
+    currency: string;
+    customerName: string;
+    customerEmail: string;
+    customerPhone: string;
+    customerAddress: string;
+    customerCity: string;
+    customerPostCode: string;
+    customerCountry: string;
+    successUrl: string;
+    failUrl: string;
+    cancelUrl: string;
+    ipnUrl: string;
+  }): Promise<ApiResponse<{
+    redirectUrl: string;
+    sessionKey: string;
+    transactionId: string;
+  }>> {
+    const response = await this.client.post('/payments/session', paymentRequest);
+    return response.data;
+  }
+
+  async validatePayment(tranId: string, amount: number, currency: string): Promise<ApiResponse> {
+    const response = await this.client.post('/payments/validate', { tran_id: tranId, amount, currency });
+    return response.data;
+  }
+
+  async getPaymentStatus(bookingId: string): Promise<ApiResponse> {
+    const response = await this.client.get(`/payments/status/${bookingId}`);
+    return response.data;
+  }
+
+  async refundPayment(bookingId: string, reason: string): Promise<ApiResponse> {
+    const response = await this.client.post(`/payments/refund/${bookingId}`, { reason });
+    return response.data;
+  }
+
   async getBookings(page = 1, limit = 10): Promise<ApiResponse> {
     const response = await this.client.get('/bookings', { params: { page, limit } });
     return response.data;
@@ -224,6 +264,116 @@ class ApiClient {
     ratingData: Array<{ rating: number; count: number }>;
   }>> {
     const response = await this.client.get('/dashboard/driver/stats');
+    return response.data;
+  }
+
+  // Area endpoints
+  async getAreasForDropdown(): Promise<ApiResponse<Array<{
+    value: string;
+    label: string;
+    area: string;
+  }>>> {
+    const response = await this.client.get('/areas/dropdown');
+    return response.data;
+  }
+
+  async getAreasGrouped(): Promise<ApiResponse<{
+    [state: string]: {
+      [city: string]: Array<{
+        id: string;
+        name: string;
+        city: string;
+        state: string;
+        isActive: boolean;
+      }>
+    }
+  }>> {
+    const response = await this.client.get('/areas/grouped');
+    return response.data;
+  }
+
+  async getStates(): Promise<ApiResponse<string[]>> {
+    const response = await this.client.get('/areas/states');
+    return response.data;
+  }
+
+  async getCitiesByState(state: string): Promise<ApiResponse<string[]>> {
+    const response = await this.client.get(`/areas/cities/${state}`);
+    return response.data;
+  }
+
+  async getAllAreas(filters?: {
+    city?: string;
+    state?: string;
+    search?: string;
+    isActive?: boolean;
+  }): Promise<ApiResponse<Array<{
+    id: string;
+    name: string;
+    city: string;
+    state: string;
+    isActive: boolean;
+    createdAt: string;
+    updatedAt: string;
+  }>>> {
+    const response = await this.client.get('/areas', { params: filters });
+    return response.data;
+  }
+
+  // Fare calculation endpoints
+  async calculateFare(fareRequest: {
+    source: {
+      latitude: number;
+      longitude: number;
+      address?: string;
+    };
+    destination: {
+      latitude: number;
+      longitude: number;
+      address?: string;
+    };
+    truckType: 'MINI_TRUCK' | 'PICKUP' | 'LORRY' | 'TRUCK';
+    weight?: number;
+    urgency?: 'NORMAL' | 'URGENT' | 'EMERGENCY';
+  }): Promise<ApiResponse<{
+    distance: number;
+    duration: number;
+    baseFare: number;
+    weightMultiplier: number;
+    urgencyMultiplier: number;
+    totalFare: number;
+    breakdown: {
+      distanceCost: number;
+      weightCost: number;
+      urgencyCost: number;
+      basePrice: number;
+    };
+  }>> {
+    const response = await this.client.post('/fare-calculation/calculate', fareRequest);
+    return response.data;
+  }
+
+  async getFareHistory(page = 1, limit = 10): Promise<ApiResponse<{
+    bookings: Array<{
+      id: string;
+      source: string;
+      destination: string;
+      distance: number;
+      fare: number;
+      status: string;
+      createdAt: string;
+      driver: {
+        truckType: string;
+        capacity: number;
+      };
+    }>;
+    page: number;
+    limit: number;
+    total: number;
+  }>> {
+    const response = await this.client.get('/fare-calculation/history', { 
+      params: { page, limit } 
+    });
     return response.data;
   }
 

@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Truck, MapPin, Star, Search, Phone, MessageCircle, Loader2, Filter, X } from 'lucide-react';
+import { Truck, MapPin, Star, Search, Phone, MessageCircle, Loader2, Filter, X, TrendingUp } from 'lucide-react';
 import Button from '@/components/ui/Button';
+import BookingModal from '@/components/BookingModal';
 import { apiClient } from '@/lib/api';
 import { Driver, SearchFilters } from '@/types';
 
@@ -31,6 +32,10 @@ export default function SearchPage() {
   const [maxTrips, setMaxTrips] = useState('');
   const [availabilityFilter, setAvailabilityFilter] = useState('');
   const [verificationFilter, setVerificationFilter] = useState('');
+
+  // Booking modal state
+  const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
 
   const hasActiveFilters = selectedTruckType || selectedQuality || minCapacity || maxCapacity || 
                           minRating || maxRating || minTrips || maxTrips || availabilityFilter || verificationFilter;
@@ -261,6 +266,16 @@ export default function SearchPage() {
     loadInitialData();
   };
 
+  const handleBookNow = (driver: Driver) => {
+    setSelectedDriver(driver);
+    setIsBookingModalOpen(true);
+  };
+
+  const handleBookingComplete = () => {
+    // Refresh the search results or show success message
+    loadInitialData();
+  };
+
   const renderStars = (rating: number) => {
     return Array.from({ length: 5 }, (_, i) => (
       <Star
@@ -271,15 +286,38 @@ export default function SearchPage() {
   };
 
   return (
-    <div className="bg-gray-50 min-h-screen">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Available Trucks</h1>
-          <p className="text-gray-600">Search and browse available trucks in your area</p>
+    <div className="min-h-screen bg-gray-50">
+      {/* Hero Section */}
+      <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+          <div className="text-center">
+            <h1 className="text-4xl md:text-6xl font-bold mb-6">
+              Find Your Perfect Truck
+            </h1>
+            <p className="text-xl md:text-2xl mb-8 text-blue-100">
+              Connect with verified drivers across Bangladesh
+            </p>
+            
+            {/* Hero Search Bar */}
+            <div className="max-w-3xl mx-auto">
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-6 h-6" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search by location or truck type (e.g., Dhaka pickup, mini truck)..."
+                  className="w-full pl-12 pr-4 py-4 text-lg border-0 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 text-black placeholder-gray-500 bg-white shadow-lg"
+                />
+                {isLoading && (
+                  <Loader2 className="absolute right-4 top-1/2 transform -translate-y-1/2 w-6 h-6 animate-spin text-blue-600" />
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-
+      {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Filters Sidebar */}
@@ -343,14 +381,14 @@ export default function SearchPage() {
                       value={minCapacity}
                       onChange={(e) => setMinCapacity(e.target.value)}
                       placeholder="Min"
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-500 bg-white"
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-black placeholder-gray-500 bg-white"
                     />
                     <input
                       type="number"
                       value={maxCapacity}
                       onChange={(e) => setMaxCapacity(e.target.value)}
                       placeholder="Max"
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-500 bg-white"
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-black placeholder-gray-500 bg-white"
                     />
                   </div>
                 </div>
@@ -369,7 +407,7 @@ export default function SearchPage() {
                       min="0"
                       max="5"
                       step="0.1"
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-500 bg-white"
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-black placeholder-gray-500 bg-white"
                     />
                     <input
                       type="number"
@@ -379,7 +417,7 @@ export default function SearchPage() {
                       min="0"
                       max="5"
                       step="0.1"
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-500 bg-white"
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-black placeholder-gray-500 bg-white"
                     />
                   </div>
                 </div>
@@ -395,14 +433,14 @@ export default function SearchPage() {
                       value={minTrips}
                       onChange={(e) => setMinTrips(e.target.value)}
                       placeholder="Min"
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-500 bg-white"
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-black placeholder-gray-500 bg-white"
                     />
                     <input
                       type="number"
                       value={maxTrips}
                       onChange={(e) => setMaxTrips(e.target.value)}
                       placeholder="Max"
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-500 bg-white"
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-black placeholder-gray-500 bg-white"
                     />
                   </div>
                 </div>
@@ -456,32 +494,19 @@ export default function SearchPage() {
 
           {/* Search Results */}
           <div className="lg:col-span-3">
-            {/* Search Bar */}
-            <div className="bg-white rounded-lg shadow-sm p-3 mb-6">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search by location or truck type (e.g., Dhaka pickup, mini truck)..."
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-500 bg-white"
-                />
-                {isLoading && (
-                  <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 animate-spin text-blue-600" />
-                )}
-              </div>
-            </div>
-
             {/* Results Header */}
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h2 className="text-xl font-semibold text-gray-900">
+                <h2 className="text-2xl font-bold text-gray-900">
                   Available Trucks
                 </h2>
                 <p className="text-gray-600">
                   {totalResults} trucks found
                 </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-green-600" />
+                <span className="text-sm text-green-600 font-medium">Live Updates</span>
               </div>
             </div>
 
@@ -504,47 +529,26 @@ export default function SearchPage() {
 
             {/* Results */}
             {!isLoading && (
-              <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {drivers.map((driver) => (
-                  <div key={driver.id} className="bg-white rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-4 mb-4">
-                          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
-                            <Truck className="w-8 h-8 text-blue-600" />
-                          </div>
-                          <div>
-                            <h3 className="text-lg font-semibold text-gray-900">
-                              {driver.user.name}
-                            </h3>
-                            <div className="flex items-center gap-2 text-sm text-gray-600">
-                              <MapPin className="w-4 h-4" />
-                              {driver.location}
-                            </div>
+                  <div key={driver.id} className="bg-white rounded-lg shadow-sm border hover:shadow-lg transition-all duration-300 overflow-hidden">
+                    {/* Driver Header */}
+                    <div className="p-6 border-b border-gray-100">
+                      <div className="flex items-center gap-4">
+                        <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
+                          <Truck className="w-8 h-8 text-white" />
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="text-lg font-semibold text-gray-900">
+                            {driver.user.name}
+                          </h3>
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <MapPin className="w-4 h-4" />
+                            {driver.location}
                           </div>
                         </div>
-
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                          <div>
-                            <span className="text-sm text-gray-500">Truck Type</span>
-                            <p className="font-medium text-gray-900">{driver.truckType.replace('_', ' ')}</p>
-                          </div>
-                          <div>
-                            <span className="text-sm text-gray-500">Capacity</span>
-                            <p className="font-medium text-gray-900">{driver.capacity} tons</p>
-                          </div>
-                          <div>
-                            <span className="text-sm text-gray-500">Quality</span>
-                            <p className="font-medium text-gray-900">{driver.quality}</p>
-                          </div>
-                          <div>
-                            <span className="text-sm text-gray-500">Trips</span>
-                            <p className="font-medium text-gray-900">{driver.totalTrips}</p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-4 mb-4">
-                          <div className="flex items-center gap-1">
+                        <div className="text-right">
+                          <div className="flex items-center gap-1 mb-1">
                             {renderStars(driver.rating)}
                             <span className="ml-1 text-sm text-gray-600">
                               {driver.rating.toFixed(1)}
@@ -555,30 +559,60 @@ export default function SearchPage() {
                               Verified
                             </span>
                           )}
-                          {driver.isAvailable ? (
-                            <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-                              Available
-                            </span>
-                          ) : (
-                            <span className="bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full">
-                              Busy
-                            </span>
-                          )}
                         </div>
+                      </div>
+                    </div>
 
-                        <div className="flex gap-3">
-                          <Button className="bg-blue-600 text-white hover:bg-blue-700">
-                            Book Now
-                          </Button>
-                          <Button variant="outline" className="flex items-center gap-2">
-                            <Phone className="w-4 h-4" />
-                            Call
-                          </Button>
-                          <Button variant="outline" className="flex items-center gap-2">
-                            <MessageCircle className="w-4 h-4" />
-                            Message
-                          </Button>
+                    {/* Driver Details */}
+                    <div className="p-6">
+                      <div className="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                          <span className="text-sm text-gray-500">Truck Type</span>
+                          <p className="font-medium text-gray-900">{driver.truckType.replace('_', ' ')}</p>
                         </div>
+                        <div>
+                          <span className="text-sm text-gray-500">Capacity</span>
+                          <p className="font-medium text-gray-900">{driver.capacity} tons</p>
+                        </div>
+                        <div>
+                          <span className="text-sm text-gray-500">Quality</span>
+                          <p className="font-medium text-gray-900">{driver.quality}</p>
+                        </div>
+                        <div>
+                          <span className="text-sm text-gray-500">Trips</span>
+                          <p className="font-medium text-gray-900">{driver.totalTrips}</p>
+                        </div>
+                      </div>
+
+                      {/* Status Badge */}
+                      <div className="mb-4">
+                        {driver.isAvailable ? (
+                          <span className="bg-green-100 text-green-800 text-sm px-3 py-1 rounded-full">
+                            Available Now
+                          </span>
+                        ) : (
+                          <span className="bg-red-100 text-red-800 text-sm px-3 py-1 rounded-full">
+                            Currently Busy
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex gap-3">
+                        <Button 
+                          onClick={() => handleBookNow(driver)}
+                          className="flex-1 bg-blue-600 text-white hover:bg-blue-700"
+                        >
+                          Book Now
+                        </Button>
+                        <Button variant="outline" className="flex items-center gap-2">
+                          <Phone className="w-4 h-4" />
+                          Call
+                        </Button>
+                        <Button variant="outline" className="flex items-center gap-2">
+                          <MessageCircle className="w-4 h-4" />
+                          Message
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -629,6 +663,14 @@ export default function SearchPage() {
           </div>
         </div>
       </div>
+
+      {/* Booking Modal */}
+      <BookingModal
+        driver={selectedDriver}
+        isOpen={isBookingModalOpen}
+        onClose={() => setIsBookingModalOpen(false)}
+        onBookingComplete={handleBookingComplete}
+      />
     </div>
   );
-} 
+}  

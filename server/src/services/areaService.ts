@@ -1,262 +1,267 @@
 import { PrismaClient } from '@prisma/client';
-import { logDatabase } from '../utils/logger';
 
 const prisma = new PrismaClient();
 
-export interface CreateAreaRequest {
+export interface Area {
+  id: string;
   name: string;
   city: string;
   state: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-export interface UpdateAreaRequest {
-  name?: string;
+export interface AreaFilters {
   city?: string;
   state?: string;
+  search?: string;
   isActive?: boolean;
 }
 
 export class AreaService {
-  static async createArea(data: CreateAreaRequest) {
-    logDatabase('insert', 'areas', { name: data.name, city: data.city, state: data.state });
-    
-    const area = await prisma.area.create({
-      data: {
-        name: data.name,
-        city: data.city,
-        state: data.state
+  /**
+   * Get all areas with optional filtering
+   */
+  async getAllAreas(filters: AreaFilters = {}): Promise<Area[]> {
+    try {
+      const whereClause: any = {};
+
+      // Apply filters
+      if (filters.city) {
+        whereClause.city = {
+          contains: filters.city
+        };
       }
-    });
 
-    logDatabase('insert_success', 'areas', { id: area.id, name: data.name });
-    
-    return area;
-  }
+      if (filters.state) {
+        whereClause.state = {
+          contains: filters.state
+        };
+      }
 
-  static async getAllAreas(page = 1, limit = 10, includeInactive = false) {
-    const skip = (page - 1) * limit;
-    const where = includeInactive ? {} : { isActive: true };
+      if (filters.search) {
+        whereClause.OR = [
+          {
+            name: {
+              contains: filters.search
+            }
+          },
+          {
+            city: {
+              contains: filters.search
+            }
+          },
+          {
+            state: {
+              contains: filters.search
+            }
+          }
+        ];
+      }
 
-    logDatabase('select', 'areas', { page, limit, includeInactive });
+      if (filters.isActive !== undefined) {
+        whereClause.isActive = filters.isActive;
+      }
 
-    const [areas, total] = await Promise.all([
-      prisma.area.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: {
-          createdAt: 'desc'
-        }
-      }),
-      prisma.area.count({ where })
-    ]);
-
-    return {
-      areas,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit)
-    };
-  }
-
-  static async getAreaById(id: string) {
-    logDatabase('select', 'areas', { id });
-
-    const area = await prisma.area.findUnique({
-      where: { id }
-    });
-
-    if (!area) {
-      throw new Error('Area not found');
-    }
-
-    return area;
-  }
-
-  static async updateArea(id: string, data: UpdateAreaRequest) {
-    logDatabase('update', 'areas', { id, updateFields: Object.keys(data) });
-
-    const area = await prisma.area.update({
-      where: { id },
-      data
-    });
-
-    logDatabase('update_success', 'areas', { id });
-
-    return area;
-  }
-
-  static async deleteArea(id: string) {
-    logDatabase('delete', 'areas', { id });
-
-    const area = await prisma.area.delete({
-      where: { id }
-    });
-
-    logDatabase('delete_success', 'areas', { id });
-
-    return area;
-  }
-
-  static async deactivateArea(id: string) {
-    logDatabase('update', 'areas', { id, action: 'deactivate' });
-
-    const area = await prisma.area.update({
-      where: { id },
-      data: { isActive: false }
-    });
-
-    logDatabase('update_success', 'areas', { id, action: 'deactivated' });
-
-    return area;
-  }
-
-  static async activateArea(id: string) {
-    logDatabase('update', 'areas', { id, action: 'activate' });
-
-    const area = await prisma.area.update({
-      where: { id },
-      data: { isActive: true }
-    });
-
-    logDatabase('update_success', 'areas', { id, action: 'activated' });
-
-    return area;
-  }
-
-  static async searchAreas(query: string, page = 1, limit = 10) {
-    const skip = (page - 1) * limit;
-
-    logDatabase('select', 'areas', { query, page, limit, operation: 'search' });
-
-    const [areas, total] = await Promise.all([
-      prisma.area.findMany({
-        where: {
-          OR: [
-            { name: { contains: query } },
-            { city: { contains: query } },
-            { state: { contains: query } }
-          ]
-        },
-        skip,
-        take: limit,
-        orderBy: {
-          createdAt: 'desc'
-        }
-      }),
-      prisma.area.count({
-        where: {
-          OR: [
-            { name: { contains: query } },
-            { city: { contains: query } },
-            { state: { contains: query } }
-          ]
-        }
-      })
-    ]);
-
-    return {
-      areas,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit)
-    };
-  }
-
-  static async getAreasByCity(city: string, page = 1, limit = 10) {
-    const skip = (page - 1) * limit;
-
-    logDatabase('select', 'areas', { city, page, limit, operation: 'by_city' });
-
-    const [areas, total] = await Promise.all([
-      prisma.area.findMany({
-        where: {
-          city: { contains: city },
-          isActive: true
-        },
-        skip,
-        take: limit,
-        orderBy: {
-          name: 'asc'
-        }
-      }),
-      prisma.area.count({
-        where: {
-          city: { contains: city },
-          isActive: true
-        }
-      })
-    ]);
-
-    return {
-      areas,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit)
-    };
-  }
-
-  static async getAreasByState(state: string, page = 1, limit = 10) {
-    const skip = (page - 1) * limit;
-
-    logDatabase('select', 'areas', { state, page, limit, operation: 'by_state' });
-
-    const [areas, total] = await Promise.all([
-      prisma.area.findMany({
-        where: {
-          state: { contains: state },
-          isActive: true
-        },
-        skip,
-        take: limit,
+      const areas = await prisma.area.findMany({
+        where: whereClause,
         orderBy: [
+          { state: 'asc' },
           { city: 'asc' },
           { name: 'asc' }
         ]
-      }),
-      prisma.area.count({
-        where: {
-          state: { contains: state },
-          isActive: true
-        }
-      })
-    ]);
+      });
 
-    return {
-      areas,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit)
-    };
+      return areas;
+    } catch (error) {
+      console.error('Error fetching areas:', error);
+      throw new Error('Failed to fetch areas');
+    }
   }
 
-  static async getAreaStats() {
-    logDatabase('select', 'areas', { operation: 'stats' });
+  /**
+   * Get areas grouped by state and city
+   */
+  async getAreasGrouped(): Promise<{
+    [state: string]: {
+      [city: string]: Area[]
+    }
+  }> {
+    try {
+      const areas = await prisma.area.findMany({
+        where: { isActive: true },
+        orderBy: [
+          { state: 'asc' },
+          { city: 'asc' },
+          { name: 'asc' }
+        ]
+      });
 
-    const [totalAreas, activeAreas, inactiveAreas, uniqueCities, uniqueStates] = await Promise.all([
-      prisma.area.count(),
-      prisma.area.count({ where: { isActive: true } }),
-      prisma.area.count({ where: { isActive: false } }),
-      prisma.area.groupBy({
-        by: ['city'],
-        _count: { city: true }
-      }),
-      prisma.area.groupBy({
-        by: ['state'],
-        _count: { state: true }
-      })
-    ]);
+      const grouped: { [state: string]: { [city: string]: Area[] } } = {};
 
-    return {
-      totalAreas,
-      activeAreas,
-      inactiveAreas,
-      uniqueCities: uniqueCities.length,
-      uniqueStates: uniqueStates.length
-    };
+      areas.forEach(area => {
+        if (!grouped[area.state]) {
+          grouped[area.state] = {};
+        }
+        if (!grouped[area.state][area.city]) {
+          grouped[area.state][area.city] = [];
+        }
+        grouped[area.state][area.city].push(area);
+      });
+
+      return grouped;
+    } catch (error) {
+      console.error('Error fetching grouped areas:', error);
+      throw new Error('Failed to fetch grouped areas');
+    }
+  }
+
+  /**
+   * Get areas in the format expected by the frontend dropdown
+   */
+  async getAreasForDropdown(): Promise<Array<{
+    value: string;
+    label: string;
+    area: string;
+  }>> {
+    try {
+      const areas = await prisma.area.findMany({
+        where: { isActive: true },
+        orderBy: [
+          { state: 'asc' },
+          { city: 'asc' },
+          { name: 'asc' }
+        ]
+      });
+
+      return areas.map(area => ({
+        value: area.name.toLowerCase().replace(/\s+/g, '-'),
+        label: area.name,
+        area: area.state
+      }));
+    } catch (error) {
+      console.error('Error fetching areas for dropdown:', error);
+      throw new Error('Failed to fetch areas for dropdown');
+    }
+  }
+
+  /**
+   * Get area by ID
+   */
+  async getAreaById(id: string): Promise<Area | null> {
+    try {
+      const area = await prisma.area.findUnique({
+        where: { id }
+      });
+
+      return area;
+    } catch (error) {
+      console.error('Error fetching area by ID:', error);
+      throw new Error('Failed to fetch area');
+    }
+  }
+
+  /**
+   * Create a new area
+   */
+  async createArea(data: {
+    name: string;
+    city: string;
+    state: string;
+    isActive?: boolean;
+  }): Promise<Area> {
+    try {
+      const area = await prisma.area.create({
+        data: {
+          name: data.name,
+          city: data.city,
+          state: data.state,
+          isActive: data.isActive ?? true
+        }
+      });
+
+      return area;
+    } catch (error) {
+      console.error('Error creating area:', error);
+      throw new Error('Failed to create area');
+    }
+  }
+
+  /**
+   * Update an area
+   */
+  async updateArea(id: string, data: {
+    name?: string;
+    city?: string;
+    state?: string;
+    isActive?: boolean;
+  }): Promise<Area> {
+    try {
+      const area = await prisma.area.update({
+        where: { id },
+        data
+      });
+
+      return area;
+    } catch (error) {
+      console.error('Error updating area:', error);
+      throw new Error('Failed to update area');
+    }
+  }
+
+  /**
+   * Delete an area
+   */
+  async deleteArea(id: string): Promise<void> {
+    try {
+      await prisma.area.delete({
+        where: { id }
+      });
+    } catch (error) {
+      console.error('Error deleting area:', error);
+      throw new Error('Failed to delete area');
+    }
+  }
+
+  /**
+   * Get cities by state
+   */
+  async getCitiesByState(state: string): Promise<string[]> {
+    try {
+      const cities = await prisma.area.findMany({
+        where: { 
+          state: {
+            contains: state
+          },
+          isActive: true
+        },
+        select: { city: true },
+        distinct: ['city']
+      });
+
+      return cities.map(c => c.city);
+    } catch (error) {
+      console.error('Error fetching cities by state:', error);
+      throw new Error('Failed to fetch cities');
+    }
+  }
+
+  /**
+   * Get states
+   */
+  async getStates(): Promise<string[]> {
+    try {
+      const states = await prisma.area.findMany({
+        where: { isActive: true },
+        select: { state: true },
+        distinct: ['state']
+      });
+
+      return states.map(s => s.state);
+    } catch (error) {
+      console.error('Error fetching states:', error);
+      throw new Error('Failed to fetch states');
+    }
   }
 } 

@@ -1,197 +1,567 @@
 import { PrismaClient } from '@prisma/client';
+import * as crypto from 'crypto';
+import axios from 'axios';
+import { logDatabase, logError } from '../utils/logger';
 
 const prisma = new PrismaClient();
 
-export interface PaymentData {
+export interface SSLCommerzConfig {
+  storeId: string;
+  storePassword: string;
+  isSandbox: boolean;
+}
+
+export interface PaymentRequest {
   bookingId: string;
   amount: number;
-  paymentMethod: 'CASH' | 'CARD' | 'MOBILE_BANKING';
-  transactionId?: string;
-  status: 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED';
+  currency: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  customerAddress: string;
+  customerCity: string;
+  customerPostCode: string;
+  customerCountry: string;
+  successUrl: string;
+  failUrl: string;
+  cancelUrl: string;
+  ipnUrl: string;
+}
+
+// Payment status types based on schema
+export type PaymentStatus = 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED';
+export type PaymentMethod = 'CASH' | 'CARD' | 'MOBILE_BANKING';
+
+// Booking status types based on schema
+export type BookingStatus = 'PENDING' | 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+
+export interface SSLCommerzRequest {
+  store_id: string;
+  store_passwd: string;
+  total_amount: number;
+  currency: string;
+  tran_id: string;
+  product_category: string;
+  success_url: string;
+  fail_url: string;
+  cancel_url: string;
+  ipn_url: string;
+  multi_card_name: string;
+  allowed_bin: string;
+  emi_option: number;
+  emi_max_inst_option: number;
+  emi_selected_inst: number;
+  emi_allow_only: number;
+  cus_name: string;
+  cus_email: string;
+  cus_add1: string;
+  cus_add2: string;
+  cus_city: string;
+  cus_postcode: string;
+  cus_country: string;
+  cus_phone: string;
+  cus_fax: string;
+  ship_name: string;
+  ship_add1: string;
+  ship_add2: string;
+  ship_city: string;
+  ship_postcode: string;
+  ship_country: string;
+  product_name: string;
+  product_profile: string;
+  hours_till_departure: string;
+  flight_type: string;
+  pnr: string;
+  journey_from_to: string;
+  third_party_booking: string;
+  hotel_name: string;
+  length_of_stay: string;
+  check_in_time: string;
+  hotel_city: string;
+  product_type: string;
+  topup_number: string;
+  country_topup: string;
+  cart: string;
+  product_amount: number;
+  vat: number;
+  discount_amount: number;
+  convenience_fee: number;
+  emi_instalment: number;
+  emi_amount: number;
+  emi_description: string;
+  emi_issuer: string;
+  min_sector_amount: number;
+  current_sector_amount: number;
+  allowed_issuer_country: string;
+  order_id: string;
+}
+
+export interface SSLCommerzResponse {
+  status: string;
+  failedreason: string;
+  sessionkey: string;
+  gw: {
+    visa: string;
+    master: string;
+    amex: string;
+    othercards: string;
+    internetbanking: string;
+    mobilebanking: string;
+  };
+  redirectGatewayURL: string;
+  directPaymentURL: {
+    visa: string;
+    master: string;
+    amex: string;
+    othercards: string;
+    internetbanking: string;
+    mobilebanking: string;
+  };
+}
+
+export interface PaymentValidationResponse {
+  status: string;
+  tran_id: string;
+  val_id: string;
+  amount: number;
+  store_amount: number;
+  currency: string;
+  bank_tran_id: string;
+  card_type: string;
+  card_no: string;
+  card_issuer: string;
+  card_brand: string;
+  card_sub_brand: string;
+  card_issuer_country: string;
+  card_issuer_country_code: string;
+  store_id: string;
+  merchant_tran_id: string;
+  verify_sign: string;
+  verify_key: string;
+  cus_name: string;
+  cus_email: string;
+  cus_add1: string;
+  cus_add2: string;
+  cus_city: string;
+  cus_state: string;
+  cus_postcode: string;
+  cus_country: string;
+  cus_phone: string;
+  cus_fax: string;
+  ship_name: string;
+  ship_add1: string;
+  ship_add2: string;
+  ship_city: string;
+  ship_state: string;
+  ship_postcode: string;
+  ship_country: string;
+  value_a: string;
+  value_b: string;
+  value_c: string;
+  value_d: string;
+  risk_title: string;
+  risk_level: string;
 }
 
 export class PaymentService {
-  static async createPayment(paymentData: PaymentData) {
-    const { bookingId, amount, paymentMethod, transactionId, status } = paymentData;
+  private static config: SSLCommerzConfig = {
+    storeId: process.env.SSLCOMMERZ_STORE_ID || 'testbox',
+    storePassword: process.env.SSLCOMMERZ_STORE_PASSWORD || 'qwerty',
+    isSandbox: process.env.NODE_ENV !== 'production'
+  };
 
-    // Check if booking exists
-    const booking = await prisma.booking.findUnique({
-      where: { id: bookingId }
-    });
+  private static getBaseUrl(): string {
+    return this.config.isSandbox 
+      ? 'https://sandbox.sslcommerz.com'
+      : 'https://securepay.sslcommerz.com';
+  }
 
-    if (!booking) {
-      throw new Error('Booking not found');
+  static async createPaymentSession(paymentRequest: PaymentRequest): Promise<SSLCommerzResponse> {
+    try {
+      logDatabase('create', 'payment_session', { bookingId: paymentRequest.bookingId });
+
+      // Check if booking exists
+      const booking = await prisma.booking.findUnique({
+        where: { id: paymentRequest.bookingId },
+        include: { payment: true }
+      });
+
+      if (!booking) {
+        throw new Error('Booking not found');
+      }
+
+      // Check if payment already exists and is pending
+      if (booking.payment && booking.payment.status === 'PENDING' as PaymentStatus) {
+        throw new Error('Payment session already exists for this booking');
+      }
+
+      // Generate unique transaction ID
+      const tranId = `TXN_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+      // Create SSLCommerz request payload
+      const sslRequest: SSLCommerzRequest = {
+        store_id: this.config.storeId,
+        store_passwd: this.config.storePassword,
+        total_amount: paymentRequest.amount,
+        currency: paymentRequest.currency,
+        tran_id: tranId,
+        product_category: 'transport',
+        success_url: paymentRequest.successUrl,
+        fail_url: paymentRequest.failUrl,
+        cancel_url: paymentRequest.cancelUrl,
+        ipn_url: paymentRequest.ipnUrl,
+        multi_card_name: '',
+        allowed_bin: '',
+        emi_option: 0,
+        emi_max_inst_option: 0,
+        emi_selected_inst: 0,
+        emi_allow_only: 0,
+        cus_name: paymentRequest.customerName,
+        cus_email: paymentRequest.customerEmail,
+        cus_add1: paymentRequest.customerAddress || '',
+        cus_add2: '',
+        cus_city: paymentRequest.customerCity || '',
+        cus_postcode: paymentRequest.customerPostCode || '',
+        cus_country: paymentRequest.customerCountry || 'Bangladesh',
+        cus_phone: paymentRequest.customerPhone,
+        cus_fax: '',
+        ship_name: paymentRequest.customerName,
+        ship_add1: paymentRequest.customerAddress || '',
+        ship_add2: '',
+        ship_city: paymentRequest.customerCity || '',
+        ship_postcode: paymentRequest.customerPostCode || '',
+        ship_country: paymentRequest.customerCountry || 'Bangladesh',
+        product_name: 'Truck Booking Service',
+        product_profile: 'transport',
+        hours_till_departure: '',
+        flight_type: '',
+        pnr: '',
+        journey_from_to: '',
+        third_party_booking: '',
+        hotel_name: '',
+        length_of_stay: '',
+        check_in_time: '',
+        hotel_city: '',
+        product_type: '',
+        topup_number: '',
+        country_topup: '',
+        cart: '',
+        product_amount: 0,
+        vat: 0,
+        discount_amount: 0,
+        convenience_fee: 0,
+        emi_instalment: 0,
+        emi_amount: 0,
+        emi_description: '',
+        emi_issuer: '',
+        min_sector_amount: 0,
+        current_sector_amount: 0,
+        allowed_issuer_country: '',
+        order_id: paymentRequest.bookingId
+      };
+
+      // Make request to SSLCommerz
+      const formData = new URLSearchParams();
+      Object.entries(sslRequest).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          formData.append(key, value.toString());
+        }
+      });
+
+      console.log('Sending request to SSLCommerz:', {
+        url: `${this.getBaseUrl()}/gwprocess/v4/api.php`,
+        storeId: this.config.storeId,
+        amount: paymentRequest.amount,
+        currency: paymentRequest.currency,
+        tranId
+      });
+
+      const response = await axios.post(
+        `${this.getBaseUrl()}/gwprocess/v4/api.php`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          timeout: 30000 // 30 seconds timeout
+        }
+      );
+
+      console.log('SSLCommerz response:', response.data);
+
+      if (response.data.status === 'VALID') {
+        try {
+          // Update booking with transaction ID
+          await prisma.booking.update({
+            where: { id: paymentRequest.bookingId },
+            data: {
+              status: 'PENDING' as BookingStatus,
+              payment: {
+                upsert: {
+                  create: {
+                    amount: paymentRequest.amount,
+                    paymentMethod: 'CARD' as PaymentMethod,
+                    transactionId: tranId,
+                    status: 'PENDING' as PaymentStatus
+                  },
+                                  update: {
+                  amount: paymentRequest.amount,
+                  paymentMethod: 'CARD' as PaymentMethod,
+                  transactionId: tranId,
+                  status: 'PENDING' as PaymentStatus,
+                  updatedAt: new Date()
+                }
+                }
+              }
+            }
+          });
+
+          logDatabase('create_success', 'payment_session', { 
+            bookingId: paymentRequest.bookingId, 
+            tranId 
+          });
+        } catch (dbError) {
+          console.error('Database update error:', dbError);
+          logError(dbError, { 
+            operation: 'update_booking_payment', 
+            bookingId: paymentRequest.bookingId 
+          });
+          // Continue with payment session creation even if DB update fails
+        }
+      } else {
+        console.error('SSLCommerz error:', response.data.failedreason);
+      }
+
+      return response.data;
+    } catch (error) {
+      console.error('Payment session creation error:', error);
+      
+      if (axios.isAxiosError(error)) {
+        console.error('Axios error details:', {
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          data: error.response?.data,
+          message: error.message
+        });
+        
+        if (error.response?.status === 401) {
+          throw new Error('Invalid SSLCommerz credentials');
+        } else if (error.response?.status === 400) {
+          throw new Error(`SSLCommerz validation error: ${error.response.data?.failedreason || error.message}`);
+        } else if (error.code === 'ECONNABORTED') {
+          throw new Error('SSLCommerz request timeout');
+        } else {
+          throw new Error(`SSLCommerz error: ${error.message}`);
+        }
+      }
+      
+      logError(error, { 
+        operation: 'create_payment_session', 
+        bookingId: paymentRequest.bookingId 
+      });
+      throw new Error('Failed to create payment session');
     }
+  }
 
-    // Check if payment already exists for this booking
-    const existingPayment = await prisma.payment?.findFirst({
-      where: { bookingId }
-    });
+  static async validatePayment(tranId: string, amount: number, currency: string): Promise<PaymentValidationResponse> {
+    try {
+      logDatabase('validate', 'payment', { tranId });
 
-    if (existingPayment) {
-      throw new Error('Payment already exists for this booking');
-    }
+      const validationRequest = {
+        store_id: this.config.storeId,
+        store_passwd: this.config.storePassword,
+        tran_id: tranId,
+        val_id: tranId
+      };
 
-    // Create payment record
-    const payment = await prisma.payment?.create({
-      data: {
-        bookingId,
+      const formData = new URLSearchParams();
+      Object.entries(validationRequest).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          formData.append(key, value.toString());
+        }
+      });
+
+      console.log('Sending validation request to SSLCommerz:', {
+        url: `${this.getBaseUrl()}/validator/api/validationserverAPI.php`,
+        tranId,
         amount,
-        paymentMethod,
-        transactionId,
-        status
-      },
-      include: {
-        booking: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true
+        currency
+      });
+
+      const response = await axios.post(
+        `${this.getBaseUrl()}/validator/api/validationserverAPI.php`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          timeout: 30000 // 30 seconds timeout
+        }
+      );
+
+      console.log('SSLCommerz validation response:', response.data);
+      const validationData = response.data;
+
+      if (validationData.status === 'VALID') {
+        try {
+          // Update booking and payment status
+          const booking = await prisma.booking.findFirst({
+            where: {
+              payment: {
+                transactionId: tranId
               }
             },
-            driver: {
-              include: {
-                user: {
-                  select: {
-                    id: true,
-                    name: true,
-                    email: true
-                  }
-                }
-              }
+            include: {
+              payment: true
             }
+          });
+
+          if (booking) {
+            await prisma.$transaction([
+                          // Update payment status
+            prisma.payment.update({
+              where: { bookingId: booking.id },
+              data: {
+                status: 'COMPLETED' as PaymentStatus,
+                updatedAt: new Date()
+              }
+            }),
+              // Update booking status
+              prisma.booking.update({
+                where: { id: booking.id },
+                              data: {
+                status: 'CONFIRMED' as BookingStatus
+              }
+              })
+            ]);
+
+            logDatabase('validate_success', 'payment', { 
+              bookingId: booking.id, 
+              tranId 
+            });
+          } else {
+            console.error('Booking not found for transaction:', tranId);
           }
+        } catch (dbError) {
+          console.error('Database update error during validation:', dbError);
+          logError(dbError, { 
+            operation: 'update_booking_validation', 
+            tranId 
+          });
+        }
+      } else {
+        console.error('SSLCommerz validation failed:', validationData);
+      }
+
+      return validationData;
+    } catch (error) {
+      console.error('Payment validation error:', error);
+      
+      if (axios.isAxiosError(error)) {
+        console.error('Axios validation error details:', {
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          data: error.response?.data,
+          message: error.message
+        });
+        
+        if (error.response?.status === 401) {
+          throw new Error('Invalid SSLCommerz credentials for validation');
+        } else if (error.response?.status === 400) {
+          throw new Error(`SSLCommerz validation error: ${error.response.data?.failedreason || error.message}`);
+        } else if (error.code === 'ECONNABORTED') {
+          throw new Error('SSLCommerz validation request timeout');
+        } else {
+          throw new Error(`SSLCommerz validation error: ${error.message}`);
         }
       }
-    });
-
-    return payment;
-  }
-
-  static async updatePaymentStatus(paymentId: string, status: string, transactionId?: string) {
-    const payment = await prisma.payment?.update({
-      where: { id: paymentId },
-      data: {
-        status,
-        transactionId,
-        updatedAt: new Date()
-      },
-      include: {
-        booking: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true
-              }
-            },
-            driver: {
-              include: {
-                user: {
-                  select: {
-                    id: true,
-                    name: true,
-                    email: true
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    });
-
-    return payment;
-  }
-
-  static async getPaymentByBookingId(bookingId: string) {
-    const payment = await prisma.payment?.findFirst({
-      where: { bookingId },
-      include: {
-        booking: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true
-              }
-            },
-            driver: {
-              include: {
-                user: {
-                  select: {
-                    id: true,
-                    name: true,
-                    email: true
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    });
-
-    return payment;
-  }
-
-  static async getPaymentById(paymentId: string) {
-    const payment = await prisma.payment?.findUnique({
-      where: { id: paymentId },
-      include: {
-        booking: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true
-              }
-            },
-            driver: {
-              include: {
-                user: {
-                  select: {
-                    id: true,
-                    name: true,
-                    email: true
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    });
-
-    if (!payment) {
-      throw new Error('Payment not found');
+      
+      logError(error, { 
+        operation: 'validate_payment', 
+        tranId 
+      });
+      throw new Error('Failed to validate payment');
     }
-
-    return payment;
   }
 
-  static async getAllPayments(page = 1, limit = 10, status?: string, search?: string) {
-    const skip = (page - 1) * limit;
-    
-    // Build where clause for filtering
-    let where: any = {};
-    
-    if (status) {
-      where.status = status;
-    }
+  static async processIPN(ipnData: any): Promise<void> {
+    try {
+      console.log('Processing IPN:', ipnData);
+      logDatabase('process', 'ipn', { ipnData });
 
-    // For search, we'll fetch all payments and filter them in the application
-    // This ensures we can search across all fields including nested relations
-    const [allPayments, total] = await Promise.all([
-      prisma.payment?.findMany({
-        where,
+      const { tran_id, status, val_id, amount, currency } = ipnData;
+
+      if (!tran_id) {
+        console.error('Missing tran_id in IPN data');
+        return;
+      }
+
+      if (status === 'VALID') {
+        try {
+          await this.validatePayment(tran_id, parseFloat(amount || '0'), currency || 'BDT');
+        } catch (validationError) {
+          console.error('Payment validation failed:', validationError);
+          logError(validationError, { 
+            operation: 'ipn_validation_failed', 
+            tran_id 
+          });
+        }
+      } else {
+        try {
+          // Update payment status to failed
+          const booking = await prisma.booking.findFirst({
+            where: {
+              payment: {
+                transactionId: tran_id
+              }
+            }
+          });
+
+          if (booking) {
+            await prisma.payment.update({
+              where: { bookingId: booking.id },
+                          data: {
+              status: 'FAILED' as PaymentStatus
+            }
+            });
+            console.log('Payment marked as failed for booking:', booking.id);
+          } else {
+            console.error('Booking not found for failed transaction:', tran_id);
+          }
+        } catch (dbError) {
+          console.error('Database update error for failed payment:', dbError);
+          logError(dbError, { 
+            operation: 'update_failed_payment', 
+            tran_id 
+          });
+        }
+      }
+
+      logDatabase('process_success', 'ipn', { tran_id, status });
+    } catch (error) {
+      console.error('IPN processing error:', error);
+      logError(error, { 
+        operation: 'process_ipn', 
+        ipnData 
+      });
+      // Don't throw error to prevent SSLCommerz retries
+    }
+  }
+
+  static async getPaymentStatus(bookingId: string): Promise<any> {
+    try {
+      const booking = await prisma.booking.findUnique({
+        where: { id: bookingId },
         include: {
-          booking: {
+          payment: true,
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true
+            }
+          },
+          driver: {
             include: {
               user: {
                 select: {
@@ -199,171 +569,60 @@ export class PaymentService {
                   name: true,
                   email: true
                 }
-              },
-              driver: {
-                include: {
-                  user: {
-                    select: {
-                      id: true,
-                      name: true,
-                      email: true
-                    }
-                  }
-                }
               }
             }
           }
-        },
-        orderBy: {
-          createdAt: 'desc'
         }
-      }),
-      prisma.payment?.count({ where })
-    ]);
-
-    // Apply search filtering if search term is provided
-    let filteredPayments = allPayments;
-    let finalTotal = total;
-    
-    if (search && search.trim()) {
-      const searchTerm = search.trim().toLowerCase();
-      
-      filteredPayments = allPayments.filter(payment => {
-        // Check payment ID
-        const paymentId = payment.id.toLowerCase();
-        
-        // Check booking ID
-        const bookingId = payment.bookingId.toLowerCase();
-        
-        // Check transaction ID
-        const transactionId = payment.transactionId?.toLowerCase() || '';
-        
-        // Check user name and email
-        const userName = payment.booking.user.name.toLowerCase();
-        const userEmail = payment.booking.user.email.toLowerCase();
-        
-        // Check driver name and email (if driver exists)
-        const driverName = payment.booking.driver?.user.name.toLowerCase() || '';
-        const driverEmail = payment.booking.driver?.user.email.toLowerCase() || '';
-        
-        return paymentId.includes(searchTerm) || 
-               bookingId.includes(searchTerm) || 
-               transactionId.includes(searchTerm) ||
-               userName.includes(searchTerm) || 
-               userEmail.includes(searchTerm) || 
-               driverName.includes(searchTerm) || 
-               driverEmail.includes(searchTerm);
       });
-      
-      finalTotal = filteredPayments.length;
+
+      return booking;
+    } catch (error) {
+      logError(error, { 
+        operation: 'get_payment_status', 
+        bookingId 
+      });
+      throw new Error('Failed to get payment status');
     }
-
-    // Apply pagination to filtered results
-    const paginatedPayments = filteredPayments.slice(skip, skip + limit);
-
-    return {
-      payments: paginatedPayments,
-      total: finalTotal,
-      page,
-      limit,
-      totalPages: Math.ceil(finalTotal / limit)
-    };
   }
 
-  static async getPaymentStats() {
-    const [totalPayments, totalAmount, completedPayments, pendingPayments] = await Promise.all([
-      prisma.payment?.count(),
-      prisma.payment?.aggregate({
-        where: { status: 'COMPLETED' },
-        _sum: { amount: true }
-      }),
-      prisma.payment?.count({ where: { status: 'COMPLETED' } }),
-      prisma.payment?.count({ where: { status: 'PENDING' } })
-    ]);
+  static async refundPayment(bookingId: string, reason: string): Promise<void> {
+    try {
+      logDatabase('refund', 'payment', { bookingId, reason });
 
-    return {
-      totalPayments,
-      totalAmount: totalAmount?._sum.amount || 0,
-      completedPayments,
-      pendingPayments,
-      failedPayments: totalPayments - completedPayments - pendingPayments
-    };
-  }
+      const booking = await prisma.booking.findUnique({
+        where: { id: bookingId },
+        include: { payment: true }
+      });
 
-  static async processRefund(paymentId: string, reason: string) {
-    const payment = await prisma.payment?.findUnique({
-      where: { id: paymentId }
-    });
-
-    if (!payment) {
-      throw new Error('Payment not found');
-    }
-
-    if (payment.status !== 'COMPLETED') {
-      throw new Error('Only completed payments can be refunded');
-    }
-
-    // Update payment status to refunded
-    const updatedPayment = await prisma.payment?.update({
-      where: { id: paymentId },
-      data: {
-        status: 'REFUNDED',
-        refundReason: reason,
-        refundedAt: new Date()
+      if (!booking || !booking.payment) {
+        throw new Error('Booking or payment not found');
       }
-    });
 
-    return updatedPayment;
-  }
-
-  static async getPaymentHistory(userId: string, page = 1, limit = 10) {
-    const skip = (page - 1) * limit;
-
-    const [payments, total] = await Promise.all([
-      prisma.payment?.findMany({
-        where: {
-          booking: {
-            userId
-          }
-        },
-        skip,
-        take: limit,
-        include: {
-          booking: {
-            include: {
-              driver: {
-                include: {
-                  user: {
-                    select: {
-                      id: true,
-                      name: true,
-                      avatar: true
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        orderBy: {
-          createdAt: 'desc'
+      // Update payment status to refunded
+      await prisma.payment.update({
+        where: { bookingId },
+        data: {
+          status: 'REFUNDED' as PaymentStatus,
+          refundReason: reason,
+          refundedAt: new Date()
         }
-      }),
-      prisma.payment?.count({
-        where: {
-          booking: {
-            userId
-          }
-        }
-      })
-    ]);
+      });
 
-    return {
-      payments,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit)
-    };
+      // Update booking status
+      await prisma.booking.update({
+        where: { id: bookingId },
+        data: {
+          status: 'CANCELLED' as BookingStatus
+        }
+      });
+
+      logDatabase('refund_success', 'payment', { bookingId });
+    } catch (error) {
+      logError(error, { 
+        operation: 'refund_payment', 
+        bookingId 
+      });
+      throw new Error('Failed to refund payment');
+    }
   }
 } 

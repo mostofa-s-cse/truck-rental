@@ -2,122 +2,103 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-export async function seedAreas() {
-  console.log('📍 Seeding areas...');
-  
+export const areaSeeder = async () => {
+  console.log('🌍 Seeding areas...');
+
   const areas = [
-    // Dhaka Division
-    { name: 'Dhaka Central', city: 'Dhaka', state: 'Dhaka', isActive: true },
-    { name: 'Dhaka North', city: 'Dhaka', state: 'Dhaka', isActive: true },
-    { name: 'Dhaka South', city: 'Dhaka', state: 'Dhaka', isActive: true },
-    { name: 'Gulshan', city: 'Dhaka', state: 'Dhaka', isActive: true },
-    { name: 'Banani', city: 'Dhaka', state: 'Dhaka', isActive: true },
-    { name: 'Dhanmondi', city: 'Dhaka', state: 'Dhaka', isActive: true },
-    { name: 'Mirpur', city: 'Dhaka', state: 'Dhaka', isActive: true },
-    { name: 'Uttara', city: 'Dhaka', state: 'Dhaka', isActive: true },
-    { name: 'Mohammadpur', city: 'Dhaka', state: 'Dhaka', isActive: true },
-    { name: 'Lalbagh', city: 'Dhaka', state: 'Dhaka', isActive: true },
-    { name: 'Old Dhaka', city: 'Dhaka', state: 'Dhaka', isActive: true },
-    { name: 'Tongi', city: 'Gazipur', state: 'Dhaka', isActive: true },
-    { name: 'Gazipur City', city: 'Gazipur', state: 'Dhaka', isActive: true },
-    { name: 'Narayanganj', city: 'Narayanganj', state: 'Dhaka', isActive: true },
-    { name: 'Savar', city: 'Dhaka', state: 'Dhaka', isActive: true },
-    
-    // Chittagong Division
-    { name: 'Chittagong Port', city: 'Chittagong', state: 'Chittagong', isActive: true },
-    { name: 'Chittagong City', city: 'Chittagong', state: 'Chittagong', isActive: true },
-    { name: 'Agrabad', city: 'Chittagong', state: 'Chittagong', isActive: true },
-    { name: 'Nasirabad', city: 'Chittagong', state: 'Chittagong', isActive: true },
-    { name: 'Halishahar', city: 'Chittagong', state: 'Chittagong', isActive: true },
-    { name: 'Patenga', city: 'Chittagong', state: 'Chittagong', isActive: true },
-    { name: 'Cox\'s Bazar', city: 'Cox\'s Bazar', state: 'Chittagong', isActive: true },
-    { name: 'Comilla', city: 'Comilla', state: 'Chittagong', isActive: true },
-    { name: 'Feni', city: 'Feni', state: 'Chittagong', isActive: true },
-    { name: 'Chandpur', city: 'Chandpur', state: 'Chittagong', isActive: true },
-    
-    // Sylhet Division
-    { name: 'Sylhet City', city: 'Sylhet', state: 'Sylhet', isActive: true },
-    { name: 'Sylhet Airport', city: 'Sylhet', state: 'Sylhet', isActive: true },
-    { name: 'Zindabazar', city: 'Sylhet', state: 'Sylhet', isActive: true },
-    { name: 'Sunamganj', city: 'Sunamganj', state: 'Sylhet', isActive: true },
-    { name: 'Habiganj', city: 'Habiganj', state: 'Sylhet', isActive: true },
-    { name: 'Moulvibazar', city: 'Moulvibazar', state: 'Sylhet', isActive: true },
-    
-    // Rajshahi Division
-    { name: 'Rajshahi City', city: 'Rajshahi', state: 'Rajshahi', isActive: true },
-    { name: 'Rajshahi University', city: 'Rajshahi', state: 'Rajshahi', isActive: true },
-    { name: 'Bogra', city: 'Bogra', state: 'Rajshahi', isActive: true },
-    { name: 'Pabna', city: 'Pabna', state: 'Rajshahi', isActive: true },
-    { name: 'Sirajganj', city: 'Sirajganj', state: 'Rajshahi', isActive: true },
-    { name: 'Natore', city: 'Natore', state: 'Rajshahi', isActive: true },
-    { name: 'Naogaon', city: 'Naogaon', state: 'Rajshahi', isActive: true },
-    { name: 'Chapainawabganj', city: 'Chapainawabganj', state: 'Rajshahi', isActive: true },
-    
-    // Khulna Division
-    { name: 'Khulna City', city: 'Khulna', state: 'Khulna', isActive: true },
-    { name: 'Khulna Port', city: 'Khulna', state: 'Khulna', isActive: true },
-    { name: 'Jessore', city: 'Jessore', state: 'Khulna', isActive: true },
-    { name: 'Satkhira', city: 'Satkhira', state: 'Khulna', isActive: true },
-    { name: 'Bagerhat', city: 'Bagerhat', state: 'Khulna', isActive: true },
-    { name: 'Kushtia', city: 'Kushtia', state: 'Khulna', isActive: true },
-    { name: 'Magura', city: 'Magura', state: 'Khulna', isActive: true },
-    { name: 'Jhenaidah', city: 'Jhenaidah', state: 'Khulna', isActive: true },
-    { name: 'Narail', city: 'Narail', state: 'Khulna', isActive: true },
-    { name: 'Chuadanga', city: 'Chuadanga', state: 'Khulna', isActive: true },
-    { name: 'Meherpur', city: 'Meherpur', state: 'Khulna', isActive: true },
-    
-    // Barisal Division
-    { name: 'Barisal City', city: 'Barisal', state: 'Barisal', isActive: true },
-    { name: 'Barisal Port', city: 'Barisal', state: 'Barisal', isActive: true },
-    { name: 'Pirojpur', city: 'Pirojpur', state: 'Barisal', isActive: true },
-    { name: 'Patuakhali', city: 'Patuakhali', state: 'Barisal', isActive: true },
-    { name: 'Bhola', city: 'Bhola', state: 'Barisal', isActive: true },
-    { name: 'Barguna', city: 'Barguna', state: 'Barisal', isActive: true },
-    { name: 'Jhalokati', city: 'Jhalokati', state: 'Barisal', isActive: true },
-    
-    // Rangpur Division
-    { name: 'Rangpur City', city: 'Rangpur', state: 'Rangpur', isActive: true },
-    { name: 'Dinajpur', city: 'Dinajpur', state: 'Rangpur', isActive: true },
-    { name: 'Kurigram', city: 'Kurigram', state: 'Rangpur', isActive: true },
-    { name: 'Gaibandha', city: 'Gaibandha', state: 'Rangpur', isActive: true },
-    { name: 'Nilphamari', city: 'Nilphamari', state: 'Rangpur', isActive: true },
-    { name: 'Panchagarh', city: 'Panchagarh', state: 'Rangpur', isActive: true },
-    { name: 'Thakurgaon', city: 'Thakurgaon', state: 'Rangpur', isActive: true },
-    { name: 'Lalmonirhat', city: 'Lalmonirhat', state: 'Rangpur', isActive: true },
-    
-    // Mymensingh Division
-    { name: 'Mymensingh City', city: 'Mymensingh', state: 'Mymensingh', isActive: true },
-    { name: 'Jamalpur', city: 'Jamalpur', state: 'Mymensingh', isActive: true },
-    { name: 'Netrokona', city: 'Netrokona', state: 'Mymensingh', isActive: true },
-    { name: 'Sherpur', city: 'Sherpur', state: 'Mymensingh', isActive: true },
-    
-    // Major Industrial Areas
-    { name: 'Tongi Industrial Area', city: 'Gazipur', state: 'Dhaka', isActive: true },
-    { name: 'Savar Industrial Area', city: 'Dhaka', state: 'Dhaka', isActive: true },
-    { name: 'Narayanganj Industrial Area', city: 'Narayanganj', state: 'Dhaka', isActive: true },
-    { name: 'Chittagong Export Processing Zone', city: 'Chittagong', state: 'Chittagong', isActive: true },
-    { name: 'Sylhet Industrial Area', city: 'Sylhet', state: 'Sylhet', isActive: true },
-    
-    // Airports and Ports
-    { name: 'Hazrat Shahjalal International Airport', city: 'Dhaka', state: 'Dhaka', isActive: true },
-    { name: 'Shah Amanat International Airport', city: 'Chittagong', state: 'Chittagong', isActive: true },
-    { name: 'Osmani International Airport', city: 'Sylhet', state: 'Sylhet', isActive: true },
-    { name: 'Chittagong Port', city: 'Chittagong', state: 'Chittagong', isActive: true },
-    { name: 'Mongla Port', city: 'Bagerhat', state: 'Khulna', isActive: true },
-    { name: 'Patuakhali Port', city: 'Patuakhali', state: 'Barisal', isActive: true }
+    // Central Dhaka Areas
+    { name: 'Gulshan-1', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Gulshan-2', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Banani', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Baridhara', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Uttara', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Dhanmondi', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Mohammadpur', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Mirpur-1', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Mirpur-2', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Mirpur-6', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Mirpur-10', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Mirpur-11', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Mirpur-12', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Pallabi', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Kafrul', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Sher-e-Bangla Nagar', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Tejgaon', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Tejgaon Industrial Area', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Rampura', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Badda', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Hatirjheel', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Bashundhara', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Niketan', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Nikunja-1', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Nikunja-2', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Khilkhet', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Airport', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Kakrail', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Shantinagar', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Malibagh', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Moghbazar', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Ramna', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Shahbagh', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'New Market', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Dhanmondi-27', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Dhanmondi-32', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Kalabagan', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Sukrabad', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Adabor', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Shyamoli', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Agargaon', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Taltola', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Kolabagan', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Wari', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Gandaria', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Jigatola', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Hazaribagh', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Kamrangirchar', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Lalbagh', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Chawkbazar', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Kotwali', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Sutrapur', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Demra', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Sabujbagh', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Shahjahanpur', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Uttarkhan', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Dakshinkhan', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Vatiara', city: 'Dhaka', state: 'Dhaka' },
+    { name: 'Tongi', city: 'Gazipur', state: 'Dhaka' },
+    { name: 'Gazipur', city: 'Gazipur', state: 'Dhaka' },
+    { name: 'Savar', city: 'Savar', state: 'Dhaka' },
+    { name: 'Narayanganj', city: 'Narayanganj', state: 'Dhaka' },
+    { name: 'Keraniganj', city: 'Keraniganj', state: 'Dhaka' },
+    { name: 'Dohar', city: 'Dohar', state: 'Dhaka' },
+    { name: 'Nawabganj', city: 'Nawabganj', state: 'Dhaka' },
+    { name: 'Dhamrai', city: 'Dhamrai', state: 'Dhaka' },
+    { name: 'Munshiganj', city: 'Munshiganj', state: 'Dhaka' },
+    { name: 'Manikganj', city: 'Manikganj', state: 'Dhaka' },
+    { name: 'Tangail', city: 'Tangail', state: 'Dhaka' },
+    { name: 'Narsingdi', city: 'Narsingdi', state: 'Dhaka' },
+    { name: 'Kishoreganj', city: 'Kishoreganj', state: 'Dhaka' },
+    { name: 'Gopalganj', city: 'Gopalganj', state: 'Dhaka' },
+    { name: 'Madaripur', city: 'Madaripur', state: 'Dhaka' },
+    { name: 'Shariatpur', city: 'Shariatpur', state: 'Dhaka' },
+    { name: 'Rajbari', city: 'Rajbari', state: 'Dhaka' },
+    { name: 'Faridpur', city: 'Faridpur', state: 'Dhaka' },
   ];
 
-  for (const area of areas) {
-    await prisma.area.upsert({
-      where: { name: area.name },
-      update: {
-        city: area.city,
-        state: area.state,
-        isActive: area.isActive
-      },
-      create: area
+  try {
+    // Clear existing areas
+    await prisma.area.deleteMany({});
+
+    // Insert new areas
+    const createdAreas = await prisma.area.createMany({
+      data: areas,
+      skipDuplicates: true
     });
+
+    console.log(`✅ Created ${createdAreas.count} areas successfully`);
+    return createdAreas;
+  } catch (error) {
+    console.error('❌ Error seeding areas:', error);
+    throw error;
   }
-  
-  console.log(`✅ Seeded ${areas.length} areas`);
-} 
+}; 

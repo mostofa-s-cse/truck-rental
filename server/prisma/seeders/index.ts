@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { seedSystemSettings } from './systemSettingsSeeder';
 import { seedTruckCategories } from './truckCategorySeeder';
-import { seedAreas } from './areaSeeder';
+import { areaSeeder } from './areaSeeder';
 import { seedUsers } from './userSeeder';
 import { seedDrivers } from './driverSeeder';
 import { seedBookings } from './bookingSeeder';
@@ -41,7 +41,7 @@ async function main() {
     // Execute seeders in order
     await seedSystemSettings();
     await seedTruckCategories();
-    await seedAreas();
+    await areaSeeder();
     await seedUsers();
     await seedDrivers();
     await seedBookings();

@@ -4,28 +4,24 @@ import { auth, authorize } from '../../middleware/auth';
 
 const router = Router();
 
-// Create payment
-router.post('/', auth, PaymentController.createPayment);
+// Create payment session (requires authentication)
+router.post('/session', auth, authorize('USER'), PaymentController.createPaymentSession);
 
-// Get all payments (Admin only)
-router.get('/', auth, authorize('ADMIN'), PaymentController.getAllPayments);
+// Validate payment (requires authentication)
+router.post('/validate', auth, authorize('USER'), PaymentController.validatePayment);
 
-// Get payment statistics (Admin only)
-router.get('/stats', auth, authorize('ADMIN'), PaymentController.getPaymentStats);
+// Get payment status (requires authentication)
+router.get('/status/:bookingId', auth, authorize('USER'), PaymentController.getPaymentStatus);
 
-// Get user's payment history
-router.get('/history', auth, PaymentController.getPaymentHistory);
+// Refund payment (requires authentication)
+router.post('/refund/:bookingId', auth, authorize('USER'), PaymentController.refundPayment);
 
-// Get payment by booking ID
-router.get('/booking/:bookingId', auth, PaymentController.getPaymentByBookingId);
+// SSLCommerz callback URLs (public - no authentication required)
+router.get('/success', PaymentController.paymentSuccess);
+router.get('/fail', PaymentController.paymentFail);
+router.get('/cancel', PaymentController.paymentCancel);
 
-// Get specific payment
-router.get('/:paymentId', auth, PaymentController.getPaymentById);
-
-// Update payment status
-router.patch('/:paymentId/status', auth, PaymentController.updatePaymentStatus);
-
-// Process refund (Admin only)
-router.post('/:paymentId/refund', auth, authorize('ADMIN'), PaymentController.processRefund);
+// IPN (Instant Payment Notification) - public endpoint
+router.post('/ipn', PaymentController.processIPN);
 
 export default router; 
