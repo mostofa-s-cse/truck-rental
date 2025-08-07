@@ -13,12 +13,12 @@ const authRoutes = [
 ];
 
 // Define public routes that don't require authentication
-// const publicRoutes = [
-//   '/',
-//   '/about',
-//   '/contact',
-//   '/search'
-// ];
+const publicRoutes = [
+  '/',
+  '/about',
+  '/contact',
+  '/search'
+];
 
 // Define role-based route access
 const roleBasedRoutes = {
@@ -46,6 +46,11 @@ export function middleware(request: NextRequest) {
     pathname.startsWith(route)
   );
   
+  // Check if current path is a public route
+  const isPublicRoute = publicRoutes.some(route => 
+    pathname === route || pathname.startsWith(route + '/')
+  );
+  
   // Check if current path is a role-specific dashboard route
   const isRoleSpecificRoute = pathname.startsWith('/dashboard/admin') || 
                              pathname.startsWith('/dashboard/driver') || 
@@ -58,8 +63,15 @@ export function middleware(request: NextRequest) {
     userRole,
     isDashboardRoute,
     isAuthRoute,
+    isPublicRoute,
     isRoleSpecificRoute
   });
+  
+  // Allow public routes to pass through without any authentication checks
+  if (isPublicRoute) {
+    console.log('✅ ALLOWED: Public route access:', pathname);
+    return NextResponse.next();
+  }
   
   // BLOCK 1: If user is NOT authenticated and trying to access ANY dashboard route
   if (!isAuthenticated && isDashboardRoute) {

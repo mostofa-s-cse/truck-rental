@@ -1,150 +1,93 @@
 import Link from 'next/link';
-import { Truck, Mail, Phone, MapPin, Facebook, Twitter, Instagram, Linkedin } from 'lucide-react';
+import { Truck, Phone, MapPin, MessageCircle } from 'lucide-react';
 
 export default function Footer() {
-  const currentYear = new Date().getFullYear();
-
-  const footerLinks = {
-    company: [
-      { href: '/about', label: 'About Us' },
-      { href: '/contact', label: 'Contact' },
-      { href: '/careers', label: 'Careers' },
-      { href: '/press', label: 'Press' }
-    ],
-    services: [
-      { href: '/search', label: 'Find Trucks' },
-      { href: '/register', label: 'Become a Driver' },
-      { href: '/pricing', label: 'Pricing' },
-      { href: '/support', label: 'Support' }
-    ],
-    legal: [
-      { href: '/privacy', label: 'Privacy Policy' },
-      { href: '/terms', label: 'Terms of Service' },
-      { href: '/cookies', label: 'Cookie Policy' },
-      { href: '/security', label: 'Security' }
-    ],
-    resources: [
-      { href: '/blog', label: 'Blog' },
-      { href: '/help', label: 'Help Center' },
-      { href: '/api', label: 'API Documentation' },
-      { href: '/partners', label: 'Partners' }
-    ]
-  };
-
-  const socialLinks = [
-    { href: '#', icon: <Facebook className="w-5 h-5" />, label: 'Facebook' },
-    { href: '#', icon: <Twitter className="w-5 h-5" />, label: 'Twitter' },
-    { href: '#', icon: <Instagram className="w-5 h-5" />, label: 'Instagram' },
-    { href: '#', icon: <Linkedin className="w-5 h-5" />, label: 'LinkedIn' }
-  ];
 
   return (
-    <footer className="bg-gray-900 text-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
-          {/* Company Info */}
-          <div className="lg:col-span-2">
-            <div className="flex items-center mb-4">
-              <Truck className="h-8 w-8 text-blue-400" />
-              <span className="ml-2 text-xl font-bold">TruckRental</span>
+    <div className="bg-gray-900 text-white py-16">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
+        <div className="lg:col-span-1">
+          <div className="flex items-center mb-4">
+            <Truck className="w-8 h-8 text-blue-400 mr-2" />
+            <h3 className="text-2xl font-bold">Truck Lagbe</h3>
+          </div>
+          <p className="text-gray-400 mb-4 leading-relaxed">
+            Bangladesh&apos;s #1 platform for truck rentals and logistics solutions. 
+            Connecting customers with verified drivers across the country.
+          </p>
+          <div className="flex space-x-4">
+            <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center hover:bg-blue-700 transition-colors">
+              <span className="text-white font-semibold">F</span>
             </div>
-            <p className="text-gray-300 mb-6 max-w-md">
-              Connecting reliable drivers with customers who need transportation solutions. 
-              We&apos;re building the future of logistics, one delivery at a time.
-            </p>
-            
-            {/* Contact Info */}
-            <div className="space-y-3">
-              <div className="flex items-center text-gray-300">
-                <Phone className="w-4 h-4 mr-3 text-blue-400" />
-                <span>+1 (555) 123-4567</span>
-              </div>
-              <div className="flex items-center text-gray-300">
-                <Mail className="w-4 h-4 mr-3 text-blue-400" />
-                <span>support@truckrental.com</span>
-              </div>
-              <div className="flex items-center text-gray-300">
-                <MapPin className="w-4 h-4 mr-3 text-blue-400" />
-                <span>123 Logistics Street, New York, NY 10001</span>
-              </div>
+            <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center hover:bg-green-700 transition-colors">
+              <span className="text-white font-semibold">T</span>
             </div>
-          </div>
-
-          {/* Company Links */}
-          <div>
-            <h3 className="text-lg font-semibold mb-4">Company</h3>
-            <ul className="space-y-2">
-              {footerLinks.company.map((link) => (
-                <li key={link.href}>
-                  <Link 
-                    href={link.href}
-                    className="text-gray-300 hover:text-white transition-colors"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Services Links */}
-          <div>
-            <h3 className="text-lg font-semibold mb-4">Services</h3>
-            <ul className="space-y-2">
-              {footerLinks.services.map((link) => (
-                <li key={link.href}>
-                  <Link 
-                    href={link.href}
-                    className="text-gray-300 hover:text-white transition-colors"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Legal Links */}
-          <div>
-            <h3 className="text-lg font-semibold mb-4">Legal</h3>
-            <ul className="space-y-2">
-              {footerLinks.legal.map((link) => (
-                <li key={link.href}>
-                  <Link 
-                    href={link.href}
-                    className="text-gray-300 hover:text-white transition-colors"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
+            <div className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center hover:bg-purple-700 transition-colors">
+              <span className="text-white font-semibold">I</span>
+            </div>
           </div>
         </div>
-
-        {/* Bottom Section */}
-        <div className="border-t border-gray-800 mt-12 pt-8">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="text-gray-300 text-sm mb-4 md:mb-0">
-              © {currentYear} TruckRental. All rights reserved.
+        
+        <div>
+          <h4 className="text-lg font-semibold mb-4 text-white">Quick Links</h4>
+          <ul className="space-y-3">
+            <li><Link href="/search" className="text-gray-400 hover:text-white transition-colors">Find Trucks</Link></li>
+            <li><Link href="/about" className="text-gray-400 hover:text-white transition-colors">About Us</Link></li>
+            <li><Link href="/contact" className="text-gray-400 hover:text-white transition-colors">Contact</Link></li>
+            <li><Link href="/help" className="text-gray-400 hover:text-white transition-colors">Help Center</Link></li>
+            <li><Link href="/register" className="text-gray-400 hover:text-white transition-colors">Become a Driver</Link></li>
+          </ul>
+        </div>
+        
+        <div>
+          <h4 className="text-lg font-semibold mb-4 text-white">Our Services</h4>
+          <ul className="space-y-3">
+            <li className="text-gray-400">Mini Truck Rental</li>
+            <li className="text-gray-400">Pickup Services</li>
+            <li className="text-gray-400">Lorry Transport</li>
+            <li className="text-gray-400">Heavy Truck Rental</li>
+            <li className="text-gray-400">Express Delivery</li>
+            <li className="text-gray-400">Warehouse Services</li>
+          </ul>
+        </div>
+        
+        <div>
+          <h4 className="text-lg font-semibold mb-4 text-white">Contact Info</h4>
+          <div className="space-y-3">
+            <div className="flex items-center text-gray-400">
+              <Phone className="w-4 h-4 mr-3 text-blue-400" />
+              <span>+880 1234-567890</span>
             </div>
-            
-            {/* Social Links */}
-            <div className="flex space-x-4">
-              {socialLinks.map((social) => (
-                <a
-                  key={social.label}
-                  href={social.href}
-                  className="text-gray-300 hover:text-white transition-colors"
-                  aria-label={social.label}
-                >
-                  {social.icon}
-                </a>
-              ))}
+            <div className="flex items-center text-gray-400">
+              <MessageCircle className="w-4 h-4 mr-3 text-blue-400" />
+              <span>support@trucklagbe.com</span>
+            </div>
+            <div className="flex items-center text-gray-400">
+              <MapPin className="w-4 h-4 mr-3 text-blue-400" />
+              <span>Dhaka, Bangladesh</span>
+            </div>
+            <div className="pt-2">
+              <p className="text-sm text-gray-500">Available 24/7</p>
+              <p className="text-sm text-gray-500">Emergency Support</p>
             </div>
           </div>
         </div>
       </div>
-    </footer>
+      
+      <div className="border-t border-gray-800 pt-8">
+        <div className="flex flex-col md:flex-row justify-between items-center">
+          <p className="text-gray-400 text-sm mb-4 md:mb-0">
+            &copy; 2024 Truck Lagbe. All rights reserved.
+          </p>
+          <div className="flex space-x-6 text-sm">
+            <Link href="/privacy" className="text-gray-400 hover:text-white transition-colors">Privacy Policy</Link>
+            <Link href="/terms" className="text-gray-400 hover:text-white transition-colors">Terms of Service</Link>
+            <Link href="/cookies" className="text-gray-400 hover:text-white transition-colors">Cookie Policy</Link>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
   );
 } 

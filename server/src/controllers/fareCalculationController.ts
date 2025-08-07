@@ -2,6 +2,9 @@ import { Request, Response } from 'express';
 import { FareCalculationService, FareCalculationRequest } from '../services/fareCalculationService';
 import { ApiResponse } from '../types';
 import { logError, logDatabase } from '../utils/logger';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 export class FareCalculationController {
   static async calculateFare(req: Request, res: Response) {
@@ -115,6 +118,76 @@ export class FareCalculationController {
       const response: ApiResponse = {
         success: false,
         message: error.message || 'Failed to get fare analytics',
+        error: error.message
+      };
+
+      res.status(400).json(response);
+    }
+  }
+
+  static async getTruckCategories(req: Request, res: Response) {
+    try {
+      logDatabase('select', 'truck_categories', {});
+      
+      const categories = await prisma.truckCategory.findMany({
+        where: { isActive: true },
+        orderBy: { capacity: 'asc' }
+      });
+
+      const response: ApiResponse = {
+        success: true,
+        message: 'Truck categories retrieved successfully',
+        data: categories
+      };
+
+      res.status(200).json(response);
+    } catch (error: any) {
+      logError(error, { 
+        operation: 'get_truck_categories'
+      });
+
+      const response: ApiResponse = {
+        success: false,
+        message: error.message || 'Failed to get truck categories',
+        error: error.message
+      };
+
+      res.status(400).json(response);
+    }
+  }
+
+  static async getRouteDetails(req: Request, res: Response) {
+    try {
+      const { source, destination } = req.body;
+      const userId = (req as any).user?.userId || 'anonymous';
+      
+      logDatabase('select', 'route_details', { 
+        userId, 
+        source, 
+        destination 
+      });
+      
+      const result = await FareCalculationService.getRouteDetails(source, destination);
+
+      const response: ApiResponse = {
+        success: true,
+        message: 'Route details retrieved successfully',
+        data: result
+      };
+
+      res.status(200).json(response);
+    } catch (error: any) {
+      const userId = (req as any).user?.userId || 'anonymous';
+      
+      logError(error, { 
+        operation: 'get_route_details', 
+        userId,
+        request: req.body
+      });
+
+      const response: ApiResponse = {
+        success: false,
+        message: error.message || 'Failed to get route details',
         error: error.message
       };
 

@@ -7,14 +7,36 @@ export class BookingService {
   static async createBooking(userId: string, bookingData: CreateBookingRequest) {
     const { driverId, ...rest } = bookingData;
 
+    console.log('BookingService - Creating booking:', {
+      userId,
+      driverId,
+      bookingData: rest
+    });
+
+    // Check if user exists
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, name: true, email: true, role: true }
+    });
+
+    if (!user) {
+      console.error('BookingService - User not found:', userId);
+      throw new Error(`User not found with ID: ${userId}`);
+    }
+
+    console.log('BookingService - User found:', user);
+
     // Check if driver exists and is available
     const driver = await prisma.driver.findUnique({
       where: { id: driverId }
     });
 
     if (!driver) {
+      console.error('BookingService - Driver not found:', driverId);
       throw new Error('Driver not found');
     }
+
+    console.log('BookingService - Driver found:', driver);
 
     if (!driver.isAvailable) {
       throw new Error('Driver is not available');
@@ -24,12 +46,19 @@ export class BookingService {
       throw new Error('Driver is not verified');
     }
 
-    // Create booking
+    // Create booking with payment record
     const booking = await prisma.booking.create({
       data: {
         userId,
         driverId,
-        ...rest
+        ...rest,
+        payment: {
+          create: {
+            amount: rest.fare,
+            paymentMethod: 'PENDING',
+            status: 'PENDING'
+          }
+        }
       },
       include: {
         user: {
@@ -51,7 +80,8 @@ export class BookingService {
               }
             }
           }
-        }
+        },
+        payment: true
       }
     });
 

@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, TruckType } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -7,46 +7,84 @@ export async function seedTruckCategories() {
   
   const categories = [
     {
-      name: 'Mini Truck',
-      basePrice: 40.0,
-      description: 'Small trucks suitable for light loads up to 1 ton. Perfect for small moves, furniture transport, and local deliveries.',
-      features: ['Up to 1 ton capacity', 'Fuel efficient', 'Easy parking', 'Suitable for narrow roads'],
-      imageUrl: 'https://images.unsplash.com/photo-1566576912321-d58ddd7a6088?w=400&h=300&fit=crop'
+      name: 'Pickup – 1T, 7ft',
+      truckType: 'PICKUP',
+      capacity: 1.0,
+      length: 7.0,
+      baseFare: 1000,
+      insideDhakaRate: 40,
+      outsideDhakaRate: 30,
+      description: 'Small pickup truck suitable for local deliveries and small moves'
     },
     {
-      name: 'Pickup',
-      basePrice: 50.0,
-      description: 'Pickup trucks for medium loads up to 2 tons. Ideal for construction materials, appliances, and medium-sized moves.',
-      features: ['Up to 2 ton capacity', 'Versatile', 'Good for construction', 'Easy loading/unloading'],
-      imageUrl: 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=400&h=300&fit=crop'
+      name: 'Pickup – 1.5T, 9ft',
+      truckType: 'PICKUP',
+      capacity: 1.5,
+      length: 9.0,
+      baseFare: 1500,
+      insideDhakaRate: 40,
+      outsideDhakaRate: 35,
+      description: 'Medium pickup truck for construction materials and appliances'
     },
     {
-      name: 'Lorry',
-      basePrice: 70.0,
-      description: 'Large trucks for heavy loads up to 5 tons. Suitable for commercial transport, large moves, and bulk deliveries.',
-      features: ['Up to 5 ton capacity', 'Commercial grade', 'Long distance', 'Heavy duty'],
-      imageUrl: 'https://images.unsplash.com/photo-1566576912321-d58ddd7a6088?w=400&h=300&fit=crop'
+      name: 'Pickup – 2-3T, 12ft',
+      truckType: 'PICKUP',
+      capacity: 2.5,
+      length: 12.0,
+      baseFare: 2000,
+      insideDhakaRate: 50,
+      outsideDhakaRate: 40,
+      description: 'Large pickup truck for commercial transport'
     },
     {
-      name: 'Truck',
-      basePrice: 90.0,
-      description: 'Heavy-duty trucks for very heavy loads up to 10 tons. Perfect for industrial transport and large-scale operations.',
-      features: ['Up to 10 ton capacity', 'Industrial grade', 'Maximum capacity', 'Professional service'],
-      imageUrl: 'https://images.unsplash.com/photo-1566576912321-d58ddd7a6088?w=400&h=300&fit=crop'
+      name: 'Truck – 4-5T, 14ft',
+      truckType: 'TRUCK',
+      capacity: 4.5,
+      length: 14.0,
+      baseFare: 3000,
+      insideDhakaRate: 100,
+      outsideDhakaRate: 45,
+      description: 'Medium truck for heavy commercial transport'
     },
     {
-      name: 'Refrigerated Truck',
-      basePrice: 120.0,
-      description: 'Temperature-controlled trucks for perishable goods. Ideal for food transport, pharmaceuticals, and cold storage items.',
-      features: ['Temperature controlled', 'Perishable goods', 'Food safe', 'Climate controlled'],
-      imageUrl: 'https://images.unsplash.com/photo-1566576912321-d58ddd7a6088?w=400&h=300&fit=crop'
+      name: 'Truck – 6-7T, 17ft',
+      truckType: 'TRUCK',
+      capacity: 6.5,
+      length: 17.0,
+      baseFare: 4000,
+      insideDhakaRate: 200,
+      outsideDhakaRate: 55,
+      description: 'Large truck for industrial transport'
     },
     {
-      name: 'Flatbed Truck',
-      basePrice: 85.0,
-      description: 'Open flatbed trucks for oversized loads. Perfect for construction equipment, machinery, and large items.',
-      features: ['Oversized loads', 'Construction equipment', 'Easy loading', 'Versatile'],
-      imageUrl: 'https://images.unsplash.com/photo-1566576912321-d58ddd7a6088?w=400&h=300&fit=crop'
+      name: 'Truck – 8-10T, 20ft',
+      truckType: 'TRUCK',
+      capacity: 9.0,
+      length: 20.0,
+      baseFare: 5000,
+      insideDhakaRate: 200,
+      outsideDhakaRate: 60,
+      description: 'Heavy-duty truck for maximum capacity transport'
+    },
+    {
+      name: 'Mini Truck – 0.5T, 6ft',
+      truckType: 'MINI_TRUCK',
+      capacity: 0.5,
+      length: 6.0,
+      baseFare: 800,
+      insideDhakaRate: 35,
+      outsideDhakaRate: 25,
+      description: 'Very small truck for light deliveries'
+    },
+    {
+      name: 'Lorry – 3-4T, 13ft',
+      truckType: 'LORRY',
+      capacity: 3.5,
+      length: 13.0,
+      baseFare: 2500,
+      insideDhakaRate: 80,
+      outsideDhakaRate: 40,
+      description: 'Standard lorry for medium to heavy loads'
     }
   ];
 
@@ -54,12 +92,22 @@ export async function seedTruckCategories() {
     await prisma.truckCategory.upsert({
       where: { name: category.name },
       update: {
-        basePrice: category.basePrice,
+        truckType: category.truckType as TruckType,
+        capacity: category.capacity,
+        length: category.length,
+        baseFare: category.baseFare,
+        insideDhakaRate: category.insideDhakaRate,
+        outsideDhakaRate: category.outsideDhakaRate,
         description: category.description
       },
       create: {
         name: category.name,
-        basePrice: category.basePrice,
+        truckType: category.truckType as TruckType,
+        capacity: category.capacity,
+        length: category.length,
+        baseFare: category.baseFare,
+        insideDhakaRate: category.insideDhakaRate,
+        outsideDhakaRate: category.outsideDhakaRate,
         description: category.description
       }
     });

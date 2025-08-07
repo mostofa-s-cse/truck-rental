@@ -62,9 +62,7 @@ class ApiClientWithSweetAlert {
           localStorage.removeItem('token');
           localStorage.removeItem('user');
           showErrorToast('Session expired. Please login again.');
-          setTimeout(() => {
-            window.location.href = '/login';
-          }, 2000);
+          // Remove automatic redirect - let components handle auth errors
         } else if (error.response?.status === 403) {
           showWarningToast('You do not have permission to perform this action.');
         } else if (error.response?.status === 404) {

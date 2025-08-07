@@ -4,11 +4,37 @@ import { CreateBookingRequest, UpdateBookingRequest, ApiResponse } from '../type
 import { logError, logDatabase } from '../utils/logger';
 import { PrismaClient } from '@prisma/client';
 
+const prisma = new PrismaClient();
+
 export class BookingController {
   static async createBooking(req: Request, res: Response) {
     try {
       const userId = (req as any).user.userId;
       const bookingData: CreateBookingRequest = req.body;
+      
+      // Debug: Log the user information
+      console.log('Booking creation - User info:', {
+        userId: userId,
+        user: (req as any).user,
+        token: req.header('Authorization')?.replace('Bearer ', '').substring(0, 20) + '...'
+      });
+      
+      // Verify user exists in database
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, name: true, email: true, role: true }
+      });
+      
+      if (!user) {
+        console.error('User not found in database:', userId);
+        return res.status(400).json({
+          success: false,
+          message: 'User not found in database',
+          error: 'USER_NOT_FOUND'
+        });
+      }
+      
+      console.log('User found in database:', user);
       
       logDatabase('insert', 'bookings', { userId, bookingData: { ...bookingData, driverId: bookingData.driverId } });
       

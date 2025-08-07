@@ -10,6 +10,24 @@ export interface AuthRequest extends Request {
   user?: JWTPayload;
 }
 
+import { Request } from 'express';
+
+export interface AuthenticatedRequest extends Request {
+  user?: JWTPayload;
+}
+
+export class AppError extends Error {
+  public statusCode: number;
+  
+  constructor(message: string, statusCode: number = 500) {
+    super(message);
+    this.statusCode = statusCode;
+    this.name = 'AppError';
+    
+    Error.captureStackTrace(this, this.constructor);
+  }
+}
+
 export interface CreateUserRequest {
   email: string;
   password: string;
@@ -219,4 +237,17 @@ export interface SearchFilters {
   availability?: boolean;
   verified?: boolean;
   quality?: 'EXCELLENT' | 'GOOD' | 'AVERAGE' | 'POOR';
+}
+
+export interface PaginationParams {
+  page?: number;
+  limit?: number;
+}
+
+export interface PaymentCreateInput {
+  bookingId: string;
+  amount: number;
+  paymentMethod: string;
+  transactionId?: string;
+  status?: string;
 } 

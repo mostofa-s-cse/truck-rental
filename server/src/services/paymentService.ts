@@ -1,194 +1,80 @@
+
 import { PrismaClient } from '@prisma/client';
-
+import { PaymentCreateInput, PaginationParams } from '../types';
 const prisma = new PrismaClient();
+import { AppError } from '../types';
 
-export interface PaymentData {
-  bookingId: string;
-  amount: number;
-  paymentMethod: 'CASH' | 'CARD' | 'MOBILE_BANKING';
-  transactionId?: string;
-  status: 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED';
-}
+type PaymentStatus = 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED';
 
 export class PaymentService {
-  static async createPayment(paymentData: PaymentData) {
-    const { bookingId, amount, paymentMethod, transactionId, status } = paymentData;
+  private prisma: PrismaClient;
 
-    // Check if booking exists
-    const booking = await prisma.booking.findUnique({
-      where: { id: bookingId }
-    });
-
-    if (!booking) {
-      throw new Error('Booking not found');
-    }
-
-    // Check if payment already exists for this booking
-    const existingPayment = await prisma.payment?.findFirst({
-      where: { bookingId }
-    });
-
-    if (existingPayment) {
-      throw new Error('Payment already exists for this booking');
-    }
-
-    // Create payment record
-    const payment = await prisma.payment?.create({
-      data: {
-        bookingId,
-        amount,
-        paymentMethod,
-        transactionId,
-        status
-      },
-      include: {
-        booking: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true
-              }
-            },
-            driver: {
-              include: {
-                user: {
-                  select: {
-                    id: true,
-                    name: true,
-                    email: true
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    });
-
-    return payment;
+  constructor() {
+    this.prisma = new PrismaClient();
   }
 
-  static async updatePaymentStatus(paymentId: string, status: string, transactionId?: string) {
-    const payment = await prisma.payment?.update({
-      where: { id: paymentId },
-      data: {
-        status,
-        transactionId,
-        updatedAt: new Date()
-      },
-      include: {
-        booking: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true
-              }
-            },
-            driver: {
-              include: {
-                user: {
-                  select: {
-                    id: true,
-                    name: true,
-                    email: true
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    });
-
-    return payment;
-  }
-
-  static async getPaymentByBookingId(bookingId: string) {
-    const payment = await prisma.payment?.findFirst({
-      where: { bookingId },
-      include: {
-        booking: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true
-              }
-            },
-            driver: {
-              include: {
-                user: {
-                  select: {
-                    id: true,
-                    name: true,
-                    email: true
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    });
-
-    return payment;
-  }
-
-  static async getPaymentById(paymentId: string) {
-    const payment = await prisma.payment?.findUnique({
-      where: { id: paymentId },
-      include: {
-        booking: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true
-              }
-            },
-            driver: {
-              include: {
-                user: {
-                  select: {
-                    id: true,
-                    name: true,
-                    email: true
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    });
-
-    if (!payment) {
-      throw new Error('Payment not found');
-    }
-
-    return payment;
-  }
-
-  static async getAllPayments(page = 1, limit = 10, status?: string, search?: string) {
+  // Get all payments (admin)
+  async getAllPayments(pagination: PaginationParams & { 
+    status?: PaymentStatus; 
+    search?: string; 
+    method?: string; 
+    dateFrom?: string; 
+    dateTo?: string; 
+  }) {
+    const { page = 1, limit = 10, status, search, method, dateFrom, dateTo } = pagination;
     const skip = (page - 1) * limit;
-    
-    // Build where clause for filtering
-    let where: any = {};
+
+    // Build where clause
+    const where: any = {};
     
     if (status) {
       where.status = status;
     }
+    
+    if (method) {
+      where.paymentMethod = method;
+    }
+    
+    if (dateFrom || dateTo) {
+      where.createdAt = {};
+      if (dateFrom) {
+        where.createdAt.gte = new Date(dateFrom);
+      }
+      if (dateTo) {
+        where.createdAt.lte = new Date(dateTo);
+      }
+    }
+    
+    // Search functionality
+    if (search) {
+      where.OR = [
+        {
+          booking: {
+            user: {
+              name: {
+                contains: search,
+                mode: 'insensitive'
+              }
+            }
+          }
+        },
+        {
+          bookingId: {
+            contains: search,
+            mode: 'insensitive'
+          }
+        },
+        {
+          transactionId: {
+            contains: search,
+            mode: 'insensitive'
+          }
+        }
+      ];
+    }
 
-    // For search, we'll fetch all payments and filter them in the application
-    // This ensures we can search across all fields including nested relations
-    const [allPayments, total] = await Promise.all([
-      prisma.payment?.findMany({
+    const [payments, total] = await Promise.all([
+      this.prisma.payment.findMany({
         where,
         include: {
           booking: {
@@ -205,165 +91,266 @@ export class PaymentService {
                   user: {
                     select: {
                       id: true,
-                      name: true,
-                      email: true
+                      name: true
                     }
                   }
+                },
+                select: {
+                  id: true,
+                  truckType: true
                 }
               }
             }
           }
         },
-        orderBy: {
-          createdAt: 'desc'
-        }
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit
       }),
-      prisma.payment?.count({ where })
+      this.prisma.payment.count({ where })
     ]);
 
-    // Apply search filtering if search term is provided
-    let filteredPayments = allPayments;
-    let finalTotal = total;
-    
-    if (search && search.trim()) {
-      const searchTerm = search.trim().toLowerCase();
-      
-      filteredPayments = allPayments.filter(payment => {
-        // Check payment ID
-        const paymentId = payment.id.toLowerCase();
-        
-        // Check booking ID
-        const bookingId = payment.bookingId.toLowerCase();
-        
-        // Check transaction ID
-        const transactionId = payment.transactionId?.toLowerCase() || '';
-        
-        // Check user name and email
-        const userName = payment.booking.user.name.toLowerCase();
-        const userEmail = payment.booking.user.email.toLowerCase();
-        
-        // Check driver name and email (if driver exists)
-        const driverName = payment.booking.driver?.user.name.toLowerCase() || '';
-        const driverEmail = payment.booking.driver?.user.email.toLowerCase() || '';
-        
-        return paymentId.includes(searchTerm) || 
-               bookingId.includes(searchTerm) || 
-               transactionId.includes(searchTerm) ||
-               userName.includes(searchTerm) || 
-               userEmail.includes(searchTerm) || 
-               driverName.includes(searchTerm) || 
-               driverEmail.includes(searchTerm);
-      });
-      
-      finalTotal = filteredPayments.length;
-    }
-
-    // Apply pagination to filtered results
-    const paginatedPayments = filteredPayments.slice(skip, skip + limit);
-
     return {
-      payments: paginatedPayments,
-      total: finalTotal,
-      page,
-      limit,
-      totalPages: Math.ceil(finalTotal / limit)
+      payments,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit)
+      }
     };
   }
 
-  static async getPaymentStats() {
-    const [totalPayments, totalAmount, completedPayments, pendingPayments] = await Promise.all([
-      prisma.payment?.count(),
-      prisma.payment?.aggregate({
-        where: { status: 'COMPLETED' },
-        _sum: { amount: true }
-      }),
-      prisma.payment?.count({ where: { status: 'COMPLETED' } }),
-      prisma.payment?.count({ where: { status: 'PENDING' } })
-    ]);
-
-    return {
+  // Get payment statistics (admin)
+  async getPaymentStats() {
+    const [
       totalPayments,
-      totalAmount: totalAmount?._sum.amount || 0,
+      totalAmount,
       completedPayments,
       pendingPayments,
-      failedPayments: totalPayments - completedPayments - pendingPayments
-    };
-  }
+      failedPayments,
+      refundedPayments,
+      methodStats
+    ] = await Promise.all([
+      this.prisma.payment.count(),
+      this.prisma.payment.aggregate({
+        _sum: { amount: true }
+      }),
+      this.prisma.payment.count({ where: { status: 'COMPLETED' } }),
+      this.prisma.payment.count({ where: { status: 'PENDING' } }),
+      this.prisma.payment.count({ where: { status: 'FAILED' } }),
+      this.prisma.payment.count({ where: { status: 'REFUNDED' } }),
+      this.prisma.payment.groupBy({
+        by: ['paymentMethod'],
+        _count: { paymentMethod: true },
+        _sum: { amount: true }
+      })
+    ]);
 
-  static async processRefund(paymentId: string, reason: string) {
-    const payment = await prisma.payment?.findUnique({
-      where: { id: paymentId }
-    });
-
-    if (!payment) {
-      throw new Error('Payment not found');
-    }
-
-    if (payment.status !== 'COMPLETED') {
-      throw new Error('Only completed payments can be refunded');
-    }
-
-    // Update payment status to refunded
-    const updatedPayment = await prisma.payment?.update({
-      where: { id: paymentId },
-      data: {
-        status: 'REFUNDED',
-        refundReason: reason,
-        refundedAt: new Date()
+    const monthlyStats = await this.prisma.payment.groupBy({
+      by: ['createdAt'],
+      _count: { id: true },
+      _sum: { amount: true },
+      where: {
+        createdAt: {
+          gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+        }
       }
     });
 
-    return updatedPayment;
+    return {
+      totalPayments,
+      totalAmount: totalAmount._sum.amount || 0,
+      completedPayments,
+      pendingPayments,
+      failedPayments,
+      refundedPayments,
+      methodStats,
+      monthlyStats
+    };
   }
 
-  static async getPaymentHistory(userId: string, page = 1, limit = 10) {
-    const skip = (page - 1) * limit;
-
-    const [payments, total] = await Promise.all([
-      prisma.payment?.findMany({
-        where: {
-          booking: {
-            userId
+  // Get payment by ID (admin)
+  async getPaymentById(id: string) {
+    const payment = await this.prisma.payment.findUnique({
+      where: { id },
+      include: {
+        booking: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true
+              }
+            },
+            driver: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    name: true
+                  }
+                }
+              },
+              select: {
+                id: true,
+                truckType: true
+              }
+            }
           }
-        },
-        skip,
-        take: limit,
+        }
+      }
+    });
+
+    if (!payment) {
+      throw new AppError('Payment not found', 404);
+    }
+
+    return payment;
+  }
+
+  // Update payment status (admin)
+  async updatePaymentStatus(id: string, status: PaymentStatus) {
+    const payment = await this.prisma.payment.findUnique({
+      where: { id },
+      include: { booking: true }
+    });
+
+    if (!payment) {
+      throw new AppError('Payment not found', 404);
+    }
+
+    const updatedPayment = await this.prisma.$transaction(async (tx) => {
+      const result = await tx.payment.update({
+        where: { id },
+        data: { status },
         include: {
           booking: {
             include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true
+                }
+              },
               driver: {
                 include: {
                   user: {
                     select: {
                       id: true,
-                      name: true,
-                      avatar: true
+                      name: true
                     }
                   }
+                },
+                select: {
+                  id: true,
+                  truckType: true
                 }
               }
             }
           }
-        },
-        orderBy: {
-          createdAt: 'desc'
         }
-      }),
-      prisma.payment?.count({
-        where: {
-          booking: {
-            userId
+      });
+
+      // Update booking status based on payment status
+      if (status === 'COMPLETED') {
+        await tx.booking.update({
+          where: { id: payment.bookingId },
+          data: { status: 'CONFIRMED' }
+        });
+      } else if (status === 'REFUNDED') {
+        await tx.booking.update({
+          where: { id: payment.bookingId },
+          data: { status: 'CANCELLED' }
+        });
+      }
+
+      return result;
+    });
+
+    return updatedPayment;
+  }
+
+  // Create payment (admin)
+  async createPayment(paymentData: PaymentCreateInput) {
+    // Check if booking exists
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: paymentData.bookingId }
+    });
+
+    if (!booking) {
+      throw new AppError('Booking not found', 404);
+    }
+
+    // Check if payment already exists for this booking
+    const existingPayment = await this.prisma.payment.findFirst({
+      where: { bookingId: paymentData.bookingId }
+    });
+
+    if (existingPayment) {
+      throw new AppError('Payment already exists for this booking', 400);
+    }
+
+    const payment = await this.prisma.payment.create({
+      data: {
+        ...paymentData,
+        status: paymentData.status || 'PENDING'
+      },
+      include: {
+        booking: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true
+              }
+            },
+            driver: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    name: true
+                  }
+                }
+              },
+              select: {
+                id: true,
+                truckType: true
+              }
+            }
           }
         }
-      })
-    ]);
+      }
+    });
+
+    return payment;
+  }
+
+  // Delete payment (admin)
+  async deletePayment(id: string) {
+    const payment = await this.prisma.payment.findUnique({
+      where: { id }
+    });
+
+    if (!payment) {
+      throw new AppError('Payment not found', 404);
+    }
+
+    // Check if payment is completed (should not be deleted)
+    if (payment.status === 'COMPLETED') {
+      throw new AppError('Cannot delete completed payment', 400);
+    }
+
+    await this.prisma.payment.delete({
+      where: { id }
+    });
 
     return {
-      payments,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit)
+      message: 'Payment deleted successfully'
     };
   }
 } 

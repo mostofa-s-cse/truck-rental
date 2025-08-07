@@ -1,313 +1,241 @@
-import { Request, Response } from 'express';
-import { PaymentService, PaymentData } from '../services/paymentService';
-import { ApiResponse } from '../types';
-import { logError, logPayment, logDatabase } from '../utils/logger';
+import { Response } from 'express';
+import { PaymentService } from '../services/paymentService';
+import { AppError, AuthenticatedRequest } from '../types';
+import { logError } from '../utils/logger';
+
+type PaymentStatus = 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED';
+
+const PAYMENT_STATUSES: PaymentStatus[] = ['PENDING', 'COMPLETED', 'FAILED', 'REFUNDED'];
 
 export class PaymentController {
-  static async createPayment(req: Request, res: Response) {
-    try {
-      const paymentData: PaymentData = req.body;
-      const userId = (req as any).user?.userId || 'anonymous';
-      
-      logPayment('create_payment_attempt', 'new', { userId, bookingId: paymentData.bookingId, amount: paymentData.amount });
-      logDatabase('insert', 'payments', { userId, bookingId: paymentData.bookingId, amount: paymentData.amount });
-      
-      const result = await PaymentService.createPayment(paymentData);
+  private paymentService: PaymentService;
 
-      logPayment('create_payment_success', result.id, { userId, bookingId: paymentData.bookingId, amount: paymentData.amount });
-      logDatabase('insert_success', 'payments', { paymentId: result.id, userId, bookingId: paymentData.bookingId });
-
-      const response: ApiResponse = {
-        success: true,
-        message: 'Payment created successfully',
-        data: result
-      };
-
-      res.status(201).json(response);
-    } catch (error: any) {
-      const userId = (req as any).user?.userId || 'anonymous';
-      
-      logError(error, { 
-        operation: 'create_payment', 
-        userId,
-        paymentData: req.body
-      });
-
-      const response: ApiResponse = {
-        success: false,
-        message: error.message || 'Failed to create payment',
-        error: error.message
-      };
-
-      res.status(400).json(response);
-    }
+  constructor() {
+    this.paymentService = new PaymentService();
   }
 
-  static async updatePaymentStatus(req: Request, res: Response) {
+  // Get all payments
+  getAllPayments = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
-      const { paymentId } = req.params;
-      const { status, transactionId } = req.body;
-      const userId = (req as any).user?.userId || 'anonymous';
-      
-      logPayment('update_status_attempt', paymentId, { userId, status, transactionId });
-      logDatabase('update', 'payments', { paymentId, userId, status, transactionId });
-      
-      const result = await PaymentService.updatePaymentStatus(paymentId, status, transactionId);
+      const page = parseInt(req.query['page'] as string) || 1;
+      const limit = parseInt(req.query['limit'] as string) || 10;
+      const statusParam = req.query['status'] as string;
+      const status = statusParam ? (statusParam as PaymentStatus) : undefined;
+      const search = req.query['search'] as string;
+      const method = req.query['method'] as string;
+      const dateFrom = req.query['dateFrom'] as string;
+      const dateTo = req.query['dateTo'] as string;
 
-      logPayment('update_status_success', paymentId, { userId, status, transactionId });
-      logDatabase('update_success', 'payments', { paymentId, userId, status });
-
-      const response: ApiResponse = {
-        success: true,
-        message: 'Payment status updated successfully',
-        data: result
-      };
-
-      res.status(200).json(response);
-    } catch (error: any) {
-      const userId = (req as any).user?.userId || 'anonymous';
-      
-      logError(error, { 
-        operation: 'update_payment_status', 
-        paymentId: req.params.paymentId,
-        userId,
-        status: req.body.status,
-        transactionId: req.body.transactionId
+      const result = await this.paymentService.getAllPayments({ 
+        page, 
+        limit, 
+        ...(status && { status }),
+        ...(search && { search }),
+        ...(method && { method }),
+        ...(dateFrom && { dateFrom }),
+        ...(dateTo && { dateTo })
       });
 
-      const response: ApiResponse = {
-        success: false,
-        message: error.message || 'Failed to update payment status',
-        error: error.message
-      };
-
-      res.status(400).json(response);
-    }
-  }
-
-  static async getPaymentByBookingId(req: Request, res: Response) {
-    try {
-      const { bookingId } = req.params;
-      const userId = (req as any).user?.userId || 'anonymous';
-      
-      logDatabase('select', 'payments', { bookingId, requestedBy: userId });
-      
-      const result = await PaymentService.getPaymentByBookingId(bookingId);
-
-      const response: ApiResponse = {
+      res.json({
         success: true,
-        message: 'Payment retrieved successfully',
+        message: 'Payments retrieved successfully',
         data: result
-      };
-
-      res.status(200).json(response);
-    } catch (error: any) {
-      const userId = (req as any).user?.userId || 'anonymous';
-      
-      logError(error, { 
-        operation: 'get_payment_by_booking', 
-        bookingId: req.params.bookingId,
-        userId
       });
-
-      const response: ApiResponse = {
-        success: false,
-        message: error.message || 'Failed to get payment',
-        error: error.message
-      };
-
-      res.status(404).json(response);
-    }
-  }
-
-  static async getPaymentById(req: Request, res: Response) {
-    try {
-      const { paymentId } = req.params;
-      const userId = (req as any).user?.userId || 'anonymous';
+    } catch (error) {
+      logError(error as Error, req);
       
-      logDatabase('select', 'payments', { paymentId, requestedBy: userId });
-      
-      const result = await PaymentService.getPaymentById(paymentId);
-
-      const response: ApiResponse = {
-        success: true,
-        message: 'Payment retrieved successfully',
-        data: result
-      };
-
-      res.status(200).json(response);
-    } catch (error: any) {
-      const userId = (req as any).user?.userId || 'anonymous';
-      
-      logError(error, { 
-        operation: 'get_payment_by_id', 
-        paymentId: req.params.paymentId,
-        userId
-      });
-
-      const response: ApiResponse = {
-        success: false,
-        message: error.message || 'Failed to get payment',
-        error: error.message
-      };
-
-      res.status(404).json(response);
-    }
-  }
-
-  static async getAllPayments(req: Request, res: Response) {
-    try {
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 10;
-      const status = req.query.status as string;
-      const search = req.query.search as string;
-      const userId = (req as any).user?.userId || 'anonymous';
-      
-      logDatabase('select', 'payments', { page, limit, status, search, requestedBy: userId, operation: 'get_all_payments' });
-      
-      const result = await PaymentService.getAllPayments(page, limit, status, search);
-
-      const response: ApiResponse = {
-        success: true,
-        message: 'All payments retrieved successfully',
-        data: result
-      };
-
-      res.status(200).json(response);
-    } catch (error: any) {
-      const userId = (req as any).user?.userId || 'anonymous';
-      
-      logError(error, { 
-        operation: 'get_all_payments', 
-        userId,
-        page: req.query.page,
-        limit: req.query.limit,
-        status: req.query.status,
-        search: req.query.search
-      });
-
-      const response: ApiResponse = {
-        success: false,
-        message: error.message || 'Failed to get all payments',
-        error: error.message
-      };
-
-      res.status(400).json(response);
-    }
-  }
-
-  static async getPaymentStats(req: Request, res: Response) {
-    try {
-      const userId = (req as any).user?.userId || 'anonymous';
-      
-      logDatabase('select', 'payments', { operation: 'stats', requestedBy: userId });
-      
-      const result = await PaymentService.getPaymentStats();
-
-      const response: ApiResponse = {
-        success: true,
-        message: 'Payment statistics retrieved successfully',
-        data: result
-      };
-
-      res.status(200).json(response);
-    } catch (error: any) {
-      const userId = (req as any).user?.userId || 'anonymous';
-      
-      logError(error, { 
-        operation: 'get_payment_stats', 
-        userId
-      });
-
-      const response: ApiResponse = {
-        success: false,
-        message: error.message || 'Failed to get payment statistics',
-        error: error.message
-      };
-
-      res.status(400).json(response);
-    }
-  }
-
-  static async processRefund(req: Request, res: Response) {
-    try {
-      const { paymentId } = req.params;
-      const { reason } = req.body;
-      const userId = (req as any).user?.userId || 'anonymous';
-      
-      if (!reason) {
-        throw new Error('Refund reason is required');
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({
+          success: false,
+          message: error.message
+        });
+        return;
       }
 
-      logPayment('refund_attempt', paymentId, { userId, reason });
-      logDatabase('update', 'payments', { paymentId, userId, action: 'refund', reason });
-      
-      const result = await PaymentService.processRefund(paymentId, reason);
-
-      logPayment('refund_success', paymentId, { userId, reason });
-      logDatabase('update_success', 'payments', { paymentId, userId, action: 'refunded' });
-
-      const response: ApiResponse = {
-        success: true,
-        message: 'Refund processed successfully',
-        data: result
-      };
-
-      res.status(200).json(response);
-    } catch (error: any) {
-      const userId = (req as any).user?.userId || 'anonymous';
-      
-      logError(error, { 
-        operation: 'process_refund', 
-        paymentId: req.params.paymentId,
-        userId,
-        reason: req.body.reason
-      });
-
-      const response: ApiResponse = {
+      res.status(500).json({
         success: false,
-        message: error.message || 'Failed to process refund',
-        error: error.message
-      };
-
-      res.status(400).json(response);
+        message: 'Failed to retrieve payments'
+      });
     }
-  }
+  };
 
-  static async getPaymentHistory(req: Request, res: Response) {
+  // Get payment statistics
+  getPaymentStats = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
-      const userId = (req as any).user.userId;
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 10;
-      
-      logDatabase('select', 'payments', { userId, page, limit, operation: 'payment_history' });
-      
-      const result = await PaymentService.getPaymentHistory(userId, page, limit);
+      const stats = await this.paymentService.getPaymentStats();
 
-      const response: ApiResponse = {
+      res.json({
         success: true,
-        message: 'Payment history retrieved successfully',
-        data: result
-      };
-
-      res.status(200).json(response);
-    } catch (error: any) {
-      const userId = (req as any).user?.userId || 'unknown';
-      
-      logError(error, { 
-        operation: 'get_payment_history', 
-        userId,
-        page: req.query.page,
-        limit: req.query.limit
+        message: 'Payment statistics retrieved successfully',
+        data: stats
       });
+    } catch (error) {
+      logError(error as Error, req);
+      
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({
+          success: false,
+          message: error.message
+        });
+        return;
+      }
 
-      const response: ApiResponse = {
+      res.status(500).json({
         success: false,
-        message: error.message || 'Failed to get payment history',
-        error: error.message
-      };
-
-      res.status(400).json(response);
+        message: 'Failed to retrieve payment statistics'
+      });
     }
-  }
+  };
+
+  // Get payment by ID
+  getPaymentById = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const { id } = req.params;
+      
+      if (!id) {
+        res.status(400).json({
+          success: false,
+          message: 'Payment ID is required'
+        });
+        return;
+      }
+
+      const payment = await this.paymentService.getPaymentById(id);
+
+      res.json({
+        success: true,
+        message: 'Payment retrieved successfully',
+        data: { payment }
+      });
+    } catch (error) {
+      logError(error as Error, req);
+      
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({
+          success: false,
+          message: error.message
+        });
+        return;
+      }
+
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve payment'
+      });
+    }
+  };
+
+  // Update payment status
+  updatePaymentStatus = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+      
+      if (!id) {
+        res.status(400).json({
+          success: false,
+          message: 'Payment ID is required'
+        });
+        return;
+      }
+
+      if (!status || !PAYMENT_STATUSES.includes(status as PaymentStatus)) {
+        res.status(400).json({
+          success: false,
+          message: 'Valid payment status is required'
+        });
+        return;
+      }
+
+      const payment = await this.paymentService.updatePaymentStatus(id, status as PaymentStatus);
+
+      res.json({
+        success: true,
+        message: 'Payment status updated successfully',
+        data: { payment }
+      });
+    } catch (error) {
+      logError(error as Error, req);
+      
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({
+          success: false,
+          message: error.message
+        });
+        return;
+      }
+
+      res.status(500).json({
+        success: false,
+        message: 'Failed to update payment status'
+      });
+    }
+  };
+
+  // Create new payment
+  createPayment = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const paymentData = req.body;
+      const payment = await this.paymentService.createPayment(paymentData);
+
+      res.status(201).json({
+        success: true,
+        message: 'Payment created successfully',
+        data: { payment }
+      });
+    } catch (error) {
+      logError(error as Error, req);
+      
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({
+          success: false,
+          message: error.message
+        });
+        return;
+      }
+
+      res.status(500).json({
+        success: false,
+        message: 'Failed to create payment'
+      });
+    }
+  };
+
+  // Delete payment
+  deletePayment = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const { id } = req.params;
+      
+      if (!id) {
+        res.status(400).json({
+          success: false,
+          message: 'Payment ID is required'
+        });
+        return;
+      }
+
+      const result = await this.paymentService.deletePayment(id);
+
+      res.json({
+        success: true,
+        message: 'Payment deleted successfully',
+        data: result
+      });
+    } catch (error) {
+      logError(error as Error, req);
+      
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({
+          success: false,
+          message: error.message
+        });
+        return;
+      }
+
+      res.status(500).json({
+        success: false,
+        message: 'Failed to delete payment'
+      });
+    }
+  };
 } 
