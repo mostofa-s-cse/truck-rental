@@ -1,11 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Truck, MapPin, DollarSign, CreditCard, Loader2, CheckCircle, AlertCircle, ChevronDown } from 'lucide-react';
+import { X, Truck, MapPin, DollarSign, Loader2, CheckCircle, AlertCircle, Map, CreditCard, Shield } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import { useSweetAlert } from '@/hooks/useSweetAlert';
 import { apiClient } from '@/lib/api';
 import { Driver } from '@/types';
+import DynamicMap from '@/components/ui/DynamicMap';
+import { useAppSelector } from '@/hooks/redux';
+import LocationMapSelector from '@/components/ui/LocationMapSelector';
 
 interface BookingModalProps {
   driver: Driver | null;
@@ -34,16 +37,23 @@ interface PaymentFormData {
   customerCity: string;
   customerPostCode: string;
   customerCountry: string;
+  shippingMethod: string;
 }
 
 interface AreaData {
   value: string;
   label: string;
   area: string;
+  latitude: number;
+  longitude: number;
 }
 
 export default function BookingModal({ driver, isOpen, onClose, onBookingComplete }: BookingModalProps) {
-  const { errorToast } = useSweetAlert();
+  const { errorToast, successToast, question } = useSweetAlert();
+  const { user } = useAppSelector((state) => state.auth);
+  
+  // Debug: Log user data
+  console.log('BookingModal - Redux user data:', user);
   
   // Form states
   const [bookingData, setBookingData] = useState<BookingFormData>({
@@ -61,7 +71,8 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
     customerAddress: '',
     customerCity: '',
     customerPostCode: '',
-    customerCountry: 'Bangladesh'
+    customerCountry: 'Bangladesh',
+    shippingMethod: 'Truck'
   });
 
   // UI states
@@ -69,50 +80,39 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
   const [isLoading, setIsLoading] = useState(false);
   const [calculatedFare, setCalculatedFare] = useState(0);
   const [bookingId, setBookingId] = useState<string | null>(null);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+  
+  // Selected area coordinates
+  const [selectedSourceArea, setSelectedSourceArea] = useState<AreaData | null>(null);
+  const [selectedDestinationArea, setSelectedDestinationArea] = useState<AreaData | null>(null);
+  
+  // Map selector states
+  const [showSourceMapSelector, setShowSourceMapSelector] = useState(false);
+  const [showDestinationMapSelector, setShowDestinationMapSelector] = useState(false);
+  
+  // Route details for map
+  const [routeDetails, setRouteDetails] = useState<{
+    distance: number;
+    duration: number;
+    routeGeometry: string;
+    waypoints: Array<{ latitude: number; longitude: number }>;
+  } | null>(null);
 
-  // Area dropdown states
-  const [areas, setAreas] = useState<AreaData[]>([]);
-  const [isLoadingAreas, setIsLoadingAreas] = useState(true);
-  const [showSourceDropdown, setShowSourceDropdown] = useState(false);
-  const [showDestinationDropdown, setShowDestinationDropdown] = useState(false);
-  const [filteredSourceAreas, setFilteredSourceAreas] = useState<AreaData[]>([]);
-  const [filteredDestinationAreas, setFilteredDestinationAreas] = useState<AreaData[]>([]);
-
-  // Load areas from API
+  // Pre-fill user info from Redux
   useEffect(() => {
-    const loadAreas = async () => {
-      try {
-        setIsLoadingAreas(true);
-        const response = await apiClient.getAreasForDropdown();
-        if (response.success && response.data) {
-          setAreas(response.data);
-          setFilteredSourceAreas(response.data);
-          setFilteredDestinationAreas(response.data);
-        }
-      } catch (error) {
-        console.error('Error loading areas:', error);
-        errorToast('Failed to load areas');
-      } finally {
-        setIsLoadingAreas(false);
-      }
-    };
-
-    loadAreas();
-  }, [errorToast]);
-
-  // Close dropdowns when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Element;
-      if (!target.closest('.location-dropdown')) {
-        setShowSourceDropdown(false);
-        setShowDestinationDropdown(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+    if (user) {
+      console.log('Setting payment data with user:', user);
+      setPaymentData(prev => ({
+        ...prev,
+        customerName: user.name || '',
+        customerEmail: user.email || '',
+        customerPhone: user.phone || '',
+        shippingMethod: 'Truck'
+      }));
+    } else {
+      console.log('No user data available from Redux');
+    }
+  }, [user]);
 
   // Reset form when modal opens/closes
   useEffect(() => {
@@ -132,36 +132,75 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
         customerAddress: '',
         customerCity: '',
         customerPostCode: '',
-        customerCountry: 'Bangladesh'
+        customerCountry: 'Bangladesh',
+        shippingMethod: 'Truck'
       });
       setCalculatedFare(0);
       setBookingId(null);
+      setRouteDetails(null);
+      setSelectedSourceArea(null);
+      setSelectedDestinationArea(null);
+      setPaymentError(null);
+    } else {
+      // Ensure calculated fare is reset when modal closes
+      setCalculatedFare(0);
+      setRouteDetails(null);
     }
   }, [isOpen]);
 
-  // Calculate fare when source/destination changes
+  // Calculate fare when selected areas change
   useEffect(() => {
-    if (bookingData.source && bookingData.destination && driver) {
+    if (selectedSourceArea && selectedDestinationArea && driver) {
       calculateFare();
     }
-  }, [bookingData.source, bookingData.destination, driver]);
+  }, [selectedSourceArea, selectedDestinationArea, driver]);
+
+  const fetchRouteDetails = async () => {
+    try {
+      if (!selectedSourceArea || !selectedDestinationArea) {
+        return;
+      }
+
+      const response = await apiClient.getRouteDetails(
+        {
+          latitude: selectedSourceArea.latitude,
+          longitude: selectedSourceArea.longitude,
+          address: bookingData.source
+        },
+        {
+          latitude: selectedDestinationArea.latitude,
+          longitude: selectedDestinationArea.longitude,
+          address: bookingData.destination
+        }
+      );
+
+      if (response.success && response.data) {
+        setRouteDetails(response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching route details:', error);
+    }
+  };
 
   const calculateFare = async () => {
     try {
-      // For now, use default coordinates for Dhaka
-      // In a real implementation, you would use a geocoding service to convert addresses to coordinates
-      const defaultSourceCoords = { latitude: 23.8103, longitude: 90.4125 }; // Dhaka center
-      const defaultDestCoords = { latitude: 23.7937, longitude: 90.4066 }; // Dhaka center (slightly different)
+      // Use coordinates from selected areas if available
+      if (!selectedSourceArea || !selectedDestinationArea) {
+        return; // Don't calculate if areas aren't selected
+      }
+      
+      // Fetch route details for map display
+      await fetchRouteDetails();
       
       const response = await apiClient.calculateFare({
         source: {
-          latitude: defaultSourceCoords.latitude,
-          longitude: defaultSourceCoords.longitude,
+          latitude: selectedSourceArea.latitude,
+          longitude: selectedSourceArea.longitude,
           address: bookingData.source
         },
         destination: {
-          latitude: defaultDestCoords.latitude,
-          longitude: defaultDestCoords.longitude,
+          latitude: selectedDestinationArea.latitude,
+          longitude: selectedDestinationArea.longitude,
           address: bookingData.destination
         },
         truckType: driver!.truckType
@@ -174,10 +213,10 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
           ...prev,
           fare: fareData.totalFare,
           distance: fareData.distance,
-          sourceLat: defaultSourceCoords.latitude,
-          sourceLng: defaultSourceCoords.longitude,
-          destLat: defaultDestCoords.latitude,
-          destLng: defaultDestCoords.longitude
+          sourceLat: selectedSourceArea.latitude,
+          sourceLng: selectedSourceArea.longitude,
+          destLat: selectedDestinationArea.latitude,
+          destLng: selectedDestinationArea.longitude
         }));
       }
     } catch (error) {
@@ -195,6 +234,20 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
   const handleBookingSubmit = async () => {
     if (!driver) return;
 
+    // Debug: Check authentication status
+    console.log('Booking submit - Authentication check:', {
+      isAuthenticated: !!user,
+      user: user,
+      token: localStorage.getItem('token'),
+      tokenLength: localStorage.getItem('token')?.length
+    });
+
+    // Check if user is authenticated
+    if (!user || !localStorage.getItem('token')) {
+      errorToast('Please login to create a booking');
+      return;
+    }
+
     // Validate booking data
     if (!bookingData.source || !bookingData.destination || !bookingData.pickupTime) {
       errorToast('Please fill in all required fields');
@@ -205,6 +258,22 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
       errorToast('Please enter valid source and destination to calculate fare');
       return;
     }
+
+    // Auto-populate shipping information based on booking details
+    const sourceCity = extractCityFromLocation(bookingData.source);
+    const destCity = extractCityFromLocation(bookingData.destination);
+    
+    setPaymentData(prev => ({
+      ...prev,
+      customerCity: sourceCity || destCity || '',
+      customerAddress: `${bookingData.source} to ${bookingData.destination}`,
+      customerPostCode: '1000', // Default postal code for Bangladesh
+      customerCountry: 'Bangladesh'
+    }));
+
+    // Debug: Log the current state
+    console.log('Booking submit - User data:', user);
+    console.log('Booking submit - Payment data:', paymentData);
 
     setIsLoading(true);
     try {
@@ -222,9 +291,15 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
 
       if (response.success && response.data) {
         const bookingData = response.data as { id: string };
+        console.log('Booking created successfully:', {
+          bookingId: bookingData.id,
+          response: response
+        });
         setBookingId(bookingData.id);
         setStep('payment');
+        successToast('Booking created successfully! Please proceed with payment.');
       } else {
+        console.error('Booking creation failed:', response);
         errorToast(response.message || 'Failed to create booking');
       }
     } catch (error) {
@@ -235,65 +310,164 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
     }
   };
 
+  // Map selector handlers
+  const handleSourceLocationSelect = (location: { name: string; latitude: number; longitude: number; address: string }) => {
+    setBookingData(prev => ({ ...prev, source: location.address }));
+    setSelectedSourceArea({
+      value: location.address,
+      label: location.name,
+      area: location.address,
+      latitude: location.latitude,
+      longitude: location.longitude
+    });
+    setShowSourceMapSelector(false);
+  };
+
+  const handleDestinationLocationSelect = (location: { name: string; latitude: number; longitude: number; address: string }) => {
+    setBookingData(prev => ({ ...prev, destination: location.address }));
+    setSelectedDestinationArea({
+      value: location.address,
+      label: location.name,
+      area: location.address,
+      latitude: location.latitude,
+      longitude: location.longitude
+    });
+    setShowDestinationMapSelector(false);
+  };
+
+  // Helper function to extract city from location string
+  const extractCityFromLocation = (location: string): string => {
+    if (!location) return '';
+    
+    // Common cities in Bangladesh
+    const cities = [
+      'Dhaka', 'Chittagong', 'Sylhet', 'Rajshahi', 'Khulna', 
+      'Barisal', 'Rangpur', 'Mymensingh', 'Comilla', 'Narayanganj',
+      'Gazipur', 'Tangail', 'Bogra', 'Kushtia', 'Jessore'
+    ];
+    
+    for (const city of cities) {
+      if (location.toLowerCase().includes(city.toLowerCase())) {
+        return city;
+      }
+    }
+    
+    // If no city found, try to extract from the location string
+    const parts = location.split(',').map(part => part.trim());
+    return parts[0] || '';
+  };
+
   const handlePaymentSubmit = async () => {
     if (!bookingId) return;
 
+    // Debug: Check booking ID and authentication
+    console.log('Payment submit - Debug info:', {
+      bookingId: bookingId,
+      isAuthenticated: !!user,
+      user: user,
+      token: localStorage.getItem('token')
+    });
+
+    // Get the actual values (from Redux user or paymentData)
+    const customerName = user?.name || paymentData.customerName;
+    const customerEmail = user?.email || paymentData.customerEmail;
+    const customerPhone = user?.phone || paymentData.customerPhone;
+
     // Validate payment data
-    if (!paymentData.customerName || !paymentData.customerEmail || !paymentData.customerPhone) {
+    if (!customerName || !customerEmail || !customerPhone) {
       errorToast('Please fill in all required payment information');
       return;
     }
 
     setIsLoading(true);
     setStep('processing');
+    setPaymentError(null);
 
     try {
-      const baseUrl = window.location.origin;
+      // Use the new SSLCommerz service
       const paymentRequest = {
         bookingId,
-        amount: calculatedFare,
-        currency: 'BDT',
-        customerName: paymentData.customerName,
-        customerEmail: paymentData.customerEmail,
-        customerPhone: paymentData.customerPhone,
-        customerAddress: paymentData.customerAddress,
-        customerCity: paymentData.customerCity,
-        customerPostCode: paymentData.customerPostCode,
-        customerCountry: paymentData.customerCountry,
-        successUrl: `${baseUrl}/api/payment/success`,
-        failUrl: `${baseUrl}/api/payment/fail`,
-        cancelUrl: `${baseUrl}/api/payment/cancel`,
-        ipnUrl: `${baseUrl}/api/payment/ipn`
+        customerInfo: {
+          name: customerName,
+          email: customerEmail,
+          phone: customerPhone,
+          address: paymentData.customerAddress,
+          city: paymentData.customerCity,
+          postCode: paymentData.customerPostCode,
+          country: paymentData.customerCountry
+        }
       };
 
-      const response = await apiClient.createPaymentSession(paymentRequest);
+      console.log('Initiating SSLCommerz payment with:', paymentRequest);
+      const response = await apiClient.initiateSSLCommerzPayment(paymentRequest);
+      console.log('SSLCommerz payment response:', response);
 
-      if (response.success && response.data?.redirectUrl) {
-        // Redirect to SSLCommerz payment gateway
-        window.location.href = response.data.redirectUrl;
+      if (response.success && response.data && response.data.gatewayUrl) {
+        // Show success message before redirect
+        successToast('Redirecting to secure payment gateway...');
+        
+        // Small delay to show the message
+        setTimeout(() => {
+          // Redirect to SSLCommerz payment gateway
+          window.location.href = response.data!.gatewayUrl;
+        }, 1000);
       } else {
-        throw new Error(response.message || 'Failed to create payment session');
+        console.error('SSLCommerz payment initiation failed:', response);
+        throw new Error(response.message || 'Failed to initiate payment');
       }
     } catch (error) {
-      console.error('Error creating payment session:', error);
-      setStep('error');
-      errorToast('Failed to process payment. Please try again.');
+      console.error('Error initiating SSLCommerz payment:', error);
+      
+      // Handle specific error cases
+      if (error instanceof Error) {
+        if (error.message.includes('Booking not found')) {
+          errorToast('Booking not found. Please create a new booking.');
+          setStep('booking');
+          setBookingId(null);
+        } else if (error.message.includes('SSLCommerz')) {
+          setPaymentError('Payment gateway is currently unavailable. Please try again later.');
+          setStep('error');
+        } else {
+          setPaymentError(error.message || 'Failed to process payment. Please try again.');
+          setStep('error');
+        }
+      } else {
+        setPaymentError('An unexpected error occurred. Please try again.');
+        setStep('error');
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleClose = () => {
+  const handleClose = async () => {
     if (step === 'processing') {
       return; // Don't allow closing during payment processing
     }
 
-    if (step === 'booking' && (bookingData.source || bookingData.destination)) {
-      // Simple confirmation - in a real app you'd use a proper confirmation dialog
-      if (window.confirm('Are you sure you want to cancel this booking? All entered data will be lost.')) {
+    if (step === 'booking' && (bookingData.source || bookingData.destination || calculatedFare > 0)) {
+      // Use SweetAlert confirmation
+      const result = await question(
+        'Are you sure you want to cancel this booking? All entered data will be lost.',
+        'Cancel Booking'
+      );
+      
+      if (result.isConfirmed) {
+        // Reset all form data and calculated fare
+        setBookingData({
+          source: '',
+          destination: '',
+          pickupTime: '',
+          fare: 0,
+          distance: 0
+        });
+        setCalculatedFare(0);
+        setBookingId(null);
         onClose();
       }
     } else {
+      // Reset calculated fare even if no data entered
+      setCalculatedFare(0);
       onClose();
     }
   };
@@ -346,7 +520,7 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Pickup Location */}
-                <div className="relative location-dropdown">
+                <div className="relative">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Pickup Location *
                   </label>
@@ -354,53 +528,24 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
                     <input
                       type="text"
                       value={bookingData.source}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        setBookingData(prev => ({ ...prev, source: value }));
-                        const filtered = areas.filter((area: AreaData) => 
-                          area.label.toLowerCase().includes(value.toLowerCase())
-                        );
-                        setFilteredSourceAreas(filtered);
-                        setShowSourceDropdown(true);
-                      }}
-                      onFocus={() => setShowSourceDropdown(true)}
-                      placeholder={isLoadingAreas ? "Loading areas..." : "Enter pickup location..."}
-                      disabled={isLoadingAreas}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      onChange={(e) => setBookingData(prev => ({ ...prev, source: e.target.value }))}
+                      placeholder="Enter pickup location or click map to select..."
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      readOnly
                     />
-                    {isLoadingAreas ? (
-                      <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 animate-spin text-gray-400" />
-                    ) : (
-                      <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => setShowSourceMapSelector(true)}
+                      className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 text-gray-400 hover:text-blue-600 transition-colors"
+                      title="Select location on map"
+                    >
+                      <Map className="w-4 h-4" />
+                    </button>
                   </div>
-                  
-                  {/* Source Dropdown */}
-                  {showSourceDropdown && (
-                    <div className="location-dropdown absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                      {filteredSourceAreas.length > 0 ? (
-                        filteredSourceAreas.map((area) => (
-                          <button
-                            key={area.value}
-                            onClick={() => {
-                              setBookingData(prev => ({ ...prev, source: area.label }));
-                              setShowSourceDropdown(false);
-                            }}
-                            className="w-full text-left px-4 py-2 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
-                          >
-                            <div className="font-medium text-gray-900">{area.label}</div>
-                            <div className="text-sm text-gray-500">{area.area}</div>
-                          </button>
-                        ))
-                      ) : (
-                        <div className="px-4 py-2 text-gray-500">No locations found</div>
-                      )}
-                    </div>
-                  )}
                 </div>
 
                 {/* Destination */}
-                <div className="relative location-dropdown">
+                <div className="relative">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Destination *
                   </label>
@@ -408,49 +553,20 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
                     <input
                       type="text"
                       value={bookingData.destination}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        setBookingData(prev => ({ ...prev, destination: value }));
-                        const filtered = areas.filter((area: AreaData) => 
-                          area.label.toLowerCase().includes(value.toLowerCase())
-                        );
-                        setFilteredDestinationAreas(filtered);
-                        setShowDestinationDropdown(true);
-                      }}
-                      onFocus={() => setShowDestinationDropdown(true)}
-                      placeholder={isLoadingAreas ? "Loading areas..." : "Enter destination..."}
-                      disabled={isLoadingAreas}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      onChange={(e) => setBookingData(prev => ({ ...prev, destination: e.target.value }))}
+                      placeholder="Enter destination or click map to select..."
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      readOnly
                     />
-                    {isLoadingAreas ? (
-                      <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 animate-spin text-gray-400" />
-                    ) : (
-                      <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => setShowDestinationMapSelector(true)}
+                      className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 text-gray-400 hover:text-blue-600 transition-colors"
+                      title="Select location on map"
+                    >
+                      <Map className="w-4 h-4" />
+                    </button>
                   </div>
-                  
-                  {/* Destination Dropdown */}
-                  {showDestinationDropdown && (
-                    <div className="location-dropdown absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                      {filteredDestinationAreas.length > 0 ? (
-                        filteredDestinationAreas.map((area) => (
-                          <button
-                            key={area.value}
-                            onClick={() => {
-                              setBookingData(prev => ({ ...prev, destination: area.label }));
-                              setShowDestinationDropdown(false);
-                            }}
-                            className="w-full text-left px-4 py-2 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
-                          >
-                            <div className="font-medium text-gray-900">{area.label}</div>
-                            <div className="text-sm text-gray-500">{area.area}</div>
-                          </button>
-                        ))
-                      ) : (
-                        <div className="px-4 py-2 text-gray-500">No locations found</div>
-                      )}
-                    </div>
-                  )}
                 </div>
               </div>
 
@@ -465,6 +581,27 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
                   className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
+
+              {/* Map Display */}
+              {selectedSourceArea && selectedDestinationArea && (
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Route Preview</h4>
+                  <DynamicMap
+                    sourceLat={selectedSourceArea.latitude}
+                    sourceLng={selectedSourceArea.longitude}
+                    destLat={selectedDestinationArea.latitude}
+                    destLng={selectedDestinationArea.longitude}
+                    routeGeometry={routeDetails?.routeGeometry}
+                    className="h-48 w-full rounded-md"
+                  />
+                  {routeDetails && (
+                    <div className="mt-2 text-sm text-gray-600">
+                      <p>Distance: {routeDetails.distance.toFixed(1)} km</p>
+                      <p>Estimated Time: {Math.round(routeDetails.duration)} minutes</p>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Fare Display */}
               {calculatedFare > 0 && (
@@ -511,104 +648,180 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
           {/* Payment Form */}
           {step === 'payment' && (
             <div className="space-y-4">
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-                <div className="flex items-center gap-2">
-                  <CreditCard className="w-5 h-5 text-yellow-600" />
-                  <p className="text-sm text-yellow-800">
-                    You will be redirected to SSLCommerz secure payment gateway
-                  </p>
+              {/* Payment Security Notice */}
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <Shield className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <h3 className="text-sm font-medium text-green-800 mb-1">Secure Payment</h3>
+                    <p className="text-sm text-green-700">
+                      Your payment will be processed securely through SSLCommerz, a trusted payment gateway in Bangladesh. 
+                      All your financial information is encrypted and protected.
+                    </p>
+                  </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
+              {/* User Information - Read Only */}
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-medium text-gray-700">Customer Information</h3>
+                  {user ? (
+                    <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                      Auto-filled from account
+                    </span>
+                  ) : (
+                    <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">
+                      Manual entry required
+                    </span>
+                  )}
+                </div>
+                
+                {user ? (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-600 mb-1">
+                          Full Name
+                        </label>
+                        <input
+                          type="text"
+                          value={user.name || ''}
+                          disabled
+                          className="w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-100 cursor-not-allowed text-gray-700"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-600 mb-1">
+                          Email
+                        </label>
+                        <input
+                          type="email"
+                          value={user.email || ''}
+                          disabled
+                          className="w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-100 cursor-not-allowed text-gray-700"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="mt-4">
+                      <label className="block text-sm font-medium text-gray-600 mb-1">
+                        Phone Number
+                      </label>
+                      <input
+                        type="tel"
+                        value={user.phone || ''}
+                        disabled
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-100 cursor-not-allowed text-gray-700"
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-sm text-gray-500 mb-3">User information not available</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-600 mb-1">
+                          Full Name *
+                        </label>
+                        <input
+                          type="text"
+                          value={paymentData.customerName}
+                          onChange={(e) => setPaymentData(prev => ({ ...prev, customerName: e.target.value }))}
+                          placeholder="Enter your full name"
+                          className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-600 mb-1">
+                          Email *
+                        </label>
+                        <input
+                          type="email"
+                          value={paymentData.customerEmail}
+                          onChange={(e) => setPaymentData(prev => ({ ...prev, customerEmail: e.target.value }))}
+                          placeholder="Enter your email"
+                          className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="mt-4">
+                      <label className="block text-sm font-medium text-gray-600 mb-1">
+                        Phone Number *
+                      </label>
+                      <input
+                        type="tel"
+                        value={paymentData.customerPhone}
+                        onChange={(e) => setPaymentData(prev => ({ ...prev, customerPhone: e.target.value }))}
+                        placeholder="Enter your phone number"
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Shipping Information */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 className="text-sm font-medium text-gray-700 mb-3">Shipping Information</h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      City *
+                    </label>
+                    <input
+                      type="text"
+                      readOnly
+                      value={paymentData.customerCity}
+                      onChange={(e) => setPaymentData(prev => ({ ...prev, customerCity: e.target.value }))}
+                      placeholder="Auto-filled from booking location"
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-blue-50"
+                    />
+                    <p className="text-xs text-blue-600 mt-1">Auto-detected from pickup/destination location</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Postal Code
+                    </label>
+                    <input
+                      type="text"
+                      readOnly
+                      value={paymentData.customerPostCode}
+                      onChange={(e) => setPaymentData(prev => ({ ...prev, customerPostCode: e.target.value }))}
+                      placeholder="Default: 1000"
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-blue-50"
+                    />
+                    <p className="text-xs text-blue-600 mt-1">Default postal code for Bangladesh</p>
+                  </div>
+                </div>
+
+                <div className="mt-4">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Full Name *
+                    Address
                   </label>
                   <input
                     type="text"
-                    value={paymentData.customerName}
-                    onChange={(e) => setPaymentData(prev => ({ ...prev, customerName: e.target.value }))}
-                    placeholder="Enter your full name"
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    readOnly
+                    value={paymentData.customerAddress}
+                    onChange={(e) => setPaymentData(prev => ({ ...prev, customerAddress: e.target.value }))}
+                    placeholder="Auto-filled from booking route"
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-blue-50"
                   />
+                  <p className="text-xs text-blue-600 mt-1">Auto-filled: {bookingData.source} to {bookingData.destination}</p>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Email *
-                  </label>
-                  <input
-                    type="email"
-                    value={paymentData.customerEmail}
-                    onChange={(e) => setPaymentData(prev => ({ ...prev, customerEmail: e.target.value }))}
-                    placeholder="Enter your email"
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Phone Number *
-                  </label>
-                  <input
-                    type="tel"
-                    value={paymentData.customerPhone}
-                    onChange={(e) => setPaymentData(prev => ({ ...prev, customerPhone: e.target.value }))}
-                    placeholder="Enter your phone number"
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    City *
-                  </label>
-                  <input
-                    type="text"
-                    value={paymentData.customerCity}
-                    onChange={(e) => setPaymentData(prev => ({ ...prev, customerCity: e.target.value }))}
-                    placeholder="Enter your city"
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Address
-                </label>
-                <input
-                  type="text"
-                  value={paymentData.customerAddress}
-                  onChange={(e) => setPaymentData(prev => ({ ...prev, customerAddress: e.target.value }))}
-                  placeholder="Enter your address"
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Postal Code
-                  </label>
-                  <input
-                    type="text"
-                    value={paymentData.customerPostCode}
-                    onChange={(e) => setPaymentData(prev => ({ ...prev, customerPostCode: e.target.value }))}
-                    placeholder="Enter postal code"
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
+                <div className="mt-4">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Country
                   </label>
                   <input
                     type="text"
+                    readOnly
                     value={paymentData.customerCountry}
-                    onChange={(e) => setPaymentData(prev => ({ ...prev, customerCountry: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    disabled
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-100 cursor-not-allowed text-gray-700"
                   />
                 </div>
               </div>
@@ -633,7 +846,10 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
                       Processing...
                     </>
                   ) : (
-                    'Proceed to Payment'
+                    <>
+                      <CreditCard className="w-4 h-4 mr-2" />
+                      Proceed to Payment
+                    </>
                   )}
                 </Button>
                 <Button
@@ -652,7 +868,13 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
             <div className="text-center py-8">
               <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">Processing Payment</h3>
-              <p className="text-gray-600">Please wait while we redirect you to the payment gateway...</p>
+              <p className="text-gray-600 mb-4">Please wait while we redirect you to the secure payment gateway...</p>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 text-sm text-blue-700">
+                  <Shield className="w-4 h-4" />
+                  <span>Your payment is being processed securely through SSLCommerz</span>
+                </div>
+              </div>
             </div>
           )}
 
@@ -679,6 +901,9 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
             <div className="text-center py-8">
               <AlertCircle className="w-12 h-12 text-red-600 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">Payment Failed</h3>
+              {paymentError && (
+                <p className="text-gray-600 mb-4">{paymentError}</p>
+              )}
               <p className="text-gray-600 mb-6">There was an error processing your payment. Please try again.</p>
               <div className="flex gap-3">
                 <Button
@@ -699,6 +924,23 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
           )}
         </div>
       </div>
+
+      {/* Map Selectors */}
+      <LocationMapSelector
+        isOpen={showSourceMapSelector}
+        onClose={() => setShowSourceMapSelector(false)}
+        onLocationSelect={handleSourceLocationSelect}
+        title="Select Pickup Location"
+        placeholder="Search for pickup location..."
+      />
+
+      <LocationMapSelector
+        isOpen={showDestinationMapSelector}
+        onClose={() => setShowDestinationMapSelector(false)}
+        onLocationSelect={handleDestinationLocationSelect}
+        title="Select Destination"
+        placeholder="Search for destination..."
+      />
     </div>
   );
 } 

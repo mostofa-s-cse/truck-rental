@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { Truck, MapPin, Star, Shield, Clock, Award, Users, ArrowRight } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import Link from 'next/link';
-import Footer from '@/components/ui/Footer';
 
 export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -308,9 +307,6 @@ export default function HomePage() {
           </div>
         </div>
       </div>
-
-      {/* Footer */}
-      <Footer />
     </div>
   );
 }

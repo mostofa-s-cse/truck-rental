@@ -3,25 +3,14 @@ import { PaymentController } from '../../controllers/paymentController';
 import { auth, authorize } from '../../middleware/auth';
 
 const router = Router();
+const paymentController = new PaymentController();
 
-// Create payment session (requires authentication)
-router.post('/session', auth, authorize('USER'), PaymentController.createPaymentSession);
-
-// Validate payment (requires authentication)
-router.post('/validate', auth, authorize('USER'), PaymentController.validatePayment);
-
-// Get payment status (requires authentication)
-router.get('/status/:bookingId', auth, authorize('USER'), PaymentController.getPaymentStatus);
-
-// Refund payment (requires authentication)
-router.post('/refund/:bookingId', auth, authorize('USER'), PaymentController.refundPayment);
-
-// SSLCommerz callback URLs (public - no authentication required)
-router.get('/success', PaymentController.paymentSuccess);
-router.get('/fail', PaymentController.paymentFail);
-router.get('/cancel', PaymentController.paymentCancel);
-
-// IPN (Instant Payment Notification) - public endpoint
-router.post('/ipn', PaymentController.processIPN);
+// Admin payment management routes (require ADMIN authentication)
+router.get('/', auth, authorize('ADMIN'), paymentController.getAllPayments);
+router.get('/stats', auth, authorize('ADMIN'), paymentController.getPaymentStats);
+router.get('/:id', auth, authorize('ADMIN'), paymentController.getPaymentById);
+router.put('/:id/status', auth, authorize('ADMIN'), paymentController.updatePaymentStatus);
+router.post('/', auth, authorize('ADMIN'), paymentController.createPayment);
+router.delete('/:id', auth, authorize('ADMIN'), paymentController.deletePayment);
 
 export default router; 

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import 'sweetalert2/dist/sweetalert2.min.css';
+import 'leaflet/dist/leaflet.css';
 import ReduxProvider from '@/providers/ReduxProvider';
 import LayoutWrapper from '@/components/layout/LayoutWrapper';
 

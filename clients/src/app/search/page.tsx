@@ -1,13 +1,21 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Truck, MapPin, Star, Search, Phone, MessageCircle, Loader2, Filter, X, TrendingUp } from 'lucide-react';
+import { Truck, MapPin, Star, Search, Phone, MessageCircle, Loader2, Filter, X, TrendingUp, LogIn } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import BookingModal from '@/components/BookingModal';
 import { apiClient } from '@/lib/api';
 import { Driver, SearchFilters } from '@/types';
+import { useAuth } from '@/hooks/useAuth';
+import { useRouter } from 'next/navigation';
 
 export default function SearchPage() {
+  const { user, token } = useAuth();
+  const router = useRouter();
+  
+  // Check if user is authenticated
+  const isAuthenticated = !!token && !!user;
+  
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -271,6 +279,11 @@ export default function SearchPage() {
     setIsBookingModalOpen(true);
   };
 
+  const handleLoginRedirect = () => {
+    // Redirect to login page
+    router.push('/login');
+  };
+
   const handleBookingComplete = () => {
     // Refresh the search results or show success message
     loadInitialData();
@@ -289,28 +302,28 @@ export default function SearchPage() {
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16">
           <div className="text-center">
-            <h1 className="text-4xl md:text-6xl font-bold mb-6">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 sm:mb-6">
               Find Your Perfect Truck
             </h1>
-            <p className="text-xl md:text-2xl mb-8 text-blue-100">
+            <p className="text-lg sm:text-xl md:text-2xl mb-6 sm:mb-8 text-blue-100 px-4">
               Connect with verified drivers across Bangladesh
             </p>
             
             {/* Hero Search Bar */}
-            <div className="max-w-3xl mx-auto">
+            <div className="max-w-3xl mx-auto px-4">
               <div className="relative">
-                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-6 h-6" />
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 sm:w-6 sm:h-6" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search by location or truck type (e.g., Dhaka pickup, mini truck)..."
-                  className="w-full pl-12 pr-4 py-4 text-lg border-0 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 text-black placeholder-gray-500 bg-white shadow-lg"
+                  placeholder="Search by location or truck type..."
+                  className="w-full pl-10 sm:pl-12 pr-4 py-3 sm:py-4 text-base sm:text-lg border-0 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 text-black placeholder-gray-500 bg-white shadow-lg"
                 />
                 {isLoading && (
-                  <Loader2 className="absolute right-4 top-1/2 transform -translate-y-1/2 w-6 h-6 animate-spin text-blue-600" />
+                  <Loader2 className="absolute right-4 top-1/2 transform -translate-y-1/2 w-5 h-5 sm:w-6 sm:h-6 animate-spin text-blue-600" />
                 )}
               </div>
             </div>
@@ -318,22 +331,22 @@ export default function SearchPage() {
         </div>
       </div>
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
           {/* Filters Sidebar */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-lg shadow-sm p-6 sticky top-8">
+            <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 sticky top-4 sm:top-8">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-gray-900">Filters</h2>
                 <button
                   onClick={() => setShowFilters(!showFilters)}
-                  className="lg:hidden p-2 rounded-md hover:bg-gray-100"
+                  className="lg:hidden p-2 rounded-md hover:bg-gray-100 transition-colors"
                 >
                   <Filter className="w-5 h-5" />
                 </button>
               </div>
 
-              <div className={`${showFilters ? 'block' : 'hidden'} lg:block space-y-6`}>
+              <div className={`${showFilters ? 'block' : 'hidden'} lg:block space-y-4 sm:space-y-6`}>
                 {/* Truck Type */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -342,7 +355,7 @@ export default function SearchPage() {
                   <select
                     value={selectedTruckType || ''}
                     onChange={(e) => setSelectedTruckType(e.target.value as SearchFilters['truckType'] || undefined)}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white text-sm sm:text-base"
                   >
                     <option value="">All Types</option>
                     <option value="MINI_TRUCK">Mini Truck</option>
@@ -495,18 +508,18 @@ export default function SearchPage() {
           {/* Search Results */}
           <div className="lg:col-span-3">
             {/* Results Header */}
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 gap-2 sm:gap-0">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
                   Available Trucks
                 </h2>
-                <p className="text-gray-600">
+                <p className="text-sm sm:text-base text-gray-600">
                   {totalResults} trucks found
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-green-600" />
-                <span className="text-sm text-green-600 font-medium">Live Updates</span>
+                <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
+                <span className="text-xs sm:text-sm text-green-600 font-medium">Live Updates</span>
               </div>
             </div>
 
@@ -519,38 +532,38 @@ export default function SearchPage() {
 
             {/* Loading State */}
             {isLoading && (
-              <div className="flex items-center justify-center py-12">
+              <div className="flex items-center justify-center py-8 sm:py-12">
                 <div className="text-center">
-                  <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
-                  <p className="text-gray-600">Searching for trucks...</p>
+                  <Loader2 className="w-6 h-6 sm:w-8 sm:h-8 animate-spin text-blue-600 mx-auto mb-3 sm:mb-4" />
+                  <p className="text-sm sm:text-base text-gray-600">Searching for trucks...</p>
                 </div>
               </div>
             )}
 
             {/* Results */}
             {!isLoading && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4 sm:gap-6">
                 {drivers.map((driver) => (
                   <div key={driver.id} className="bg-white rounded-lg shadow-sm border hover:shadow-lg transition-all duration-300 overflow-hidden">
                     {/* Driver Header */}
-                    <div className="p-6 border-b border-gray-100">
-                      <div className="flex items-center gap-4">
-                        <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
-                          <Truck className="w-8 h-8 text-white" />
+                    <div className="p-4 sm:p-6 border-b border-gray-100">
+                      <div className="flex items-center gap-3 sm:gap-4">
+                        <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+                          <Truck className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
                         </div>
-                        <div className="flex-1">
-                          <h3 className="text-lg font-semibold text-gray-900">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-base sm:text-lg font-semibold text-gray-900 truncate">
                             {driver.user.name}
                           </h3>
-                          <div className="flex items-center gap-2 text-sm text-gray-600">
-                            <MapPin className="w-4 h-4" />
-                            {driver.location}
+                          <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600">
+                            <MapPin className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                            <span className="truncate">{driver.location}</span>
                           </div>
                         </div>
-                        <div className="text-right">
+                        <div className="text-right flex-shrink-0">
                           <div className="flex items-center gap-1 mb-1">
                             {renderStars(driver.rating)}
-                            <span className="ml-1 text-sm text-gray-600">
+                            <span className="ml-1 text-xs sm:text-sm text-gray-600">
                               {driver.rating.toFixed(1)}
                             </span>
                           </div>
@@ -564,55 +577,64 @@ export default function SearchPage() {
                     </div>
 
                     {/* Driver Details */}
-                    <div className="p-6">
-                      <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div className="p-4 sm:p-6">
+                      <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4">
                         <div>
-                          <span className="text-sm text-gray-500">Truck Type</span>
-                          <p className="font-medium text-gray-900">{driver.truckType.replace('_', ' ')}</p>
+                          <span className="text-xs sm:text-sm text-gray-500">Truck Type</span>
+                          <p className="font-medium text-gray-900 text-sm sm:text-base">{driver.truckType.replace('_', ' ')}</p>
                         </div>
                         <div>
-                          <span className="text-sm text-gray-500">Capacity</span>
-                          <p className="font-medium text-gray-900">{driver.capacity} tons</p>
+                          <span className="text-xs sm:text-sm text-gray-500">Capacity</span>
+                          <p className="font-medium text-gray-900 text-sm sm:text-base">{driver.capacity} tons</p>
                         </div>
                         <div>
-                          <span className="text-sm text-gray-500">Quality</span>
-                          <p className="font-medium text-gray-900">{driver.quality}</p>
+                          <span className="text-xs sm:text-sm text-gray-500">Quality</span>
+                          <p className="font-medium text-gray-900 text-sm sm:text-base">{driver.quality}</p>
                         </div>
                         <div>
-                          <span className="text-sm text-gray-500">Trips</span>
-                          <p className="font-medium text-gray-900">{driver.totalTrips}</p>
+                          <span className="text-xs sm:text-sm text-gray-500">Trips</span>
+                          <p className="font-medium text-gray-900 text-sm sm:text-base">{driver.totalTrips}</p>
                         </div>
                       </div>
 
                       {/* Status Badge */}
                       <div className="mb-4">
                         {driver.isAvailable ? (
-                          <span className="bg-green-100 text-green-800 text-sm px-3 py-1 rounded-full">
+                          <span className="bg-green-100 text-green-800 text-xs sm:text-sm px-2 sm:px-3 py-1 rounded-full">
                             Available Now
                           </span>
                         ) : (
-                          <span className="bg-red-100 text-red-800 text-sm px-3 py-1 rounded-full">
+                          <span className="bg-red-100 text-red-800 text-xs sm:text-sm px-2 sm:px-3 py-1 rounded-full">
                             Currently Busy
                           </span>
                         )}
                       </div>
 
                       {/* Action Buttons */}
-                      <div className="flex gap-3">
+                      <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                         <Button 
-                          onClick={() => handleBookNow(driver)}
-                          className="flex-1 bg-blue-600 text-white hover:bg-blue-700"
+                          onClick={isAuthenticated ? () => handleBookNow(driver) : handleLoginRedirect}
+                          className="flex-1 bg-blue-600 text-white hover:bg-blue-700 text-sm sm:text-base py-2 sm:py-2.5"
                         >
-                          Book Now
+                          {isAuthenticated ? (
+                            'Book Now'
+                          ) : (
+                            <>
+                              <LogIn className="w-4 h-4 mr-2" />
+                              <span className='text-sm'>Login to Book</span>
+                            </>
+                          )}
                         </Button>
-                        <Button variant="outline" className="flex items-center gap-2">
-                          <Phone className="w-4 h-4" />
-                          Call
-                        </Button>
-                        <Button variant="outline" className="flex items-center gap-2">
-                          <MessageCircle className="w-4 h-4" />
-                          Message
-                        </Button>
+                        <div className="flex gap-2 sm:gap-3">
+                          <Button variant="outline" className="flex-1 sm:flex-none flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 sm:py-2.5">
+                            <Phone className="w-3 h-3 sm:w-4 sm:h-4" />
+                            <span className="hidden sm:inline">Call</span>
+                          </Button>
+                          <Button variant="outline" className="flex-1 sm:flex-none flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 sm:py-2.5">
+                            <MessageCircle className="w-3 h-3 sm:w-4 sm:h-4" />
+                            <span className="hidden sm:inline">Message</span>
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -622,10 +644,10 @@ export default function SearchPage() {
 
             {/* No Results */}
             {!isLoading && drivers.length === 0 && (
-              <div className="text-center py-12">
-                <Truck className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No trucks found</h3>
-                <p className="text-gray-600">
+              <div className="text-center py-8 sm:py-12">
+                <Truck className="w-12 h-12 sm:w-16 sm:h-16 text-gray-400 mx-auto mb-3 sm:mb-4" />
+                <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">No trucks found</h3>
+                <p className="text-sm sm:text-base text-gray-600">
                   Try adjusting your search criteria
                 </p>
               </div>
@@ -633,12 +655,12 @@ export default function SearchPage() {
 
             {/* Load More Button */}
             {!isLoading && hasMore && (
-              <div className="flex justify-center mt-8">
+              <div className="flex justify-center mt-6 sm:mt-8">
                 <Button
                   onClick={handleLoadMore}
                   disabled={isLoadingMore}
                   variant="outline"
-                  className="px-8 py-3"
+                  className="px-6 sm:px-8 py-2.5 sm:py-3 text-sm sm:text-base"
                 >
                   {isLoadingMore ? (
                     <>
@@ -646,7 +668,10 @@ export default function SearchPage() {
                       Loading...
                     </>
                   ) : (
-                    `Load More (${totalResults - drivers.length} remaining)`
+                    <>
+                      <span className="sm:hidden">Load More</span>
+                      <span className="hidden sm:inline">Load More ({totalResults - drivers.length} remaining)</span>
+                    </>
                   )}
                 </Button>
               </div>

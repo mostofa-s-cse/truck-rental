@@ -1,7 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 import { seedSystemSettings } from './systemSettingsSeeder';
 import { seedTruckCategories } from './truckCategorySeeder';
-import { areaSeeder } from './areaSeeder';
+
+
 import { seedUsers } from './userSeeder';
 import { seedDrivers } from './driverSeeder';
 import { seedBookings } from './bookingSeeder';
@@ -27,7 +28,7 @@ async function main() {
     console.log('\n📋 Seeding order:');
     console.log('1. System Settings');
     console.log('2. Truck Categories');
-    console.log('3. Areas');
+    console.log('3. Areas (Database-driven)');
     console.log('4. Users (Admins, Drivers, Regular Users)');
     console.log('5. Driver Profiles');
     console.log('6. Bookings');
@@ -41,7 +42,7 @@ async function main() {
     // Execute seeders in order
     await seedSystemSettings();
     await seedTruckCategories();
-    await areaSeeder();
+
     await seedUsers();
     await seedDrivers();
     await seedBookings();
@@ -78,7 +79,7 @@ async function clearDatabase() {
     'bookings',
     'drivers',
     'users',
-    'areas',
+    'area_searches',
     'truck_categories',
     'system_settings'
   ];
@@ -102,7 +103,7 @@ async function displaySeedingSummary() {
     const [
       systemSettingsCount,
       truckCategoriesCount,
-      areasCount,
+      // areasCount, // Areas are now dynamic
       usersCount,
       driversCount,
       bookingsCount,
@@ -114,7 +115,7 @@ async function displaySeedingSummary() {
     ] = await Promise.all([
       prisma.systemSetting.count(),
       prisma.truckCategory.count(),
-      prisma.area.count(),
+      // prisma.area.count(), // Areas are now dynamic
       prisma.user.count(),
       prisma.driver.count(),
       prisma.booking.count(),
@@ -127,7 +128,7 @@ async function displaySeedingSummary() {
 
     console.log(`⚙️  System Settings: ${systemSettingsCount}`);
     console.log(`🚛 Truck Categories: ${truckCategoriesCount}`);
-    console.log(`📍 Areas: ${areasCount}`);
+    console.log(`📍 Areas: Dynamic Search (No static data)`);
     console.log(`👥 Users: ${usersCount}`);
     console.log(`🚚 Drivers: ${driversCount}`);
     console.log(`📋 Bookings: ${bookingsCount}`);
@@ -137,7 +138,7 @@ async function displaySeedingSummary() {
     console.log(`📍 Tracking Records: ${trackingCount}`);
     console.log(`🚨 Emergency Alerts: ${emergencyAlertsCount}`);
     
-    const totalRecords = systemSettingsCount + truckCategoriesCount + areasCount + 
+    const totalRecords = systemSettingsCount + truckCategoriesCount + 
                         usersCount + driversCount + bookingsCount + reviewsCount + 
                         messagesCount + paymentsCount + trackingCount + emergencyAlertsCount;
     

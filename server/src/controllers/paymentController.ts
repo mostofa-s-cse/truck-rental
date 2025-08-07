@@ -1,354 +1,241 @@
-import { Request, Response } from 'express';
-import { PaymentService, PaymentRequest, PaymentStatus, PaymentMethod } from '../services/paymentService';
-import { ApiResponse } from '../types';
-import { logError, logDatabase } from '../utils/logger';
+import { Response } from 'express';
+import { PaymentService } from '../services/paymentService';
+import { AppError, AuthenticatedRequest } from '../types';
+import { logError } from '../utils/logger';
+
+type PaymentStatus = 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED';
+
+const PAYMENT_STATUSES: PaymentStatus[] = ['PENDING', 'COMPLETED', 'FAILED', 'REFUNDED'];
 
 export class PaymentController {
-  static async createPaymentSession(req: Request, res: Response) {
-    try {
-      const paymentRequest: PaymentRequest = req.body;
-      const userId = (req as any).user?.userId;
-      
-      // Validate required fields
-      if (!paymentRequest.bookingId || !paymentRequest.amount || !paymentRequest.customerEmail) {
-        return res.status(400).json({
-          success: false,
-          message: 'Missing required fields: bookingId, amount, customerEmail',
-          error: 'Validation error'
-        });
-      }
+  private paymentService: PaymentService;
 
-      // Validate amount
-      if (paymentRequest.amount <= 0) {
-        return res.status(400).json({
-          success: false,
-          message: 'Amount must be greater than 0',
-          error: 'Invalid amount'
-        });
-      }
-
-      // Validate currency
-      if (!paymentRequest.currency || paymentRequest.currency !== 'BDT') {
-        return res.status(400).json({
-          success: false,
-          message: 'Only BDT currency is supported',
-          error: 'Invalid currency'
-        });
-      }
-
-      logDatabase('create', 'payment_session', { 
-        userId, 
-        bookingId: paymentRequest.bookingId,
-        amount: paymentRequest.amount
-      });
-
-      // Create payment session with SSLCommerz
-      const paymentSession = await PaymentService.createPaymentSession(paymentRequest);
-
-      if (paymentSession.status === 'VALID') {
-        const response: ApiResponse = {
-          success: true,
-          message: 'Payment session created successfully',
-          data: {
-            redirectUrl: paymentSession.redirectGatewayURL,
-            sessionKey: paymentSession.sessionkey,
-            transactionId: paymentSession.sessionkey
-          }
-        };
-
-        res.status(200).json(response);
-      } else {
-        const response: ApiResponse = {
-          success: false,
-          message: paymentSession.failedreason || 'Failed to create payment session',
-          error: paymentSession.failedreason
-        };
-
-        res.status(400).json(response);
-      }
-    } catch (error: any) {
-      const userId = (req as any).user?.userId || 'anonymous';
-      
-      logError(error, { 
-        operation: 'create_payment_session', 
-        userId,
-        body: req.body
-      });
-
-      const response: ApiResponse = {
-        success: false,
-        message: error.message || 'Failed to create payment session',
-        error: error.message
-      };
-
-      res.status(500).json(response);
-    }
+  constructor() {
+    this.paymentService = new PaymentService();
   }
 
-  static async validatePayment(req: Request, res: Response) {
+  // Get all payments
+  getAllPayments = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
-      const { tran_id, amount, currency } = req.body;
-      const userId = (req as any).user?.userId || 'anonymous';
-      
-      if (!tran_id || !amount || !currency) {
-        return res.status(400).json({
-          success: false,
-          message: 'Missing required fields: tran_id, amount, currency',
-          error: 'Validation error'
-        });
-      }
+      const page = parseInt(req.query['page'] as string) || 1;
+      const limit = parseInt(req.query['limit'] as string) || 10;
+      const statusParam = req.query['status'] as string;
+      const status = statusParam ? (statusParam as PaymentStatus) : undefined;
+      const search = req.query['search'] as string;
+      const method = req.query['method'] as string;
+      const dateFrom = req.query['dateFrom'] as string;
+      const dateTo = req.query['dateTo'] as string;
 
-      // Validate amount
-      if (isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
-        return res.status(400).json({
-          success: false,
-          message: 'Invalid amount',
-          error: 'Amount must be a positive number'
-        });
-      }
-
-      logDatabase('validate', 'payment', { 
-        userId, 
-        tran_id, 
-        amount, 
-        currency 
+      const result = await this.paymentService.getAllPayments({ 
+        page, 
+        limit, 
+        ...(status && { status }),
+        ...(search && { search }),
+        ...(method && { method }),
+        ...(dateFrom && { dateFrom }),
+        ...(dateTo && { dateTo })
       });
 
-      const validationResult = await PaymentService.validatePayment(tran_id, parseFloat(amount), currency);
-
-      const response: ApiResponse = {
+      res.json({
         success: true,
-        message: 'Payment validation completed',
-        data: validationResult
-      };
-
-      res.status(200).json(response);
-    } catch (error: any) {
-      const userId = (req as any).user?.userId || 'anonymous';
-      
-      logError(error, { 
-        operation: 'validate_payment', 
-        userId,
-        body: req.body
+        message: 'Payments retrieved successfully',
+        data: result
       });
+    } catch (error) {
+      logError(error as Error, req);
+      
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({
+          success: false,
+          message: error.message
+        });
+        return;
+      }
 
-      const response: ApiResponse = {
+      res.status(500).json({
         success: false,
-        message: error.message || 'Failed to validate payment',
-        error: error.message
-      };
-
-      res.status(500).json(response);
+        message: 'Failed to retrieve payments'
+      });
     }
-  }
+  };
 
-  static async processIPN(req: Request, res: Response) {
+  // Get payment statistics
+  getPaymentStats = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
-      const ipnData = req.body;
-      
-      logDatabase('process', 'ipn', { 
-        ipnData,
-        headers: req.headers
-      });
+      const stats = await this.paymentService.getPaymentStats();
 
-      await PaymentService.processIPN(ipnData);
-
-      // Return success response to SSLCommerz
-      res.status(200).send('OK');
-    } catch (error: any) {
-      logError(error, { 
-        operation: 'process_ipn', 
-        body: req.body,
-        headers: req.headers
-      });
-
-      // Still return OK to SSLCommerz to prevent retries
-      res.status(200).send('OK');
-    }
-  }
-
-  static async getPaymentStatus(req: Request, res: Response) {
-    try {
-      const { bookingId } = req.params;
-      const userId = (req as any).user?.userId;
-      
-      if (!bookingId) {
-        return res.status(400).json({
-          success: false,
-          message: 'Booking ID is required',
-          error: 'Missing booking ID'
-        });
-      }
-
-      logDatabase('get', 'payment_status', { 
-        userId, 
-        bookingId 
-      });
-
-      const paymentStatus = await PaymentService.getPaymentStatus(bookingId);
-
-      if (!paymentStatus) {
-        return res.status(404).json({
-          success: false,
-          message: 'Payment not found',
-          error: 'Payment not found'
-        });
-      }
-
-      const response: ApiResponse = {
+      res.json({
         success: true,
-        message: 'Payment status retrieved successfully',
-        data: paymentStatus
-      };
-
-      res.status(200).json(response);
-    } catch (error: any) {
-      const userId = (req as any).user?.userId || 'anonymous';
-      
-      logError(error, { 
-        operation: 'get_payment_status', 
-        userId,
-        params: req.params
+        message: 'Payment statistics retrieved successfully',
+        data: stats
       });
+    } catch (error) {
+      logError(error as Error, req);
+      
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({
+          success: false,
+          message: error.message
+        });
+        return;
+      }
 
-      const response: ApiResponse = {
+      res.status(500).json({
         success: false,
-        message: error.message || 'Failed to get payment status',
-        error: error.message
-      };
-
-      res.status(500).json(response);
-    }
-  }
-
-  static async refundPayment(req: Request, res: Response) {
-    try {
-      const { bookingId } = req.params;
-      const { reason } = req.body;
-      const userId = (req as any).user?.userId;
-      
-      if (!bookingId || !reason) {
-        return res.status(400).json({
-          success: false,
-          message: 'Booking ID and reason are required',
-          error: 'Missing required fields'
-        });
-      }
-
-      // Validate reason length
-      if (reason.trim().length < 10) {
-        return res.status(400).json({
-          success: false,
-          message: 'Refund reason must be at least 10 characters long',
-          error: 'Invalid reason'
-        });
-      }
-
-      logDatabase('refund', 'payment', { 
-        userId, 
-        bookingId, 
-        reason 
+        message: 'Failed to retrieve payment statistics'
       });
+    }
+  };
 
-      await PaymentService.refundPayment(bookingId, reason);
+  // Get payment by ID
+  getPaymentById = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const { id } = req.params;
+      
+      if (!id) {
+        res.status(400).json({
+          success: false,
+          message: 'Payment ID is required'
+        });
+        return;
+      }
 
-      const response: ApiResponse = {
+      const payment = await this.paymentService.getPaymentById(id);
+
+      res.json({
         success: true,
-        message: 'Payment refunded successfully'
-      };
-
-      res.status(200).json(response);
-    } catch (error: any) {
-      const userId = (req as any).user?.userId || 'anonymous';
-      
-      logError(error, { 
-        operation: 'refund_payment', 
-        userId,
-        params: req.params,
-        body: req.body
+        message: 'Payment retrieved successfully',
+        data: { payment }
       });
-
-      const response: ApiResponse = {
-        success: false,
-        message: error.message || 'Failed to refund payment',
-        error: error.message
-      };
-
-      res.status(500).json(response);
-    }
-  }
-
-  static async paymentSuccess(req: Request, res: Response) {
-    try {
-      const { tran_id, status, val_id, amount, currency } = req.query;
+    } catch (error) {
+      logError(error as Error, req);
       
-      logDatabase('payment_success', 'callback', { 
-        tran_id, 
-        status, 
-        val_id, 
-        amount, 
-        currency 
-      });
-
-      if (status === 'VALID') {
-        // Validate the payment
-        await PaymentService.validatePayment(tran_id as string, parseFloat(amount as string), currency as string);
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({
+          success: false,
+          message: error.message
+        });
+        return;
       }
 
-      // Redirect to success page
-      res.redirect(`/dashboard/user/bookings?payment=success&tran_id=${tran_id}`);
-    } catch (error: any) {
-      logError(error, { 
-        operation: 'payment_success', 
-        query: req.query
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve payment'
       });
-
-      // Redirect to error page
-      res.redirect('/dashboard/user/bookings?payment=error');
     }
-  }
+  };
 
-  static async paymentFail(req: Request, res: Response) {
+  // Update payment status
+  updatePaymentStatus = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
-      const { tran_id, status, error } = req.query;
+      const { id } = req.params;
+      const { status } = req.body;
       
-      logDatabase('payment_fail', 'callback', { 
-        tran_id, 
-        status, 
-        error 
-      });
+      if (!id) {
+        res.status(400).json({
+          success: false,
+          message: 'Payment ID is required'
+        });
+        return;
+      }
 
-      // Redirect to failure page
-      res.redirect(`/dashboard/user/bookings?payment=failed&tran_id=${tran_id}&error=${error}`);
-    } catch (error: any) {
-      logError(error, { 
-        operation: 'payment_fail', 
-        query: req.query
-      });
+      if (!status || !PAYMENT_STATUSES.includes(status as PaymentStatus)) {
+        res.status(400).json({
+          success: false,
+          message: 'Valid payment status is required'
+        });
+        return;
+      }
 
-      // Redirect to error page
-      res.redirect('/dashboard/user/bookings?payment=error');
+      const payment = await this.paymentService.updatePaymentStatus(id, status as PaymentStatus);
+
+      res.json({
+        success: true,
+        message: 'Payment status updated successfully',
+        data: { payment }
+      });
+    } catch (error) {
+      logError(error as Error, req);
+      
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({
+          success: false,
+          message: error.message
+        });
+        return;
+      }
+
+      res.status(500).json({
+        success: false,
+        message: 'Failed to update payment status'
+      });
     }
-  }
+  };
 
-  static async paymentCancel(req: Request, res: Response) {
+  // Create new payment
+  createPayment = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
-      const { tran_id } = req.query;
+      const paymentData = req.body;
+      const payment = await this.paymentService.createPayment(paymentData);
+
+      res.status(201).json({
+        success: true,
+        message: 'Payment created successfully',
+        data: { payment }
+      });
+    } catch (error) {
+      logError(error as Error, req);
       
-      logDatabase('payment_cancel', 'callback', { 
-        tran_id 
-      });
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({
+          success: false,
+          message: error.message
+        });
+        return;
+      }
 
-      // Redirect to cancellation page
-      res.redirect(`/dashboard/user/bookings?payment=cancelled&tran_id=${tran_id}`);
-    } catch (error: any) {
-      logError(error, { 
-        operation: 'payment_cancel', 
-        query: req.query
+      res.status(500).json({
+        success: false,
+        message: 'Failed to create payment'
       });
-
-      // Redirect to error page
-      res.redirect('/dashboard/user/bookings?payment=error');
     }
-  }
+  };
+
+  // Delete payment
+  deletePayment = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const { id } = req.params;
+      
+      if (!id) {
+        res.status(400).json({
+          success: false,
+          message: 'Payment ID is required'
+        });
+        return;
+      }
+
+      const result = await this.paymentService.deletePayment(id);
+
+      res.json({
+        success: true,
+        message: 'Payment deleted successfully',
+        data: result
+      });
+    } catch (error) {
+      logError(error as Error, req);
+      
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({
+          success: false,
+          message: error.message
+        });
+        return;
+      }
+
+      res.status(500).json({
+        success: false,
+        message: 'Failed to delete payment'
+      });
+    }
+  };
 } 
