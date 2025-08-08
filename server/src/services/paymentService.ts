@@ -121,6 +121,109 @@ export class PaymentService {
     };
   }
 
+  // Get user payment history
+  async getUserPaymentHistory(userId: string, pagination: PaginationParams & { 
+    status?: PaymentStatus; 
+    search?: string; 
+  }) {
+    const { page = 1, limit = 10, status, search } = pagination;
+    const skip = (page - 1) * limit;
+
+    // Build where clause
+    const where: any = {
+      booking: {
+        userId: userId
+      }
+    };
+    
+    if (status) {
+      where.status = status;
+    }
+    
+    // Search functionality
+    if (search) {
+      where.OR = [
+        {
+          booking: {
+            source: {
+              contains: search,
+              mode: 'insensitive'
+            }
+          }
+        },
+        {
+          booking: {
+            destination: {
+              contains: search,
+              mode: 'insensitive'
+            }
+          }
+        },
+        {
+          booking: {
+            driver: {
+              user: {
+                name: {
+                  contains: search,
+                  mode: 'insensitive'
+                }
+              }
+            }
+          }
+        },
+        {
+          transactionId: {
+            contains: search,
+            mode: 'insensitive'
+          }
+        }
+      ];
+    }
+
+    const [payments, total] = await Promise.all([
+      this.prisma.payment.findMany({
+        where,
+        include: {
+          booking: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true
+                }
+              },
+              driver: {
+                include: {
+                  user: {
+                    select: {
+                      id: true,
+                      name: true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit
+      }),
+      this.prisma.payment.count({ where })
+    ]);
+
+    return {
+      payments,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    };
+  }
+
   // Get payment statistics (admin)
   async getPaymentStats() {
     const [

@@ -13,15 +13,7 @@ import {
   Bars3Icon,
   XMarkIcon,
   CreditCardIcon,
-  DocumentTextIcon,
-  ClipboardIcon,
   StarIcon,
-  ClockIcon,
-  MapPinIcon,
-  PhoneIcon,
-  CheckCircleIcon,
-  XCircleIcon,
-  InformationCircleIcon,
   ArrowRightEndOnRectangleIcon,
   ChartBarIcon,
   CurrencyDollarIcon,
@@ -119,60 +111,24 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     return [
       {
         name: 'Dashboard',
-        href: '/dashboard',
+        href: '/dashboard/user',
         icon: HomeIcon
       },
       {
-        name: 'Search Trucks',
-        href: '/search',
-        icon: TruckIcon
-      },
-      {
         name: 'My Bookings',
-        href: '/dashboard/bookings',
+        href: '/dashboard/user/bookings',
         icon: CalendarIcon,
-        children: [
-          { name: 'Active', href: '/dashboard/bookings/active', icon: ClockIcon },
-          { name: 'Upcoming', href: '/dashboard/bookings/upcoming', icon: CalendarIcon },
-          { name: 'Completed', href: '/dashboard/bookings/completed', icon: CheckCircleIcon },
-          { name: 'Cancelled', href: '/dashboard/bookings/cancelled', icon: XCircleIcon }
-        ]
-      },
-      {
-        name: 'Favorites',
-        href: '/dashboard/favorites',
-        icon: StarIcon
       },
       {
         name: 'Payments',
-        href: '/dashboard/payments',
+        href: '/dashboard/user/payments',
         icon: CreditCardIcon,
-        children: [
-          { name: 'Payment Methods', href: '/dashboard/payments/methods', icon: CreditCardIcon },
-          { name: 'Transaction History', href: '/dashboard/payments/history', icon: ClipboardIcon },
-          { name: 'Invoices', href: '/dashboard/payments/invoices', icon: DocumentTextIcon }
-        ]
       },
       {
         name: 'Profile',
-        href: '/dashboard/profile',
+        href: '/dashboard/user/profile',
         icon: UserCircleIcon,
-        children: [
-          { name: 'Personal Info', href: '/dashboard/profile', icon: UserCircleIcon },
-          { name: 'Addresses', href: '/dashboard/profile/addresses', icon: MapPinIcon },
-          { name: 'Preferences', href: '/dashboard/profile/preferences', icon: CogIcon }
-        ]
       },
-      {
-        name: 'Support',
-        href: '/dashboard/support',
-        icon: PhoneIcon,
-        children: [
-          { name: 'Help Center', href: '/dashboard/support/help', icon: InformationCircleIcon },
-          { name: 'Contact Support', href: '/dashboard/support/contact', icon: PhoneIcon },
-          { name: 'FAQ', href: '/dashboard/support/faq', icon: InformationCircleIcon }
-        ]
-      }
     ];
   }, [user?.role]);
 
@@ -200,6 +156,15 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     const menuItem = menuItems.find(item => item.href === href);
     if (menuItem?.children) {
       return menuItem.children.some(child => child.href === pathname);
+    }
+    
+    // Special handling for dashboard pages - only for the main dashboard page
+    if (href === '/dashboard/user' && pathname === '/dashboard/user') {
+      return true;
+    }
+    
+    if (href === '/dashboard/admin' && pathname === '/dashboard/admin') {
+      return true;
     }
     
     return false;
@@ -319,11 +284,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 {userMenuOpen && (
                   <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5">
                     <div className="py-1">
-                      <a href="/dashboard/admin/profile" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                      <a href={user?.role === 'ADMIN' ? '/dashboard/admin/profile' : '/dashboard/user/profile'} className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                         <UserCircleIcon className="mr-3 h-4 w-4" />
                         Profile
                       </a>
-                      <a href="/dashboard/admin/settings" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                      <a href={user?.role === 'ADMIN' ? '/dashboard/admin/settings' : '/dashboard/user/settings'} className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                         <CogIcon className="mr-3 h-4 w-4" />
                         Settings
                       </a>

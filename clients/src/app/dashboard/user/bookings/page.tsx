@@ -6,7 +6,7 @@ import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import DataTable, { Column } from '@/components/ui/DataTable';
 import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
-import { userApi } from '@/lib/dashboardApi';
+import { userApi, Booking } from '@/lib/dashboardApi';
 import { useSweetAlert } from '@/hooks/useSweetAlert';
 import { 
   CalendarIcon, 
@@ -14,32 +14,11 @@ import {
   MapPinIcon,
   CurrencyDollarIcon,
   TruckIcon,
-  PhoneIcon,
-  StarIcon
+  ClockIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+  ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
-
-interface Booking {
-  id: string;
-  driver: {
-    id: string;
-    name: string;
-    email: string;
-    phone: string;
-    avatar?: string;
-    rating: number;
-    truckType: string;
-  };
-  source: string;
-  destination: string;
-  date: string;
-  fare: number;
-  status: string;
-  createdAt: string;
-  pickupTime?: string;
-  completedAt?: string;
-  paymentMethod: string;
-  paymentStatus: string;
-}
 
 export default function UserBookingsPage() {
   const { successToast, errorToast, question } = useSweetAlert();
@@ -57,122 +36,29 @@ export default function UserBookingsPage() {
   // Modal states
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [ratingComment, setRatingComment] = useState('');
+  
+  // Calculate pending ratings
+  const pendingRatings = bookings.filter(b => b.status === 'COMPLETED' && !b.rating);
 
   const fetchBookings = useCallback(async () => {
     try {
       setLoading(true);
       
-      // Mock data (replace with real API call)
-      const mockBookings: Booking[] = [
-        {
-          id: '1',
-          driver: {
-            id: '1',
-            name: 'John Driver',
-            email: 'john@example.com',
-            phone: '+1 (555) 123-4567',
-            rating: 4.8,
-            truckType: 'MINI_TRUCK'
-          },
-          source: 'Downtown Area',
-          destination: 'Industrial Zone',
-          date: '2024-01-15',
-          fare: 85,
-          status: 'COMPLETED',
-          createdAt: '2024-01-14T10:30:00Z',
-          pickupTime: '2024-01-15T09:00:00Z',
-          completedAt: '2024-01-15T11:30:00Z',
-          paymentMethod: 'CARD',
-          paymentStatus: 'PAID'
-        },
-        {
-          id: '2',
-          driver: {
-            id: '2',
-            name: 'Mike Wilson',
-            email: 'mike@example.com',
-            phone: '+1 (555) 234-5678',
-            rating: 4.5,
-            truckType: 'PICKUP'
-          },
-          source: 'Residential Area',
-          destination: 'Shopping Center',
-          date: '2024-01-16',
-          fare: 120,
-          status: 'IN_PROGRESS',
-          createdAt: '2024-01-15T15:45:00Z',
-          pickupTime: '2024-01-16T10:00:00Z',
-          paymentMethod: 'CASH',
-          paymentStatus: 'PENDING'
-        },
-        {
-          id: '3',
-          driver: {
-            id: '3',
-            name: 'Sarah Johnson',
-            email: 'sarah@example.com',
-            phone: '+1 (555) 345-6789',
-            rating: 4.9,
-            truckType: 'LORRY'
-          },
-          source: 'Warehouse District',
-          destination: 'Port Area',
-          date: '2024-01-17',
-          fare: 150,
-          status: 'CONFIRMED',
-          createdAt: '2024-01-16T09:20:00Z',
-          paymentMethod: 'MOBILE_MONEY',
-          paymentStatus: 'PAID'
-        },
-        {
-          id: '4',
-          driver: {
-            id: '4',
-            name: 'David Brown',
-            email: 'david@example.com',
-            phone: '+1 (555) 456-7890',
-            rating: 4.2,
-            truckType: 'TRUCK'
-          },
-          source: 'Shopping Mall',
-          destination: 'Office Building',
-          date: '2024-01-18',
-          fare: 95,
-          status: 'PENDING',
-          createdAt: '2024-01-17T14:15:00Z',
-          paymentMethod: 'CARD',
-          paymentStatus: 'PENDING'
-        },
-        {
-          id: '5',
-          driver: {
-            id: '5',
-            name: 'Lisa Davis',
-            email: 'lisa@example.com',
-            phone: '+1 (555) 567-8901',
-            rating: 4.7,
-            truckType: 'MINI_TRUCK'
-          },
-          source: 'Industrial Zone',
-          destination: 'Residential Area',
-          date: '2024-01-19',
-          fare: 110,
-          status: 'CANCELLED',
-          createdAt: '2024-01-18T14:15:00Z',
-          paymentMethod: 'CASH',
-          paymentStatus: 'REFUNDED'
-        }
-      ];
-
+      // Fetch real booking data from the server
+      const bookingsData = await userApi.getRecentBookings();
+      
       // Filter bookings based on search query and status
-      let filteredBookings = mockBookings;
+      let filteredBookings = bookingsData;
       
       if (searchQuery) {
         filteredBookings = filteredBookings.filter(booking =>
-          booking.driver.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          booking.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
           booking.source.toLowerCase().includes(searchQuery.toLowerCase()) ||
           booking.destination.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          booking.id.toLowerCase().includes(searchQuery.toLowerCase())
+          (booking.driver && booking.driver.toLowerCase().includes(searchQuery.toLowerCase()))
         );
       }
       
@@ -191,6 +77,10 @@ export default function UserBookingsPage() {
     } catch (error) {
       console.error('Error fetching bookings:', error);
       errorToast('Failed to fetch bookings');
+      // Set empty data on error
+      setBookings([]);
+      setTotalBookings(0);
+      setTotalPages(0);
     } finally {
       setLoading(false);
     }
@@ -225,8 +115,14 @@ export default function UserBookingsPage() {
   };
 
   const handleCancelBooking = async (booking: Booking) => {
+    // Only allow cancellation for pending bookings
+    if (booking.status !== 'PENDING') {
+      errorToast('Only pending bookings can be cancelled');
+      return;
+    }
+
     const result = await question(
-      `Are you sure you want to cancel this booking with ${booking.driver.name}?`,
+      `Are you sure you want to cancel this booking?`,
       'Cancel Booking'
     );
 
@@ -243,25 +139,65 @@ export default function UserBookingsPage() {
   };
 
   const handleRateDriver = async (booking: Booking) => {
-    // This would open a rating modal
-    console.log('Rate driver for booking:', booking.id);
+    setSelectedBooking(booking);
+    setRating(0);
+    setRatingComment('');
+    setShowRatingModal(true);
   };
 
-  const renderStars = (rating: number) => {
-    return (
-      <div className="flex items-center">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <StarIcon
-            key={star}
-            className={`h-4 w-4 ${
-              star <= rating ? 'text-yellow-400 fill-current' : 'text-gray-300'
-            }`}
-          />
-        ))}
-        <span className="ml-1 text-sm text-gray-600">({rating})</span>
-      </div>
-    );
+  const handleSubmitRating = async () => {
+    if (!selectedBooking || rating === 0) {
+      errorToast('Please select a rating');
+      return;
+    }
+
+    try {
+      // TODO: Implement API call to submit rating
+      console.log('Submitting rating:', { bookingId: selectedBooking.id, rating, comment: ratingComment });
+      successToast('Rating submitted successfully!');
+      setShowRatingModal(false);
+      fetchBookings(); // Refresh to show the rating
+    } catch (error) {
+      console.error('Error submitting rating:', error);
+      errorToast('Failed to submit rating');
+    }
   };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'COMPLETED':
+        return <CheckCircleIcon className="h-4 w-4 text-green-500" />;
+      case 'CANCELLED':
+        return <XCircleIcon className="h-4 w-4 text-red-500" />;
+      case 'PENDING':
+        return <ExclamationTriangleIcon className="h-4 w-4 text-yellow-500" />;
+      case 'CONFIRMED':
+        return <ClockIcon className="h-4 w-4 text-blue-500" />;
+      case 'IN_PROGRESS':
+        return <ClockIcon className="h-4 w-4 text-purple-500" />;
+      default:
+        return <ClockIcon className="h-4 w-4 text-gray-500" />;
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'COMPLETED':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'PENDING':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'CANCELLED':
+        return 'bg-red-100 text-red-800 border-red-200';
+      case 'CONFIRMED':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'IN_PROGRESS':
+        return 'bg-purple-100 text-purple-800 border-purple-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+
 
   // Table columns
   const columns: Column<Booking>[] = [
@@ -271,7 +207,7 @@ export default function UserBookingsPage() {
       render: (value) => `#${(value as string).slice(-8).toUpperCase()}`
     },
     {
-      key: 'driver.name',
+      key: 'driver',
       header: 'Driver',
       render: (value, row) => (
         <div className="flex items-center">
@@ -279,8 +215,12 @@ export default function UserBookingsPage() {
             <UserCircleIcon className="h-5 w-5 text-blue-600" />
           </div>
           <div className="ml-3">
-            <div className="text-sm font-medium text-gray-900">{row.driver.name}</div>
-            <div className="text-sm text-gray-500">{row.driver.truckType.replace('_', ' ')}</div>
+            <div className="text-sm font-medium text-gray-900">
+              {row.driver || 'Driver Assigned'}
+            </div>
+            <div className="text-sm text-gray-500">
+              {row.driver ? 'Assigned Driver' : 'Awaiting Assignment'}
+            </div>
           </div>
         </div>
       )
@@ -312,27 +252,26 @@ export default function UserBookingsPage() {
       key: 'status',
       header: 'Status',
       render: (value) => {
-        const statusColors = {
-          'PENDING': 'bg-yellow-100 text-yellow-800',
-          'CONFIRMED': 'bg-blue-100 text-blue-800',
-          'IN_PROGRESS': 'bg-purple-100 text-purple-800',
-          'COMPLETED': 'bg-green-100 text-green-800',
-          'CANCELLED': 'bg-red-100 text-red-800'
-        };
         const statusValue = value as string;
         return (
-          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-            statusColors[statusValue as keyof typeof statusColors] || 'bg-gray-100 text-gray-800'
-          }`}>
-            {statusValue.replace('_', ' ')}
-          </span>
+          <div className="flex items-center space-x-2">
+            {getStatusIcon(statusValue)}
+            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(statusValue)}`}>
+              {statusValue.replace('_', ' ')}
+            </span>
+          </div>
         );
       }
     },
     {
       key: 'date',
       header: 'Date',
-      render: (value) => new Date(value as string).toLocaleDateString()
+      render: (value) => (
+        <div className="text-sm">
+          <div className="text-gray-900">{new Date(value as string).toLocaleDateString()}</div>
+          <div className="text-gray-500">{new Date(value as string).toLocaleTimeString()}</div>
+        </div>
+      )
     }
   ];
 
@@ -345,65 +284,149 @@ export default function UserBookingsPage() {
 
   const actions = {
     view: handleViewBooking,
-    cancel: handleCancelBooking,
-    rate: handleRateDriver
+    delete: handleCancelBooking
   };
 
   return (
     <ProtectedRoute requiredRole="USER">
       <DashboardLayout title="My Bookings" subtitle="View and manage your booking history">
         <div className="space-y-6">
-          {/* Stats Cards */}
-          <div className="flex items-start justify-between">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">My Bookings</h2>
-              <p className="text-sm text-gray-500 mt-2">View and manage your booking history</p>
-            </div>
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <CalendarIcon className="h-6 w-6 text-blue-600" />
+          {/* Header with Stats */}
+          <div className="bg-white rounded-xl shadow-lg p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">My Bookings</h2>
+                <p className="text-sm text-gray-500 mt-2">View and manage your booking history</p>
+              </div>
+              <div className="flex items-center space-x-4">
+                <div className="bg-blue-50 rounded-lg p-4">
+                  <div className="flex items-center">
+                    <CalendarIcon className="h-6 w-6 text-blue-600" />
+                    <div className="ml-3">
+                      <p className="text-sm font-medium text-gray-600">Total Bookings</p>
+                      <p className="text-2xl font-bold text-gray-900">{totalBookings}</p>
+                    </div>
+                  </div>
                 </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Total Bookings</p>
-                  <p className="text-2xl font-bold text-gray-900">{totalBookings}</p>
+                <div className="bg-green-50 rounded-lg p-4">
+                  <div className="flex items-center">
+                    <CheckCircleIcon className="h-6 w-6 text-green-600" />
+                    <div className="ml-3">
+                      <p className="text-sm font-medium text-gray-600">Completed</p>
+                      <p className="text-2xl font-bold text-gray-900">
+                        {bookings.filter(b => b.status === 'COMPLETED').length}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
+          {/* Rating Section - Only show if there are pending ratings */}
+          {pendingRatings.length > 0 && (
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Rate Your Completed Trips</h3>
+                <div className="text-sm text-gray-500">
+                  {pendingRatings.length} trips pending rating
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {pendingRatings
+                  .slice(0, 6) // Show max 6 pending ratings
+                  .map((booking) => (
+                    <div key={booking.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center">
+                          <UserCircleIcon className="h-8 w-8 text-blue-600 mr-3" />
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">{booking.driver || 'Driver Assigned'}</p>
+                            <p className="text-xs text-gray-500">Trip #{booking.id.slice(-6).toUpperCase()}</p>
+                          </div>
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {new Date(booking.date).toLocaleDateString()}
+                        </div>
+                      </div>
+                      
+                      <div className="mb-3">
+                        <div className="text-xs text-gray-600 mb-1">Route:</div>
+                        <div className="text-sm text-gray-900">
+                          {booking.source} → {booking.destination}
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <div className="text-sm text-gray-600">
+                          Fare: ${booking.fare}
+                        </div>
+                        <Button
+                          size="sm"
+                          onClick={() => handleRateDriver(booking)}
+                          className="bg-yellow-500 hover:bg-yellow-600 text-white"
+                        >
+                          Rate Driver
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+              
+              {pendingRatings.length > 6 && (
+                <div className="text-center mt-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      // Filter to show only completed bookings without ratings
+                      setFilterStatus('COMPLETED');
+                      setSearchQuery('');
+                      setCurrentPage(1);
+                    }}
+                  >
+                    View All Pending Ratings ({pendingRatings.length})
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* DataTable */}
-          <DataTable
-            data={bookings}
-            columns={columns}
-            loading={loading}
-            pagination={pagination}
-            onPageChange={handlePageChange}
-            onLimitChange={handlePageSizeChange}
-            onSearch={handleSearch}
-            onFilter={handleFilterChange}
-            searchPlaceholder="Search by Booking ID, Driver name, or Route..."
-            showSearch={true}
-            showFilters={true}
-            filterOptions={[
-              {
-                key: 'status',
-                label: 'Booking Status',
-                type: 'select',
-                options: [
-                  { value: 'PENDING', label: 'Pending' },
-                  { value: 'CONFIRMED', label: 'Confirmed' },
-                  { value: 'IN_PROGRESS', label: 'In Progress' },
-                  { value: 'COMPLETED', label: 'Completed' },
-                  { value: 'CANCELLED', label: 'Cancelled' }
-                ],
-                placeholder: 'Select booking status'
-              }
-            ]}
-            actions={actions}
-            emptyMessage="No bookings found"
-            initialSearchQuery={searchQuery}
-          />
+          <div className="bg-white rounded-xl shadow-lg">
+            <DataTable
+              data={bookings}
+              columns={columns}
+              loading={loading}
+              pagination={pagination}
+              onPageChange={handlePageChange}
+              onLimitChange={handlePageSizeChange}
+              onSearch={handleSearch}
+              onFilter={handleFilterChange}
+              searchPlaceholder="Search by Booking ID, Driver name, or Route..."
+              showSearch={true}
+              showFilters={true}
+              filterOptions={[
+                {
+                  key: 'status',
+                  label: 'Booking Status',
+                  type: 'select',
+                  options: [
+                    { value: 'PENDING', label: 'Pending' },
+                    { value: 'CONFIRMED', label: 'Confirmed' },
+                    { value: 'IN_PROGRESS', label: 'In Progress' },
+                    { value: 'COMPLETED', label: 'Completed' },
+                    { value: 'CANCELLED', label: 'Cancelled' }
+                  ],
+                  placeholder: 'Select booking status'
+                }
+              ]}
+              actions={actions}
+              emptyMessage="No bookings found. Start by making your first booking!"
+              initialSearchQuery={searchQuery}
+            />
+          </div>
         </div>
 
         {/* View Booking Modal */}
@@ -415,50 +438,92 @@ export default function UserBookingsPage() {
         >
           {selectedBooking && (
             <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h4 className="text-lg font-medium text-gray-900 mb-4">Driver Information</h4>
-                  <div className="space-y-3">
-                    <div className="flex items-center">
-                      <UserCircleIcon className="h-5 w-5 text-gray-400 mr-2" />
-                      <span className="text-sm text-gray-600">{selectedBooking.driver.name}</span>
-                    </div>
-                    <div className="flex items-center">
-                      <PhoneIcon className="h-5 w-5 text-gray-400 mr-2" />
-                      <span className="text-sm text-gray-600">{selectedBooking.driver.phone}</span>
-                    </div>
-                    <div className="flex items-center">
-                      <TruckIcon className="h-5 w-5 text-gray-400 mr-2" />
-                      <span className="text-sm text-gray-600">{selectedBooking.driver.truckType.replace('_', ' ')}</span>
-                    </div>
-                    <div className="flex items-center">
-                      {renderStars(selectedBooking.driver.rating)}
-                    </div>
+              {/* Booking Header */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Booking #{selectedBooking.id.slice(-8).toUpperCase()}
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      Created on {selectedBooking.createdAt ? new Date(selectedBooking.createdAt).toLocaleDateString() : 'N/A'}
+                    </p>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    {getStatusIcon(selectedBooking.status)}
+                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(selectedBooking.status)}`}>
+                      {selectedBooking.status.replace('_', ' ')}
+                    </span>
                   </div>
                 </div>
-                <div>
-                  <h4 className="text-lg font-medium text-gray-900 mb-4">Booking Information</h4>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Driver Information */}
+                <div className="bg-white border border-gray-200 rounded-lg p-4">
+                  <h4 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                    <UserCircleIcon className="h-5 w-5 text-blue-500 mr-2" />
+                    Driver Information
+                  </h4>
                   <div className="space-y-3">
                     <div className="flex items-center">
-                      <MapPinIcon className="h-5 w-5 text-gray-400 mr-2" />
+                      <span className="text-sm font-medium text-gray-600 w-20">Name:</span>
+                      <span className="text-sm text-gray-900">{selectedBooking.driver || 'Not Assigned Yet'}</span>
+                    </div>
+                    <div className="flex items-center">
+                      <TruckIcon className="h-4 w-4 text-gray-400 mr-2" />
+                      <span className="text-sm text-gray-600">
+                        {selectedBooking.driver ? 'Assigned Driver' : 'Driver will be assigned soon'}
+                      </span>
+                    </div>
+                    {selectedBooking.driver && (
+                      <div className="flex items-center">
+                        <span className="text-sm font-medium text-gray-600 w-20">Status:</span>
+                        <span className="text-sm text-gray-900">
+                          {selectedBooking.status === 'COMPLETED' ? 'Trip Completed' : 'Active Driver'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Booking Information */}
+                <div className="bg-white border border-gray-200 rounded-lg p-4">
+                  <h4 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                    <MapPinIcon className="h-5 w-5 text-green-500 mr-2" />
+                    Trip Details
+                  </h4>
+                  <div className="space-y-3">
+                    <div className="flex items-start">
+                      <MapPinIcon className="h-4 w-4 text-gray-400 mr-2 mt-0.5" />
                       <div className="text-sm">
-                        <div className="text-gray-900">From: {selectedBooking.source}</div>
+                        <div className="text-gray-900 font-medium">From: {selectedBooking.source}</div>
                         <div className="text-gray-600">To: {selectedBooking.destination}</div>
                       </div>
                     </div>
                     <div className="flex items-center">
-                      <CalendarIcon className="h-5 w-5 text-gray-400 mr-2" />
-                      <span className="text-sm text-gray-600">{new Date(selectedBooking.date).toLocaleDateString()}</span>
+                      <CalendarIcon className="h-4 w-4 text-gray-400 mr-2" />
+                      <span className="text-sm text-gray-600">
+                        {new Date(selectedBooking.date).toLocaleDateString()} at {new Date(selectedBooking.date).toLocaleTimeString()}
+                      </span>
                     </div>
                     <div className="flex items-center">
-                      <CurrencyDollarIcon className="h-5 w-5 text-gray-400 mr-2" />
-                      <span className="text-sm text-gray-600">${selectedBooking.fare}</span>
+                      <CurrencyDollarIcon className="h-4 w-4 text-gray-400 mr-2" />
+                      <span className="text-sm text-gray-600">Fare: ${selectedBooking.fare}</span>
                     </div>
+                    {selectedBooking.distance && (
+                      <div className="flex items-center">
+                        <span className="text-sm text-gray-600">Distance: {selectedBooking.distance} km</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
+
+
               
-              <div className="flex justify-end space-x-3">
+              {/* Action Buttons */}
+              <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
                 <Button
                   variant="outline"
                   onClick={() => setShowViewModal(false)}
@@ -476,6 +541,107 @@ export default function UserBookingsPage() {
                     Cancel Booking
                   </Button>
                 )}
+                {selectedBooking.status === 'COMPLETED' && !selectedBooking.rating && (
+                  <Button
+                    onClick={() => {
+                      handleRateDriver(selectedBooking);
+                      setShowViewModal(false);
+                    }}
+                  >
+                    Rate Driver
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+        </Modal>
+
+        {/* Rating Modal */}
+        <Modal
+          isOpen={showRatingModal}
+          onClose={() => setShowRatingModal(false)}
+          title="Rate Your Driver"
+          size="md"
+        >
+          {selectedBooking && (
+            <div className="space-y-6">
+              {/* Driver Info */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h4 className="text-lg font-medium text-gray-900 mb-2">Driver Information</h4>
+                <div className="flex items-center">
+                  <UserCircleIcon className="h-8 w-8 text-blue-600 mr-3" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">{selectedBooking.driver || 'Driver Assigned'}</p>
+                    <p className="text-sm text-gray-500">Trip: {selectedBooking.source} → {selectedBooking.destination}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Rating Input */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  Rate your experience (1-5 stars)
+                </label>
+                <div className="flex items-center space-x-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setRating(star)}
+                      className={`p-1 rounded-full transition-colors ${
+                        star <= rating ? 'text-yellow-400' : 'text-gray-300'
+                      }`}
+                    >
+                      <svg
+                        className="w-8 h-8 fill-current"
+                        viewBox="0 0 20 20"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                      </svg>
+                    </button>
+                  ))}
+                </div>
+                <p className="text-sm text-gray-500 mt-2">
+                  {rating === 0 && 'Select a rating'}
+                  {rating === 1 && 'Poor'}
+                  {rating === 2 && 'Fair'}
+                  {rating === 3 && 'Good'}
+                  {rating === 4 && 'Very Good'}
+                  {rating === 5 && 'Excellent'}
+                </p>
+              </div>
+
+              {/* Comment Input */}
+              <div>
+                <label htmlFor="comment" className="block text-sm font-medium text-gray-700 mb-2">
+                  Additional Comments (Optional)
+                </label>
+                <textarea
+                  id="comment"
+                  value={ratingComment}
+                  onChange={(e) => setRatingComment(e.target.value)}
+                  rows={3}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+                  placeholder="Share your experience with this driver..."
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowRatingModal(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSubmitRating}
+                  disabled={rating === 0}
+                  className={rating === 0 ? 'opacity-50 cursor-not-allowed' : ''}
+                >
+                  Submit Rating
+                </Button>
               </div>
             </div>
           )}
@@ -483,4 +649,4 @@ export default function UserBookingsPage() {
       </DashboardLayout>
     </ProtectedRoute>
   );
-} 
+}

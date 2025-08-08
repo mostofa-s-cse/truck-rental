@@ -16,6 +16,7 @@ import {
   StarIcon
 } from '@heroicons/react/24/outline';
 import { BellIcon, KeyIcon, ShieldCheckIcon } from 'lucide-react';
+import { userApi } from '@/lib/dashboardApi';
 
 interface UserProfile {
   id: string;
@@ -88,31 +89,34 @@ export default function UserProfilePage() {
     smsNotifications: false,
     pushNotifications: true,
     language: 'en',
-    timezone: 'UTC'
+    timezone: 'Asia/Dhaka'
   });
 
   const fetchProfileData = useCallback(async () => {
     try {
       setLoading(true);
       
-      // Mock profile data (replace with real API call)
-      const mockProfile: UserProfile = {
+      // Get user stats from dashboard API
+      const userStats = await userApi.getUserStats();
+      
+      // Create profile data from user info and stats
+      const profileData: UserProfile = {
         id: user?.id || '1',
         name: user?.name || 'User Name',
         email: user?.email || 'user@example.com',
-        phone: '+1 (555) 123-4567',
+        phone: user?.phone || '+880-3333-333331',
         role: 'USER',
-        avatar: undefined,
-        address: '123 User Street',
-        city: 'User City',
-        country: 'United States',
+        avatar: user?.avatar,
+        address: 'Dhaka, Bangladesh',
+        city: 'Dhaka',
+        country: 'Bangladesh',
         bio: 'Regular user of the truck booking service.',
         preferences: {
           emailNotifications: true,
           smsNotifications: false,
           pushNotifications: true,
           language: 'en',
-          timezone: 'UTC'
+          timezone: 'Asia/Dhaka'
         },
         security: {
           lastLogin: new Date().toISOString(),
@@ -124,24 +128,24 @@ export default function UserProfilePage() {
           twoFactorEnabled: false
         },
         stats: {
-          totalBookings: 24,
-          totalSpent: 1245.75,
-          averageRating: 4.7,
-          favoriteDrivers: 3
+          totalBookings: userStats.totalBookings,
+          totalSpent: userStats.totalSpent,
+          averageRating: userStats.averageRating,
+          favoriteDrivers: userStats.favoriteDrivers
         }
       };
 
-      setProfile(mockProfile);
+      setProfile(profileData);
       setFormData({
-        name: mockProfile.name,
-        email: mockProfile.email,
-        phone: mockProfile.phone || '',
-        address: mockProfile.address || '',
-        city: mockProfile.city || '',
-        country: mockProfile.country || '',
-        bio: mockProfile.bio || ''
+        name: profileData.name,
+        email: profileData.email,
+        phone: profileData.phone || '',
+        address: profileData.address || '',
+        city: profileData.city || '',
+        country: profileData.country || '',
+        bio: profileData.bio || ''
       });
-      setPreferences(mockProfile.preferences);
+      setPreferences(profileData.preferences);
     } catch (error) {
       console.error('Error fetching profile data:', error);
       errorToast('Failed to fetch profile data');
@@ -164,8 +168,8 @@ export default function UserProfilePage() {
         return;
       }
 
-      // Mock API call (replace with real API call)
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // TODO: Implement real API call to update user profile
+      // await apiClient.updateUserProfile(formData);
       
       // Update profile state
       if (profile) {
@@ -211,8 +215,11 @@ export default function UserProfilePage() {
         return;
       }
 
-      // Mock API call (replace with real API call)
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // TODO: Implement real API call to change password
+      // await apiClient.changePassword({
+      //   oldPassword: passwordForm.currentPassword,
+      //   newPassword: passwordForm.newPassword
+      // });
       
       setShowPasswordModal(false);
       setPasswordForm({
@@ -233,8 +240,8 @@ export default function UserProfilePage() {
     try {
       setSaving(true);
       
-      // Mock API call (replace with real API call)
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // TODO: Implement real API call to save preferences
+      // await apiClient.updateUserPreferences(preferences);
       
       if (profile) {
         setProfile({
@@ -259,8 +266,10 @@ export default function UserProfilePage() {
     try {
       setSaving(true);
       
-      // Mock file upload (replace with real upload logic)
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // TODO: Implement real file upload to server
+      // const formData = new FormData();
+      // formData.append('avatar', file);
+      // const response = await apiClient.uploadAvatar(formData);
       
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -638,8 +647,10 @@ export default function UserProfilePage() {
                       className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="en">English</option>
-                      <option value="es">Spanish</option>
-                      <option value="fr">French</option>
+                      <option value="bn">বাংলা (Bengali)</option>
+                      <option value="hi">हिंदी (Hindi)</option>
+                      <option value="ur">اردو (Urdu)</option>
+                      <option value="ar">العربية (Arabic)</option>
                     </select>
                   </div>
                   <div>
@@ -649,10 +660,11 @@ export default function UserProfilePage() {
                       onChange={(e) => setPreferences({ ...preferences, timezone: e.target.value })}
                       className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
+                      <option value="Asia/Dhaka">Asia/Dhaka (Bangladesh)</option>
                       <option value="UTC">UTC</option>
-                      <option value="EST">Eastern Time</option>
-                      <option value="PST">Pacific Time</option>
-                      <option value="GMT">GMT</option>
+                      <option value="Asia/Kolkata">Asia/Kolkata (India)</option>
+                      <option value="Asia/Karachi">Asia/Karachi (Pakistan)</option>
+                      <option value="Asia/Dubai">Asia/Dubai (UAE)</option>
                     </select>
                   </div>
                 </div>

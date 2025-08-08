@@ -1,5 +1,58 @@
 import { apiClient } from './api';
 
+// Server response interfaces
+interface ServerBooking {
+  id: string;
+  source: string;
+  destination: string;
+  fare: number;
+  status: string;
+  createdAt: string;
+  date?: string; // Add optional date property
+  pickupTime?: string;
+  completedAt?: string;
+}
+
+interface ServerBookingWithDriver extends ServerBooking {
+  driver?: {
+    user?: {
+      name: string;
+    };
+  };
+  review?: {
+    rating?: number;
+  };
+  distance?: number;
+}
+
+interface ServerDriver {
+  id: string;
+  user?: {
+    id: string;
+    name: string;
+    email: string;
+    phone?: string;
+    avatar?: string;
+  };
+  name?: string; // Add optional name property for direct access
+  truckType: string;
+  capacity: number;
+  rating: number;
+  isAvailable: boolean;
+  location?: string;
+}
+
+interface ServerUserDashboardData {
+  totalBookings: number;
+  totalSpent: number;
+  favoriteDrivers: number;
+  averageRating: number;
+  recentBookings: ServerBooking[];
+  nearbyDrivers: ServerDriver[];
+  spendingData: Array<{ month: string; amount: number }>;
+  bookingStatusData: Array<{ status: string; count: number }>;
+}
+
 export interface DashboardStats {
   totalUsers: number;
   totalDrivers: number;
@@ -137,18 +190,73 @@ export const driverApi = {
 // User Dashboard APIs
 export const userApi = {
   getUserStats: async (): Promise<UserStats> => {
-    const response = await apiClient.getClient().get('/user/stats');
-    return response.data;
+    const response = await apiClient.getClient().get('/dashboard/stats');
+    const data: ServerUserDashboardData = response.data.data;
+    return {
+      totalBookings: data.totalBookings || 0,
+      totalSpent: data.totalSpent || 0,
+      averageRating: data.averageRating || 0,
+      favoriteDrivers: data.favoriteDrivers || 0
+    };
   },
 
   getRecentBookings: async (): Promise<Booking[]> => {
-    const response = await apiClient.getClient().get('/user/bookings/recent');
-    return response.data;
+    const response = await apiClient.getClient().get('/bookings/user/me');
+    const data = response.data.data;
+    return (data.bookings || []).map((booking: ServerBookingWithDriver) => ({
+      id: booking.id,
+      source: booking.source,
+      destination: booking.destination,
+      fare: booking.fare,
+      status: booking.status,
+      date: booking.pickupTime || booking.createdAt, // Use pickupTime as date
+      createdAt: booking.createdAt,
+      pickupTime: booking.pickupTime,
+      completedAt: booking.completedAt,
+      distance: booking.distance,
+      driver: booking.driver?.user?.name || 'Driver Assigned',
+      rating: booking.review?.rating
+    }));
+  },
+
+  getUserBookings: async (page = 1, limit = 10): Promise<{ bookings: Booking[]; total: number; page: number; limit: number; totalPages: number }> => {
+    const response = await apiClient.getClient().get('/bookings/user/me', { params: { page, limit } });
+    const data = response.data.data;
+    return {
+      bookings: (data.bookings || []).map((booking: ServerBookingWithDriver) => ({
+        id: booking.id,
+        source: booking.source,
+        destination: booking.destination,
+        fare: booking.fare,
+        status: booking.status,
+        date: booking.pickupTime || booking.createdAt,
+        createdAt: booking.createdAt,
+        pickupTime: booking.pickupTime,
+        completedAt: booking.completedAt,
+        distance: booking.distance,
+        driver: booking.driver?.user?.name || 'Driver Assigned',
+        rating: booking.review?.rating
+      })),
+      total: data.total || 0,
+      page: data.page || page,
+      limit: data.limit || limit,
+      totalPages: data.totalPages || 0
+    };
   },
 
   getNearbyDrivers: async (): Promise<Driver[]> => {
-    const response = await apiClient.getClient().get('/user/drivers/nearby');
-    return response.data;
+    const response = await apiClient.getClient().get('/dashboard/stats');
+    const data: ServerUserDashboardData = response.data.data;
+    return (data.nearbyDrivers || []).map((driver: ServerDriver) => ({
+      id: driver.id,
+      name: driver.user?.name || 'Unknown Driver',
+      truckType: driver.truckType,
+      capacity: driver.capacity,
+      rating: driver.rating,
+      distance: 5, // Mock distance
+      isAvailable: driver.isAvailable,
+      location: driver.location || 'Unknown Location'
+    }));
   },
 
   searchDrivers: async (params: {
@@ -156,8 +264,17 @@ export const userApi = {
     truckType?: string;
     capacity?: string;
   }): Promise<Driver[]> => {
-    const response = await apiClient.getClient().get('/user/drivers/search', { params });
-    return response.data;
+    const response = await apiClient.getClient().get('/dashboard/drivers/nearby', { params });
+    return response.data.data.map((driver: ServerDriver) => ({
+      id: driver.id,
+      name: driver.name || driver.user?.name || 'Unknown Driver',
+      truckType: driver.truckType,
+      capacity: driver.capacity,
+      rating: driver.rating,
+      distance: 5, // Mock distance
+      isAvailable: driver.isAvailable,
+      location: driver.location || 'Unknown Location'
+    }));
   },
 
   calculateFare: async (params: {
@@ -165,12 +282,76 @@ export const userApi = {
     destination: string;
     truckType: string;
   }): Promise<{ fare: number; distance: number }> => {
-    const response = await apiClient.getClient().post('/fare/calculate', params);
-    return response.data;
+    const response = await apiClient.getClient().post('/dashboard/fare/calculate', params);
+    return response.data.data;
   },
 
   cancelBooking: async (bookingId: string): Promise<void> => {
-    await apiClient.getClient().put(`/user/bookings/${bookingId}/cancel`);
+    await apiClient.getClient().delete(`/bookings/${bookingId}`);
+  },
+
+  // Get user payment history
+  getUserPayments: async (page = 1, limit = 10): Promise<{ 
+    payments: Array<{
+      id: string;
+      amount: number;
+      paymentMethod: string;
+      status: string;
+      transactionId: string;
+      createdAt: string;
+      updatedAt: string;
+      booking: {
+        id: string;
+        source: string;
+        destination: string;
+        fare: number;
+        status: string;
+        driver: {
+          user: {
+            name: string;
+          };
+          truckType: string;
+        };
+      };
+    }>;
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      pages: number;
+    };
+  }> => {
+    const response = await apiClient.getClient().get('/payments/user/history', { 
+      params: { page, limit } 
+    });
+    return response.data.data;
+  },
+
+  // Get payment details by ID
+  getPaymentDetails: async (paymentId: string): Promise<{
+    id: string;
+    amount: number;
+    paymentMethod: string;
+    status: string;
+    transactionId: string;
+    createdAt: string;
+    updatedAt: string;
+    booking: {
+      id: string;
+      source: string;
+      destination: string;
+      fare: number;
+      status: string;
+      driver: {
+        user: {
+          name: string;
+        };
+        truckType: string;
+      };
+    };
+  }> => {
+    const response = await apiClient.getClient().get(`/payments/${paymentId}`);
+    return response.data.data.payment;
   }
 };
 
