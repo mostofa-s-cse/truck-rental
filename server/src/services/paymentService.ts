@@ -79,27 +79,8 @@ export class PaymentService {
         include: {
           booking: {
             include: {
-              user: {
-                select: {
-                  id: true,
-                  name: true,
-                  email: true
-                }
-              },
-              driver: {
-                include: {
-                  user: {
-                    select: {
-                      id: true,
-                      name: true
-                    }
-                  }
-                },
-                select: {
-                  id: true,
-                  truckType: true
-                }
-              }
+              user: true,
+              driver: { include: { user: true } }
             }
           }
         },
@@ -186,23 +167,8 @@ export class PaymentService {
         include: {
           booking: {
             include: {
-              user: {
-                select: {
-                  id: true,
-                  name: true,
-                  email: true
-                }
-              },
-              driver: {
-                include: {
-                  user: {
-                    select: {
-                      id: true,
-                      name: true
-                    }
-                  }
-                }
-              }
+              user: true,
+              driver: { include: { user: true } }
             }
           }
         },
@@ -280,27 +246,8 @@ export class PaymentService {
       include: {
         booking: {
           include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true
-              }
-            },
-            driver: {
-              include: {
-                user: {
-                  select: {
-                    id: true,
-                    name: true
-                  }
-                }
-              },
-              select: {
-                id: true,
-                truckType: true
-              }
-            }
+            user: true,
+            driver: { include: { user: true } }
           }
         }
       }
@@ -331,27 +278,8 @@ export class PaymentService {
         include: {
           booking: {
             include: {
-              user: {
-                select: {
-                  id: true,
-                  name: true,
-                  email: true
-                }
-              },
-              driver: {
-                include: {
-                  user: {
-                    select: {
-                      id: true,
-                      name: true
-                    }
-                  }
-                },
-                select: {
-                  id: true,
-                  truckType: true
-                }
-              }
+              user: true,
+              driver: { include: { user: true } }
             }
           }
         }
@@ -404,27 +332,8 @@ export class PaymentService {
       include: {
         booking: {
           include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true
-              }
-            },
-            driver: {
-              include: {
-                user: {
-                  select: {
-                    id: true,
-                    name: true
-                  }
-                }
-              },
-              select: {
-                id: true,
-                truckType: true
-              }
-            }
+            user: true,
+            driver: { include: { user: true } }
           }
         }
       }

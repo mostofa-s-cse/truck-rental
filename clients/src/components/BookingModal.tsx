@@ -484,7 +484,7 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
   if (!isOpen || !driver) return null;
 
   return (
-    <div className="fixed inset-0 bg-gray-200 bg-opacity-10 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-gray-900/10 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">

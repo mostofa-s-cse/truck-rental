@@ -12,8 +12,6 @@ import { userApi } from '@/lib/dashboardApi';
 import { updateUser } from '@/store/slices/authSlice';
 import { 
   UserCircleIcon, 
-  ShieldCheckIcon,
-  BellIcon,
   KeyIcon,
   PencilIcon,
   CameraIcon,
@@ -59,6 +57,16 @@ export default function AdminProfilePage() {
   const dispatch = useAppDispatch();
   const { successToast, errorToast } = useSweetAlert();
   
+  const normalizeAvatar = useCallback((src?: string) => {
+    if (!src) return undefined;
+    if (src.startsWith('http://localhost') || src.startsWith('http://127.0.0.1')) {
+      return src.replace(/^https?:\/\/(localhost|127\.0\.0\.1):\d+/, '');
+    }
+    if (src.startsWith('/')) return src;
+    // Avoid external hosts to prevent Next.js unconfigured host errors
+    return undefined;
+  }, []);
+  
   // State
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -87,13 +95,13 @@ export default function AdminProfilePage() {
   });
   
   // Preferences
-  const [preferences, setPreferences] = useState({
-    emailNotifications: true,
-    smsNotifications: false,
-    pushNotifications: true,
-    language: 'en',
-    timezone: 'UTC'
-  });
+  // const [preferences, setPreferences] = useState({
+  //   emailNotifications: true,
+  //   smsNotifications: false,
+  //   pushNotifications: true,
+  //   language: 'en',
+  //   timezone: 'UTC'
+  // });
 
   const fetchProfileData = useCallback(async () => {
     try {
@@ -106,7 +114,7 @@ export default function AdminProfilePage() {
         email: user?.email || 'admin@example.com',
         phone: '+1 (555) 123-4567',
         role: 'ADMIN',
-        avatar: undefined,
+        avatar: normalizeAvatar(user?.avatar),
         address: '123 Admin Street',
         city: 'Admin City',
         country: 'United States',
@@ -144,14 +152,14 @@ export default function AdminProfilePage() {
         country: mockProfile.country || '',
         bio: mockProfile.bio || ''
       });
-      setPreferences(mockProfile.preferences);
+      // setPreferences(mockProfile.preferences);
     } catch (error) {
       console.error('Error fetching profile data:', error);
       errorToast('Failed to fetch profile data');
     } finally {
       setLoading(false);
     }
-  }, [user, errorToast]);
+  }, [user, errorToast, normalizeAvatar]);
 
   useEffect(() => {
     fetchProfileData();
@@ -232,28 +240,28 @@ export default function AdminProfilePage() {
     }
   };
 
-  const handleSavePreferences = async () => {
-    try {
-      setSaving(true);
+  // const handleSavePreferences = async () => {
+  //   try {
+  //     setSaving(true);
       
-      // Mock API call (replace with real API call)
-      await new Promise(resolve => setTimeout(resolve, 1000));
+  //     // Mock API call (replace with real API call)
+  //     await new Promise(resolve => setTimeout(resolve, 1000));
       
-      if (profile) {
-        setProfile({
-          ...profile,
-          preferences
-        });
-      }
+  //     if (profile) {
+  //       setProfile({
+  //         ...profile,
+  //         preferences
+  //       });
+  //     }
       
-      successToast('Preferences saved successfully');
-    } catch (error) {
-      console.error('Error saving preferences:', error);
-      errorToast('Failed to save preferences');
-    } finally {
-      setSaving(false);
-    }
-  };
+  //     successToast('Preferences saved successfully');
+  //   } catch (error) {
+  //     console.error('Error saving preferences:', error);
+  //     errorToast('Failed to save preferences');
+  //   } finally {
+  //     setSaving(false);
+  //   }
+  // };
 
   const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -263,7 +271,7 @@ export default function AdminProfilePage() {
       setSaving(true);
       const { avatarUrl } = await userApi.uploadAvatar(file);
       if (profile) {
-        const nextSrc = avatarUrl.replace(/^https?:\/\/localhost:\d+/, '');
+        const nextSrc = normalizeAvatar(avatarUrl) || avatarUrl;
         setProfile({ ...profile, avatar: nextSrc });
         dispatch(updateUser({ avatar: nextSrc }));
       }
@@ -312,12 +320,13 @@ export default function AdminProfilePage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 <div className="relative">
-                  {profile.avatar ? (
+                {profile.avatar ? (
                     <Image 
                       src={profile.avatar} 
                       alt={profile.name}
                       width={80}
                       height={80}
+                      unoptimized
                       className="h-20 w-20 rounded-full object-cover"
                     />
                   ) : (
@@ -504,7 +513,7 @@ export default function AdminProfilePage() {
                     <KeyIcon className="h-4 w-4 mr-2" />
                     Change Password
                   </Button>
-                  <Button
+                  {/* <Button
                     onClick={() => {
                       console.log('Test modal button clicked');
                       setShowTestModal(true);
@@ -514,21 +523,21 @@ export default function AdminProfilePage() {
                   >
                     <CameraIcon className="h-4 w-4 mr-2" />
                     Test Simple Modal
-                  </Button>
-                  <Button
+                  </Button> */}
+                  {/* <Button
                     variant="outline"
                     className="w-full justify-start"
                   >
                     <ShieldCheckIcon className="h-4 w-4 mr-2" />
                     Security Settings
-                  </Button>
-                  <Button
+                  </Button> */}
+                  {/* <Button
                     variant="outline"
                     className="w-full justify-start"
                   >
                     <BellIcon className="h-4 w-4 mr-2" />
                     Notification Settings
-                  </Button>
+                  </Button> */}
                 </div>
               </div>
 
@@ -571,7 +580,7 @@ export default function AdminProfilePage() {
           </div>
 
           {/* Preferences */}
-          <div className="bg-white rounded-lg shadow p-6">
+          {/* <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-medium text-gray-900">Preferences</h3>
               <Button
@@ -646,7 +655,7 @@ export default function AdminProfilePage() {
                 </div>
               </div>
             </div>
-          </div>
+          </div> */}
         </div>
 
         {/* Password Change Modal */}
@@ -753,6 +762,7 @@ export default function AdminProfilePage() {
                     alt="Current avatar"
                     width={96}
                     height={96}
+                    unoptimized
                     className="w-24 h-24 rounded-full object-cover"
                   />
                 ) : (

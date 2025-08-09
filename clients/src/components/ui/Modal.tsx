@@ -52,15 +52,15 @@ export default function Modal({
     <>
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 bg-black bg-opacity-50 z-40"
+        className="fixed inset-0 bg-gray-900/10 backdrop-blur-sm z-40"
         onClick={onClose}
       />
       
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className={`bg-white rounded-lg shadow-xl w-full ${sizeClasses[size]} max-h-[90vh] overflow-y-auto`}>
+        <div className={`bg-white/90 backdrop-blur-sm rounded-xl shadow-2xl w-full ${sizeClasses[size]} max-h-[90vh] overflow-y-auto ring-1 ring-black/5`}>
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between p-6 border-b border-gray-200/70">
             <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
             {showCloseButton && (
               <button

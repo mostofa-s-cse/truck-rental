@@ -77,8 +77,8 @@ const PaymentDetails = ({ payment }: { payment: Payment }) => (
         <div>
           <label className="block text-sm font-medium text-gray-700">Payment Method</label>
           <div className="flex items-center">
-            <span className="mr-2">{getMethodIcon(payment.method)}</span>
-            <p className="text-sm text-gray-900">{payment.method?.replace('_', ' ') || 'Unknown'}</p>
+            <span className="mr-2">{getMethodIcon(payment.paymentMethod || payment.method)}</span>
+            <p className="text-sm text-gray-900">{((payment.paymentMethod || payment.method || 'Unknown') as string).replace('_', ' ')}</p>
           </div>
         </div>
         <div>
@@ -108,8 +108,8 @@ const PaymentDetails = ({ payment }: { payment: Payment }) => (
       <div className="flex items-center">
         <UserCircleIcon className="h-8 w-8 text-blue-600 mr-3" />
         <div>
-          <p className="text-sm font-medium text-gray-900">{payment.user?.name || 'Unknown'}</p>
-          <p className="text-sm text-gray-500">{payment.user?.email || 'No email'}</p>
+          <p className="text-sm font-medium text-gray-900">{payment.booking?.user?.name || 'Unknown'}</p>
+          <p className="text-sm text-gray-500">{payment.booking?.user?.email || 'No email'}</p>
         </div>
       </div>
     </div>
@@ -200,17 +200,21 @@ function AdminPaymentsContent() {
   const fetchPayments = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await adminApi.getPayments(currentPage, pageSize, searchQuery, filterStatus || undefined);
-      setPayments(response.data);
-      setTotalPayments(response.pagination.total);
-      setTotalPages(response.pagination.totalPages);
+      const response = await adminApi.getPayments(currentPage, pageSize, searchQuery, filterStatus || undefined, filterMethod || undefined);
+      const list = Array.isArray(response.data)
+        ? response.data
+        : [];
+      const pagination = response.pagination;
+      setPayments(list);
+      setTotalPayments(pagination?.total ?? list.length);
+      setTotalPages(pagination?.totalPages ?? Math.ceil(list.length / pageSize));
     } catch (err) {
       console.error('Error fetching payments:', err);
       errorToast('Failed to fetch payments');
     } finally {
       setLoading(false);
     }
-  }, [currentPage, pageSize, searchQuery, filterStatus, errorToast]);
+  }, [currentPage, pageSize, searchQuery, filterStatus, filterMethod, errorToast]);
 
   // Fetch payments when dependencies change
   useEffect(() => {
@@ -240,8 +244,8 @@ function AdminPaymentsContent() {
       console.log('Payments page handleFilterChange called:', filters);
       
       // Extract filters from the filters object
-      const statusFilter = filters.status as string || '';
-      const methodFilter = filters.method as string || '';
+      const statusFilter = (filters.status as string) || '';
+      const methodFilter = (filters.method as string) || '';
       
       console.log('Extracted filters:', { statusFilter, methodFilter });
       
@@ -298,7 +302,7 @@ function AdminPaymentsContent() {
       )
     },
     {
-      key: 'method',
+      key: 'paymentMethod',
       header: 'Method',
       render: (value) => {
         const method = value as string;
@@ -388,7 +392,7 @@ function AdminPaymentsContent() {
                   </div>
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">Total Payments</p>
-                    <p className="text-2xl font-bold text-gray-900">{totalPayments}</p>
+                    <p className="text-2xl font-bold text-gray-900">{totalPayments || payments.length}</p>
                   </div>
                 </div>
               </div>

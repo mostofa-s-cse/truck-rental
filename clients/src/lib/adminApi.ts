@@ -217,22 +217,25 @@ export interface Payment {
   id: string;
   bookingId: string;
   amount: number;
-  method: string;
+  method?: string; // legacy/name variant
+  paymentMethod?: string; // current API field
   status: string;
   createdAt: string;
   updatedAt: string;
   processedAt?: string;
   transactionId?: string;
-  user: {
-    id: string;
-    name: string;
-    email: string;
-  };
-  driver?: {
-    user: {
+  booking?: {
+    user?: {
       id: string;
       name: string;
       email: string;
+    };
+    driver?: {
+      user?: {
+        id: string;
+        name: string;
+        email: string;
+      };
     };
   };
 }
@@ -454,12 +457,13 @@ export const adminApi = {
   },
 
   // Payments Management
-  getPayments: async (page: number = 1, limit: number = 10, search?: string, status?: string): Promise<PaginatedResponse<Payment>> => {
+  getPayments: async (page: number = 1, limit: number = 10, search?: string, status?: string, method?: string): Promise<PaginatedResponse<Payment>> => {
     const params = new URLSearchParams();
     params.append('page', page.toString());
     params.append('limit', limit.toString());
     if (search) params.append('search', search);
     if (status) params.append('status', status);
+    if (method) params.append('method', method);
 
     const response = await apiClient.getClient().get(`/payments?${params.toString()}`);
     return {
