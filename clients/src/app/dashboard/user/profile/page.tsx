@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
-import { useAppSelector } from '@/hooks/redux';
+import { useAppSelector, useAppDispatch } from '@/hooks/redux';
 import DashboardLayout from '@/components/ui/DashboardLayout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import Button from '@/components/ui/Button';
@@ -17,6 +17,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { KeyIcon } from 'lucide-react';
 import { userApi } from '@/lib/dashboardApi';
+import { updateUser } from '@/store/slices/authSlice';
 
 interface UserProfile {
   id: string;
@@ -55,6 +56,7 @@ interface UserProfile {
 
 export default function UserProfilePage() {
   const { user } = useAppSelector((state) => state.auth);
+  const dispatch = useAppDispatch();
   const { successToast, errorToast } = useSweetAlert();
   
   // State
@@ -233,23 +235,12 @@ export default function UserProfilePage() {
 
     try {
       setSaving(true);
-      
-      // TODO: Implement real file upload to server
-      // const formData = new FormData();
-      // formData.append('avatar', file);
-      // const response = await apiClient.uploadAvatar(formData);
-      
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        if (profile) {
-          setProfile({
-            ...profile,
-            avatar: e.target?.result as string
-          });
-        }
-      };
-      reader.readAsDataURL(file);
-      
+      const { avatarUrl } = await userApi.uploadAvatar(file);
+      if (profile) {
+        const nextSrc = avatarUrl.replace(/^https?:\/\/localhost:\d+/, '');
+        setProfile({ ...profile, avatar: nextSrc });
+        dispatch(updateUser({ avatar: nextSrc }));
+      }
       setShowAvatarModal(false);
       successToast('Avatar updated successfully');
     } catch (error) {

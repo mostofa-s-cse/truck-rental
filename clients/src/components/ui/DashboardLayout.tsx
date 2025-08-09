@@ -22,6 +22,7 @@ import {
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { logoutUser } from '@/store/slices/authSlice';
+import Image from 'next/image';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -107,6 +108,37 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       ];
     }
 
+    // Driver-specific menu items
+    if (user?.role === 'DRIVER') {
+      return [
+        {
+          name: 'Dashboard',
+          href: '/dashboard/driver',
+          icon: HomeIcon
+        },
+        {
+          name: 'My Bookings',
+          href: '/dashboard/driver/bookings',
+          icon: CalendarIcon,
+        },
+        {
+          name: 'Earnings',
+          href: '/dashboard/driver/earnings',
+          icon: CurrencyDollarIcon,
+        },
+        {
+          name: 'Reviews',
+          href: '/dashboard/driver/reviews',
+          icon: StarIcon,
+        },
+        {
+          name: 'Profile',
+          href: '/dashboard/driver/profile',
+          icon: UserCircleIcon,
+        }
+      ];
+    }
+
     // Regular user menu items
     return [
       {
@@ -150,23 +182,22 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   }, [pathname, menuItems]);
 
   const isActiveMenuItem = (href: string): boolean => {
+    if (!pathname) return false;
     if (href === pathname) return true;
-    
-    // For parent menu items with children, check if any child is active
+
+    // For top-level dashboard entries, only exact match should be active
+    const isTopDashboard = href === '/dashboard/user' || href === '/dashboard/admin' || href === '/dashboard/driver';
+    if (isTopDashboard) return false;
+
+    // Treat non-top-level items as active if the current path starts with their href (for nested routes)
+    if (pathname.startsWith(href + '/')) return true;
+
+    // For parent menu items with children, check if any child is active (supports nested)
     const menuItem = menuItems.find(item => item.href === href);
     if (menuItem?.children) {
-      return menuItem.children.some(child => child.href === pathname);
+      return menuItem.children.some(child => pathname === child.href || pathname.startsWith(child.href + '/'));
     }
-    
-    // Special handling for dashboard pages - only for the main dashboard page
-    if (href === '/dashboard/user' && pathname === '/dashboard/user') {
-      return true;
-    }
-    
-    if (href === '/dashboard/admin' && pathname === '/dashboard/admin') {
-      return true;
-    }
-    
+
     return false;
   };
 
@@ -277,21 +308,29 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
                   className="flex items-center max-w-xs text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
-                  <UserCircleIcon className="h-8 w-8 text-gray-400" />
+                  {user?.avatar ? (
+                    <Image src={user.avatar} alt="User Avatar" width={32} height={32} className="h-8 w-8 rounded-full object-cover" />
+                  ) : (
+                    <UserCircleIcon className="h-8 w-8 text-gray-400" />
+                  )}
+                  
                   <span className="ml-2 text-gray-700">{user?.name}</span>
                 </button>
                 
                 {userMenuOpen && (
                   <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5">
                     <div className="py-1">
-                      <a href={user?.role === 'ADMIN' ? '/dashboard/admin/profile' : '/dashboard/user/profile'} className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                      <Link href={user?.role === 'ADMIN' ? '/dashboard/admin/profile' : user?.role === 'DRIVER' ? '/dashboard/driver/profile' : '/dashboard/user/profile'} className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                         <UserCircleIcon className="mr-3 h-4 w-4" />
                         Profile
-                      </a>
-                      <a href={user?.role === 'ADMIN' ? '/dashboard/admin/settings' : '/dashboard/user/settings'} className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                      </Link>
+                      {user?.role === 'ADMIN' ? <>
+                        <Link href='/dashboard/admin/settings' className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                         <CogIcon className="mr-3 h-4 w-4" />
                         Settings
-                      </a>
+                      </Link>
+                      </> : user?.role === 'DRIVER' ? '' : ''}
+                      
                       <button
                         onClick={handleLogout}
                         className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"

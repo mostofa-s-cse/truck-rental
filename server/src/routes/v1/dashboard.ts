@@ -14,6 +14,9 @@ router.get('/driver/stats', auth, authorize('DRIVER'), DashboardController.getDr
 router.put('/driver/availability', auth, authorize('DRIVER'), DashboardController.updateDriverAvailability);
 router.put('/driver/bookings/:bookingId/accept', auth, authorize('DRIVER'), DashboardController.acceptBooking);
 router.put('/driver/bookings/:bookingId/decline', auth, authorize('DRIVER'), DashboardController.declineBooking);
+  router.put('/driver/bookings/:bookingId/start', auth, authorize('DRIVER'), DashboardController.startTrip);
+  router.put('/driver/bookings/:bookingId/complete', auth, authorize('DRIVER'), DashboardController.completeTrip);
+  router.get('/driver/earnings', auth, authorize('DRIVER'), DashboardController.getDriverEarnings);
 
 // Admin Dashboard Routes
 router.get('/admin/stats', auth, authorize('ADMIN'), DashboardController.getAdminDashboardStats);

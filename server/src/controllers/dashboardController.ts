@@ -74,6 +74,35 @@ export class DashboardController {
     }
   }
 
+  static async getDriverEarnings(req: Request, res: Response) {
+    try {
+      const userId = (req as any).user.userId;
+
+      logDatabase('select', 'driver_earnings', { userId });
+
+      const result = await DashboardService.getDriverEarnings(userId);
+
+      logDatabase('select_success', 'driver_earnings', { userId });
+
+      const response: ApiResponse = {
+        success: true,
+        message: 'Driver earnings retrieved successfully',
+        data: result
+      };
+
+      res.status(200).json(response);
+    } catch (error: any) {
+      const userId = (req as any).user?.userId || 'unknown';
+      logError(error, { operation: 'get_driver_earnings', userId });
+      const response: ApiResponse = {
+        success: false,
+        message: error.message || 'Failed to get driver earnings',
+        error: error.message
+      };
+      res.status(400).json(response);
+    }
+  }
+
   // Admin Dashboard Methods
   static async getAdminDashboardStats(req: Request, res: Response) {
     try {
@@ -335,6 +364,62 @@ export class DashboardController {
         error: error.message
       };
 
+      res.status(400).json(response);
+    }
+  }
+
+  static async startTrip(req: Request, res: Response) {
+    try {
+      const { bookingId } = req.params;
+
+      logDatabase('update', 'booking_status', { bookingId, action: 'start' });
+
+      await DashboardService.startTrip(bookingId);
+
+      logDatabase('update_success', 'booking_status', { bookingId, action: 'start' });
+
+      const response: ApiResponse = {
+        success: true,
+        message: 'Trip started successfully'
+      };
+
+      res.status(200).json(response);
+    } catch (error: any) {
+      const bookingId = req.params.bookingId || 'unknown';
+      logError(error, { operation: 'start_trip', bookingId });
+      const response: ApiResponse = {
+        success: false,
+        message: error.message || 'Failed to start trip',
+        error: error.message
+      };
+      res.status(400).json(response);
+    }
+  }
+
+  static async completeTrip(req: Request, res: Response) {
+    try {
+      const { bookingId } = req.params;
+
+      logDatabase('update', 'booking_status', { bookingId, action: 'complete' });
+
+      await DashboardService.completeTrip(bookingId);
+
+      logDatabase('update_success', 'booking_status', { bookingId, action: 'complete' });
+
+      const response: ApiResponse = {
+        success: true,
+        message: 'Trip completed successfully'
+      };
+
+      res.status(200).json(response);
+    } catch (error: any) {
+      const bookingId = req.params.bookingId || 'unknown';
+      logError(error, { operation: 'complete_trip', bookingId });
+      const response: ApiResponse = {
+        success: false,
+        message: error.message || 'Failed to complete trip',
+        error: error.message
+      };
       res.status(400).json(response);
     }
   }

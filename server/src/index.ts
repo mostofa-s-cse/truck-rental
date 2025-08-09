@@ -12,6 +12,7 @@ import logger, { logRequest, logError } from './utils/logger';
 
 // Import versioned routes
 import v1Routes from './routes/v1';
+import path from 'path';
 
 // Load environment variables
 dotenv.config();
@@ -49,6 +50,9 @@ app.use(logRequest);
 
 // API Routes
 app.use('/api/v1', v1Routes);
+
+// Serve uploaded avatars statically
+app.use('/uploads/avatars', express.static(path.join(process.cwd(), 'uploads', 'avatars')));
 
 // Health check
 app.get('/health', (req, res) => {

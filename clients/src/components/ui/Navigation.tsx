@@ -58,21 +58,18 @@ const Navigation = () => {
         return [
           { name: 'Driver Dashboard', href: '/dashboard/driver' },
           { name: 'Profile', href: '/dashboard/driver/profile' },
-          { name: 'Settings', href: '/dashboard/driver/settings' },
           { name: 'Sign out', action: handleLogout, isAction: true }
         ];
       case 'USER':
         return [
           { name: 'User Dashboard', href: '/dashboard/user' },
           { name: 'Profile', href: '/dashboard/user/profile' },
-          { name: 'Settings', href: '/dashboard/user/settings' },
           { name: 'Sign out', action: handleLogout, isAction: true }
         ];
       default:
         return [
           { name: 'Dashboard', href: '/dashboard/user' },
           { name: 'Profile', href: '/dashboard/user/profile' },
-          { name: 'Settings', href: '/dashboard/user/settings' },
           { name: 'Sign out', action: handleLogout, isAction: true }
         ];
     }

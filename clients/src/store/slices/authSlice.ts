@@ -122,6 +122,21 @@ const authSlice = createSlice({
     setLoading: (state, action: PayloadAction<boolean>) => {
       state.loading = action.payload;
     },
+    updateUser: (state, action: PayloadAction<Partial<User>>) => {
+      if (!state.user) {
+        state.user = action.payload as User;
+      } else {
+        state.user = { ...state.user, ...action.payload } as User;
+      }
+      try {
+        localStorage.setItem('user', JSON.stringify(state.user));
+        if (action.payload && typeof action.payload === 'object' && 'role' in action.payload) {
+          setAuthData(state.user as unknown as { role: string }, state.token || '');
+        }
+      } catch {
+        // ignore storage errors
+      }
+    },
   },
   extraReducers: (builder) => {
     // Login
@@ -188,5 +203,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { clearError, setLoading } = authSlice.actions;
+export const { clearError, setLoading, updateUser } = authSlice.actions;
 export default authSlice.reducer; 

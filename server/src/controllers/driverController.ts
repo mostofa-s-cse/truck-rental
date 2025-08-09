@@ -222,6 +222,43 @@ export class DriverController {
     }
   }
 
+  static async uploadAvatar(req: Request, res: Response) {
+    try {
+      const userId = (req as any).user.userId;
+      const file = (req as any).file as Express.Multer.File | undefined;
+
+      if (!file) {
+        return res.status(400).json({ success: false, message: 'No file uploaded' });
+      }
+
+      logDatabase('upload', 'driver_avatar', { userId, fileName: file.filename, size: file.size });
+
+      const avatarPath = `/uploads/avatars/${file.filename}`;
+      const result = await DriverService.updateUserAvatar(userId, avatarPath);
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+
+      const response: ApiResponse = {
+        success: true,
+        message: 'Avatar uploaded successfully',
+        data: {
+          ...result,
+          avatarUrl: `${baseUrl}${avatarPath}`
+        }
+      };
+
+      res.status(200).json(response);
+    } catch (error: any) {
+      const userId = (req as any).user?.userId || 'unknown';
+      logError(error, { operation: 'upload_avatar', userId });
+      const response: ApiResponse = {
+        success: false,
+        message: error.message || 'Failed to upload avatar',
+        error: error.message
+      };
+      res.status(400).json(response);
+    }
+  }
+
   static async verifyDriver(req: Request, res: Response) {
     try {
       const { driverId } = req.params;

@@ -195,6 +195,128 @@ export class DashboardService {
     };
   }
 
+  static async getDriverEarnings(userId: string) {
+    // Find driver by user ID
+    const driver = await prisma.driver.findUnique({ where: { userId } });
+    if (!driver) {
+      throw new Error('Driver profile not found');
+    }
+
+    // Fetch completed and recent bookings for the driver
+    const bookings = await prisma.booking.findMany({
+      where: { driverId: driver.id },
+      include: { payment: true },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const now = new Date();
+    const startOfDay = new Date(now); startOfDay.setHours(0,0,0,0);
+    const startOfWeek = new Date(now); startOfWeek.setDate(now.getDate() - 7);
+    const startOfMonth = new Date(now); startOfMonth.setMonth(now.getMonth() - 1);
+
+    const sumFare = (list: typeof bookings) => list.reduce((sum, b) => sum + b.fare, 0);
+
+    const overview = {
+      today: sumFare(bookings.filter(b => b.createdAt >= startOfDay)),
+      thisWeek: sumFare(bookings.filter(b => b.createdAt >= startOfWeek)),
+      thisMonth: sumFare(bookings.filter(b => b.createdAt >= startOfMonth)),
+      totalEarnings: sumFare(bookings)
+    };
+
+    // Daily earnings (last 7 days)
+    const dailyEarnings = Array.from({ length: 7 }).map((_, i) => {
+      const day = new Date(now); day.setDate(now.getDate() - (6 - i)); day.setHours(0,0,0,0);
+      const next = new Date(day); next.setDate(day.getDate() + 1);
+      const dayBookings = bookings.filter(b => b.createdAt >= day && b.createdAt < next);
+      const earnings = sumFare(dayBookings);
+      const trips = dayBookings.length;
+      const avgPerTrip = trips > 0 ? Math.round((earnings / trips) * 100) / 100 : 0;
+      return { date: day.toISOString().slice(0,10), earnings, trips, avgPerTrip };
+    });
+
+    // Weekly earnings (last 4 weeks)
+    const weeklyEarnings = Array.from({ length: 4 }).map((_, i) => {
+      const start = new Date(now); start.setDate(now.getDate() - (7 * (3 - i))); start.setHours(0,0,0,0);
+      const end = new Date(start); end.setDate(start.getDate() + 7);
+      const weekBookings = bookings.filter(b => b.createdAt >= start && b.createdAt < end);
+      const earnings = sumFare(weekBookings);
+      const trips = weekBookings.length;
+      const avgPerTrip = trips > 0 ? Math.round((earnings / trips) * 100) / 100 : 0;
+      return { week: `Week ${i + 1}`, earnings, trips, avgPerTrip };
+    });
+
+    // Monthly earnings (last 6 months)
+    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const monthlyEarnings = Array.from({ length: 6 }).map((_, idx) => {
+      const i = 5 - idx;
+      const start = new Date(now.getFullYear(), now.getMonth() - i, 1, 0, 0, 0, 0);
+      const end = new Date(now.getFullYear(), now.getMonth() - i + 1, 1, 0, 0, 0, 0);
+      const monthBookings = bookings.filter(b => b.createdAt >= start && b.createdAt < end);
+      const earnings = sumFare(monthBookings);
+      const trips = monthBookings.length;
+      const avgPerTrip = trips > 0 ? Math.round((earnings / trips) * 100) / 100 : 0;
+      return { month: monthNames[start.getMonth()], earnings, trips, avgPerTrip };
+    });
+
+    // Earnings by booking status
+    const statusGroups = new Map<string, { earnings: number; trips: number }>();
+    bookings.forEach(b => {
+      const cur = statusGroups.get(b.status) || { earnings: 0, trips: 0 };
+      cur.earnings += b.fare;
+      cur.trips += 1;
+      statusGroups.set(b.status, cur);
+    });
+    const total = overview.totalEarnings || 0;
+    const earningsByStatus = Array.from(statusGroups.entries()).map(([status, v]) => ({
+      status,
+      earnings: v.earnings,
+      trips: v.trips,
+      percentage: total > 0 ? Math.round((v.earnings / total) * 1000) / 10 : 0
+    }));
+
+    // Payment methods distribution (from payment relation when available)
+    const methodGroups = new Map<string, { earnings: number; trips: number }>();
+    bookings.forEach(b => {
+      const method = b.payment?.paymentMethod || 'UNKNOWN';
+      const cur = methodGroups.get(method) || { earnings: 0, trips: 0 };
+      cur.earnings += b.fare;
+      cur.trips += 1;
+      methodGroups.set(method, cur);
+    });
+    const paymentMethods = Array.from(methodGroups.entries()).map(([method, v]) => ({
+      method,
+      earnings: v.earnings,
+      trips: v.trips,
+      percentage: total > 0 ? Math.round((v.trips / bookings.length) * 1000) / 10 : 0
+    }));
+
+    // Recent transactions (map from payment)
+    const recentTransactions = bookings
+      .filter(b => !!b.payment)
+      .slice(0, 10)
+      .map(b => ({
+        id: b.payment!.id,
+        amount: b.payment!.amount || b.fare,
+        method: b.payment!.paymentMethod || 'UNKNOWN',
+        date: b.payment!.createdAt.toISOString().slice(0,10),
+        status: b.payment!.status
+      }));
+
+    return {
+      overview,
+      dailyEarnings,
+      weeklyEarnings,
+      monthlyEarnings,
+      earningsByStatus,
+      topEarningDays: dailyEarnings
+        .map(d => ({ day: new Date(d.date).toLocaleDateString('en-US', { weekday: 'long' }), earnings: d.earnings, trips: d.trips, avgPerTrip: d.avgPerTrip }))
+        .sort((a,b) => b.earnings - a.earnings)
+        .slice(0, 5),
+      paymentMethods,
+      recentTransactions
+    };
+  }
+
   // Admin Dashboard Methods
   static async getAdminDashboardStats() {
     // Get total counts
@@ -335,6 +457,20 @@ export class DashboardService {
     return await prisma.booking.update({
       where: { id: bookingId },
       data: { status: BookingStatus.CANCELLED }
+    });
+  }
+
+  static async startTrip(bookingId: string) {
+    return await prisma.booking.update({
+      where: { id: bookingId },
+      data: { status: BookingStatus.IN_PROGRESS }
+    });
+  }
+
+  static async completeTrip(bookingId: string) {
+    return await prisma.booking.update({
+      where: { id: bookingId },
+      data: { status: BookingStatus.COMPLETED, completedAt: new Date() }
     });
   }
 

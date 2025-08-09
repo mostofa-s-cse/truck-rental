@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import Image from 'next/image';
-import { useAppSelector } from '@/hooks/redux';
+import { useAppSelector, useAppDispatch } from '@/hooks/redux';
 import DashboardLayout from '@/components/ui/DashboardLayout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import Button from '@/components/ui/Button';
@@ -14,7 +14,9 @@ import {
   CameraIcon,
   StarIcon,
 } from '@heroicons/react/24/outline';
-import { BellIcon, KeyIcon, ShieldCheckIcon } from 'lucide-react';
+import { KeyIcon } from 'lucide-react';
+import { driverApi } from '@/lib/dashboardApi';
+import { updateUser } from '@/store/slices/authSlice';
 
 interface DriverProfile {
   id: string;
@@ -57,6 +59,7 @@ interface DriverProfile {
 
 export default function DriverProfilePage() {
   const { user } = useAppSelector((state) => state.auth);
+  const dispatch = useAppDispatch();
   const { successToast, errorToast } = useSweetAlert();
   
   // State
@@ -96,13 +99,13 @@ export default function DriverProfilePage() {
   });
   
   // Preferences
-  const [preferences, setPreferences] = useState({
-    emailNotifications: true,
-    smsNotifications: false,
-    pushNotifications: true,
-    language: 'en',
-    timezone: 'UTC'
-  });
+  // const [preferences, setPreferences] = useState({
+  //   emailNotifications: true,
+  //   smsNotifications: false,
+  //   pushNotifications: true,
+  //   language: 'en',
+  //   timezone: 'UTC'
+  // });
 
   const fetchProfileData = useCallback(async () => {
     try {
@@ -115,7 +118,7 @@ export default function DriverProfilePage() {
         email: user?.email || 'driver@example.com',
         phone: '+1 (555) 123-4567',
         role: 'DRIVER',
-        avatar: undefined,
+        avatar: user?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'Driver User')}&background=random`,
         address: '123 Driver Street',
         city: 'Driver City',
         country: 'United States',
@@ -163,7 +166,7 @@ export default function DriverProfilePage() {
         bio: mockProfile.bio || ''
       });
       setVehicleForm(mockProfile.vehicle);
-      setPreferences(mockProfile.preferences);
+      // setPreferences(mockProfile.preferences);
     } catch (error) {
       console.error('Error fetching profile data:', error);
       errorToast('Failed to fetch profile data');
@@ -281,28 +284,28 @@ export default function DriverProfilePage() {
     }
   };
 
-  const handleSavePreferences = async () => {
-    try {
-      setSaving(true);
+  // const handleSavePreferences = async () => {
+  //   try {
+  //     setSaving(true);
       
-      // Mock API call (replace with real API call)
-      await new Promise(resolve => setTimeout(resolve, 1000));
+  //     // Mock API call (replace with real API call)
+  //     await new Promise(resolve => setTimeout(resolve, 1000));
       
-      if (profile) {
-        setProfile({
-          ...profile,
-          preferences
-        });
-      }
+  //     if (profile) {
+  //       setProfile({
+  //         ...profile,
+  //         preferences
+  //       });
+  //     }
       
-      successToast('Preferences saved successfully');
-    } catch (error) {
-      console.error('Error saving preferences:', error);
-      errorToast('Failed to save preferences');
-    } finally {
-      setSaving(false);
-    }
-  };
+  //     successToast('Preferences saved successfully');
+  //   } catch (error) {
+  //     console.error('Error saving preferences:', error);
+  //     errorToast('Failed to save preferences');
+  //   } finally {
+  //     setSaving(false);
+  //   }
+  // };
 
   const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -310,21 +313,13 @@ export default function DriverProfilePage() {
 
     try {
       setSaving(true);
-      
-      // Mock file upload (replace with real upload logic)
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        if (profile) {
-          setProfile({
-            ...profile,
-            avatar: e.target?.result as string
-          });
-        }
-      };
-      reader.readAsDataURL(file);
-      
+      const { avatarUrl } = await driverApi.uploadAvatar(file);
+      if (profile) {
+        // Use relative path for Next/Image to avoid unconfigured host errors
+        const nextSrc = avatarUrl.replace(/^https?:\/\/localhost:\d+/, '');
+        setProfile({ ...profile, avatar: nextSrc });
+        dispatch(updateUser({ avatar: nextSrc }));
+      }
       setShowAvatarModal(false);
       successToast('Avatar updated successfully');
     } catch (error) {
@@ -386,7 +381,7 @@ export default function DriverProfilePage() {
                 <div className="relative">
                   {profile.avatar ? (
                     <Image 
-                      src={profile.avatar} 
+                      src={profile.avatar || ''} 
                       alt={profile.name}
                       width={80}
                       height={80}
@@ -651,20 +646,20 @@ export default function DriverProfilePage() {
                     <KeyIcon className="h-4 w-4 mr-2" />
                     Change Password
                   </Button>
-                  <Button
+                  {/* <Button
                     variant="outline"
                     className="w-full justify-start"
                   >
                     <ShieldCheckIcon className="h-4 w-4 mr-2" />
                     Security Settings
-                  </Button>
-                  <Button
+                  </Button> */}
+                  {/* <Button
                     variant="outline"
                     className="w-full justify-start"
                   >
                     <BellIcon className="h-4 w-4 mr-2" />
                     Notification Settings
-                  </Button>
+                  </Button> */}
                 </div>
               </div>
 
@@ -713,7 +708,7 @@ export default function DriverProfilePage() {
           </div>
 
           {/* Preferences */}
-          <div className="bg-white rounded-lg shadow p-6">
+          {/* <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-medium text-gray-900">Preferences</h3>
               <Button
@@ -788,7 +783,7 @@ export default function DriverProfilePage() {
                 </div>
               </div>
             </div>
-          </div>
+          </div> */}
         </div>
 
         {/* Password Change Modal */}
