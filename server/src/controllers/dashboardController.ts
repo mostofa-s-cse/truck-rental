@@ -278,7 +278,8 @@ export class DashboardController {
 
       const response: ApiResponse = {
         success: true,
-        message: 'Driver availability updated successfully'
+        message: 'Driver availability updated successfully',
+        data: { isAvailable }
       };
 
       res.status(200).json(response);
@@ -296,6 +297,28 @@ export class DashboardController {
         error: error.message
       };
 
+      res.status(400).json(response);
+    }
+  }
+
+  static async getDriverAvailability(req: Request, res: Response) {
+    try {
+      const userId = (req as any).user.userId;
+      const result = await DashboardService.getDriverAvailability(userId);
+      const response: ApiResponse = {
+        success: true,
+        message: 'Driver availability retrieved successfully',
+        data: { isAvailable: result }
+      };
+      res.status(200).json(response);
+    } catch (error: any) {
+      const userId = (req as any).user?.userId || 'unknown';
+      logError(error, { operation: 'get_driver_availability', userId });
+      const response: ApiResponse = {
+        success: false,
+        message: error.message || 'Failed to get driver availability',
+        error: error.message
+      };
       res.status(400).json(response);
     }
   }

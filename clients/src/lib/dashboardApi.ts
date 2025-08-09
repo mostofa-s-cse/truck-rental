@@ -212,6 +212,11 @@ export const driverApi = {
     await apiClient.getClient().put('/dashboard/driver/availability', { isAvailable });
   },
 
+  getAvailability: async (): Promise<boolean> => {
+    const response = await apiClient.getClient().get('/dashboard/driver/availability');
+    return Boolean(response.data?.data?.isAvailable);
+  },
+
   acceptBooking: async (bookingId: string): Promise<void> => {
     await apiClient.getClient().put(`/dashboard/driver/bookings/${bookingId}/accept`);
   },

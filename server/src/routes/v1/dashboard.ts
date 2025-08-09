@@ -12,6 +12,7 @@ router.post('/fare/calculate', auth, authorize('USER'), DashboardController.calc
 // Driver Dashboard Routes
 router.get('/driver/stats', auth, authorize('DRIVER'), DashboardController.getDriverDashboardStats);
 router.put('/driver/availability', auth, authorize('DRIVER'), DashboardController.updateDriverAvailability);
+router.get('/driver/availability', auth, authorize('DRIVER'), DashboardController.getDriverAvailability);
 router.put('/driver/bookings/:bookingId/accept', auth, authorize('DRIVER'), DashboardController.acceptBooking);
 router.put('/driver/bookings/:bookingId/decline', auth, authorize('DRIVER'), DashboardController.declineBooking);
   router.put('/driver/bookings/:bookingId/start', auth, authorize('DRIVER'), DashboardController.startTrip);

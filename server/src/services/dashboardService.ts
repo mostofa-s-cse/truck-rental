@@ -439,11 +439,21 @@ export class DashboardService {
   }
 
   // Driver-specific methods
-  static async updateDriverAvailability(driverId: string, isAvailable: boolean) {
+  static async updateDriverAvailability(userId: string, isAvailable: boolean) {
+    // Update by userId; throw a clear error if driver profile doesn't exist
+    const driver = await prisma.driver.findUnique({ where: { userId } });
+    if (!driver) {
+      throw new Error('Driver profile not found');
+    }
     return await prisma.driver.update({
-      where: { id: driverId },
+      where: { userId },
       data: { isAvailable }
     });
+  }
+
+  static async getDriverAvailability(userId: string) {
+    const driver = await prisma.driver.findUnique({ where: { userId } });
+    return driver?.isAvailable;
   }
 
   static async acceptBooking(bookingId: string) {
