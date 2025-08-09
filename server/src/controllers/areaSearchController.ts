@@ -82,6 +82,34 @@ export class AreaSearchController {
   }
 
   /**
+   * Get all Dhaka areas (Public)
+   */
+  static async getDhakaAreas(req: Request, res: Response) {
+    try {
+      const { search = '', limit = '500' } = req.query as { search?: string; limit?: string };
+      const limitNum = parseInt(limit as string) || 500;
+
+      const areas = await AreaSearchService.getDhakaAreas(search as string, limitNum);
+
+      const response: ApiResponse = {
+        success: true,
+        message: 'Dhaka areas retrieved successfully',
+        data: areas
+      };
+
+      res.status(200).json(response);
+    } catch (error: any) {
+      logError(error, { operation: 'get_dhaka_areas', query: req.query });
+      const response: ApiResponse = {
+        success: false,
+        message: error.message || 'Failed to get Dhaka areas',
+        error: error.message
+      };
+      res.status(500).json(response);
+    }
+  }
+
+  /**
    * Get popular areas based on search count
    */
   static async getPopularAreas(req: Request, res: Response) {

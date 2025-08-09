@@ -1,14 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { X, Truck, MapPin, DollarSign, Loader2, CheckCircle, AlertCircle, Map, CreditCard, Shield } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { X, Truck, MapPin, DollarSign, Loader2, CheckCircle, AlertCircle, CreditCard, Shield } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import { useSweetAlert } from '@/hooks/useSweetAlert';
 import { apiClient } from '@/lib/api';
 import { Driver } from '@/types';
-import DynamicMap from '@/components/ui/DynamicMap';
 import { useAppSelector } from '@/hooks/redux';
-import LocationMapSelector from '@/components/ui/LocationMapSelector';
+import DynamicMap from '@/components/ui/DynamicMap';
 
 interface BookingModalProps {
   driver: Driver | null;
@@ -46,6 +45,15 @@ interface AreaData {
   area: string;
   latitude: number;
   longitude: number;
+}
+
+interface ServerArea {
+  id: string;
+  name: string;
+  city: string;
+  latitude: number;
+  longitude: number;
+  address: string;
 }
 
 export default function BookingModal({ driver, isOpen, onClose, onBookingComplete }: BookingModalProps) {
@@ -86,11 +94,11 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
   const [selectedSourceArea, setSelectedSourceArea] = useState<AreaData | null>(null);
   const [selectedDestinationArea, setSelectedDestinationArea] = useState<AreaData | null>(null);
   
-  // Map selector states
-  const [showSourceMapSelector, setShowSourceMapSelector] = useState(false);
-  const [showDestinationMapSelector, setShowDestinationMapSelector] = useState(false);
+  const [areaOptions, setAreaOptions] = useState<AreaData[]>([]);
+  const [sourceQuery, setSourceQuery] = useState<string>('');
+  const [destinationQuery, setDestinationQuery] = useState<string>('');
   
-  // Route details for map
+  // Route details for map preview
   const [routeDetails, setRouteDetails] = useState<{
     distance: number;
     duration: number;
@@ -137,25 +145,43 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
       });
       setCalculatedFare(0);
       setBookingId(null);
-      setRouteDetails(null);
+      // route details removed
       setSelectedSourceArea(null);
       setSelectedDestinationArea(null);
       setPaymentError(null);
     } else {
       // Ensure calculated fare is reset when modal closes
       setCalculatedFare(0);
-      setRouteDetails(null);
+      // route details removed
     }
   }, [isOpen]);
 
-  // Calculate fare when selected areas change
+  // Load Dhaka areas for dropdown search (server provides all Dhaka areas)
   useEffect(() => {
-    if (selectedSourceArea && selectedDestinationArea && driver) {
-      calculateFare();
-    }
-  }, [selectedSourceArea, selectedDestinationArea, driver]);
+    const loadAreas = async () => {
+      try {
+        const res = await apiClient.getDhakaAreas(undefined, 500);
+        if (res?.success && Array.isArray(res.data)) {
+          setAreaOptions(
+            res.data.map((a: ServerArea) => ({
+              value: a.id,
+              label: `${a.name}, ${a.city}`,
+              area: a.address,
+              latitude: a.latitude,
+              longitude: a.longitude,
+            }))
+          );
+        }
+      } catch {
+        // ignore
+      }
+    };
+    if (isOpen) loadAreas();
+  }, [isOpen]);
 
-  const fetchRouteDetails = async () => {
+  // Calculate fare when selected areas change
+
+  const fetchRouteDetails = useCallback(async () => {
     try {
       if (!selectedSourceArea || !selectedDestinationArea) {
         return;
@@ -173,16 +199,15 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
           address: bookingData.destination
         }
       );
-
       if (response.success && response.data) {
         setRouteDetails(response.data);
       }
     } catch (error) {
       console.error('Error fetching route details:', error);
     }
-  };
+  }, [selectedSourceArea, selectedDestinationArea, bookingData.source, bookingData.destination]);
 
-  const calculateFare = async () => {
+  const calculateFare = useCallback(async () => {
     try {
       // Use coordinates from selected areas if available
       if (!selectedSourceArea || !selectedDestinationArea) {
@@ -229,7 +254,14 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
         distance: 10 // Default 10 km
       }));
     }
-  };
+  }, [selectedSourceArea, selectedDestinationArea, bookingData.source, bookingData.destination, driver, fetchRouteDetails]);
+
+  // Calculate fare when selected areas change
+  useEffect(() => {
+    if (selectedSourceArea && selectedDestinationArea && driver) {
+      void calculateFare();
+    }
+  }, [selectedSourceArea, selectedDestinationArea, driver, calculateFare]);
 
   const handleBookingSubmit = async () => {
     if (!driver) return;
@@ -310,30 +342,7 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
     }
   };
 
-  // Map selector handlers
-  const handleSourceLocationSelect = (location: { name: string; latitude: number; longitude: number; address: string }) => {
-    setBookingData(prev => ({ ...prev, source: location.address }));
-    setSelectedSourceArea({
-      value: location.address,
-      label: location.name,
-      area: location.address,
-      latitude: location.latitude,
-      longitude: location.longitude
-    });
-    setShowSourceMapSelector(false);
-  };
-
-  const handleDestinationLocationSelect = (location: { name: string; latitude: number; longitude: number; address: string }) => {
-    setBookingData(prev => ({ ...prev, destination: location.address }));
-    setSelectedDestinationArea({
-      value: location.address,
-      label: location.name,
-      area: location.address,
-      latitude: location.latitude,
-      longitude: location.longitude
-    });
-    setShowDestinationMapSelector(false);
-  };
+  // Map selector handlers removed
 
   // Helper function to extract city from location string
   const extractCityFromLocation = (location: string): string => {
@@ -475,7 +484,7 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
   if (!isOpen || !driver) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-gray-200 bg-opacity-10 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
@@ -528,19 +537,35 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
                     <input
                       type="text"
                       value={bookingData.source}
-                      onChange={(e) => setBookingData(prev => ({ ...prev, source: e.target.value }))}
-                      placeholder="Enter pickup location or click map to select..."
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      readOnly
+                      onChange={(e) => {
+                        setBookingData(prev => ({ ...prev, source: e.target.value }));
+                        setSourceQuery(e.target.value);
+                      }}
+                      placeholder="Type to search Dhaka locations..."
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowSourceMapSelector(true)}
-                      className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 text-gray-400 hover:text-blue-600 transition-colors"
-                      title="Select location on map"
-                    >
-                      <Map className="w-4 h-4" />
-                    </button>
+                       
+                        {areaOptions.length > 0 && sourceQuery && (
+                          <div className="absolute z-10 mt-1 max-h-48 w-full overflow-auto rounded-md border bg-white text-gray-700 shadow">
+                            {areaOptions
+                              .filter((opt) => opt.label.toLowerCase().includes(sourceQuery.toLowerCase()) || opt.area.toLowerCase().includes(sourceQuery.toLowerCase()))
+                              .slice(0, 50)
+                              .map((opt) => (
+                                <button
+                                  key={opt.value}
+                                  type="button"
+                                  onClick={() => {
+                                    setBookingData(prev => ({ ...prev, source: opt.area }));
+                                    setSelectedSourceArea(opt);
+                                    setSourceQuery('');
+                                  }}
+                                  className="block w-full px-3 py-2 text-left hover:bg-gray-50"
+                                >
+                                  {opt.label}
+                                </button>
+                              ))}
+                          </div>
+                        )}
                   </div>
                 </div>
 
@@ -553,19 +578,35 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
                     <input
                       type="text"
                       value={bookingData.destination}
-                      onChange={(e) => setBookingData(prev => ({ ...prev, destination: e.target.value }))}
-                      placeholder="Enter destination or click map to select..."
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      readOnly
+                      onChange={(e) => {
+                        setBookingData(prev => ({ ...prev, destination: e.target.value }));
+                        setDestinationQuery(e.target.value);
+                      }}
+                      placeholder="Type to search Dhaka locations..."
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowDestinationMapSelector(true)}
-                      className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 text-gray-400 hover:text-blue-600 transition-colors"
-                      title="Select location on map"
-                    >
-                      <Map className="w-4 h-4" />
-                    </button>
+                    
+                        {areaOptions.length > 0 && destinationQuery && (
+                          <div className="absolute z-10 mt-1 max-h-48 w-full overflow-auto rounded-md border bg-white text-gray-700 shadow">
+                            {areaOptions
+                              .filter((opt) => opt.label.toLowerCase().includes(destinationQuery.toLowerCase()) || opt.area.toLowerCase().includes(destinationQuery.toLowerCase()))
+                              .slice(0, 50)
+                              .map((opt) => (
+                                <button
+                                  key={opt.value}
+                                  type="button"
+                                  onClick={() => {
+                                    setBookingData(prev => ({ ...prev, destination: opt.area }));
+                                    setSelectedDestinationArea(opt);
+                                    setDestinationQuery('');
+                                  }}
+                                  className="block w-full px-3 py-2 text-left hover:bg-gray-50"
+                                >
+                                  {opt.label}
+                                </button>
+                              ))}
+                          </div>
+                        )}
                   </div>
                 </div>
               </div>
@@ -582,7 +623,7 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
                 />
               </div>
 
-              {/* Map Display */}
+              {/* Map Preview below selections */}
               {selectedSourceArea && selectedDestinationArea && (
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                   <h4 className="text-sm font-medium text-gray-700 mb-2">Route Preview</h4>
@@ -925,22 +966,7 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
         </div>
       </div>
 
-      {/* Map Selectors */}
-      <LocationMapSelector
-        isOpen={showSourceMapSelector}
-        onClose={() => setShowSourceMapSelector(false)}
-        onLocationSelect={handleSourceLocationSelect}
-        title="Select Pickup Location"
-        placeholder="Search for pickup location..."
-      />
-
-      <LocationMapSelector
-        isOpen={showDestinationMapSelector}
-        onClose={() => setShowDestinationMapSelector(false)}
-        onLocationSelect={handleDestinationLocationSelect}
-        title="Select Destination"
-        placeholder="Search for destination..."
-      />
+      {/* Map Selectors removed */}
     </div>
   );
 } 

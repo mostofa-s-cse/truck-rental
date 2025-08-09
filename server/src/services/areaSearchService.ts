@@ -431,4 +431,51 @@ export class AreaSearchService {
       return [];
     }
   }
+
+  /**
+   * Get Dhaka areas from database (seeded or previously searched), optionally filtered by search text
+   */
+  static async getDhakaAreas(search?: string, limit: number = 500): Promise<Array<{
+    id: string;
+    name: string;
+    city: string;
+    state: string;
+    latitude: number;
+    longitude: number;
+    address: string;
+  }>> {
+    try {
+      const where: any = {
+        city: { contains: 'Dhaka' },
+        isActive: true
+      };
+
+      if (search && search.trim().length > 0) {
+        const q = search.trim();
+        where.OR = [
+          { name: { contains: q } },
+          { address: { contains: q } }
+        ];
+      }
+
+      const areas = await prisma.areaSearch.findMany({
+        where,
+        orderBy: [{ name: 'asc' }],
+        take: limit
+      });
+
+      return areas.map(a => ({
+        id: a.placeId,
+        name: a.name,
+        city: a.city,
+        state: a.state,
+        latitude: a.latitude,
+        longitude: a.longitude,
+        address: a.address
+      }));
+    } catch (error) {
+      console.error('Error fetching Dhaka areas:', error);
+      return [];
+    }
+  }
 } 

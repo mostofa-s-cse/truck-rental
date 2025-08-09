@@ -12,6 +12,9 @@ router.post('/search', AreaSearchController.searchAreas);
 // Get areas for dropdown (Public)
 router.get('/dropdown', AreaSearchController.getAreasForDropdown);
 
+// Get all Dhaka areas (Public)
+router.get('/dhaka', AreaSearchController.getDhakaAreas);
+
 // Get popular areas (Public)
 router.get('/popular', AreaSearchController.getPopularAreas);
 

@@ -102,7 +102,7 @@ class ApiClient {
   }
 
   async getPopularTrucks(limit = 10): Promise<ApiResponse<Driver[]>> {
-    const response = await this.client.get('/search/trucks/popular', { 
+    const response = await this.client.get('/search/trucks', { 
       params: { limit } 
     });
     return response.data;
@@ -435,6 +435,21 @@ class ApiClient {
     };
   }>> {
     const response = await this.client.get('/area-search/grouped');
+    return response.data;
+  }
+
+  async getDhakaAreas(search?: string, limit: number = 500): Promise<ApiResponse<Array<{
+    id: string;
+    name: string;
+    city: string;
+    state: string;
+    latitude: number;
+    longitude: number;
+    address: string;
+  }>>> {
+    const params: Record<string, string | number> = { limit };
+    if (search) params.search = search;
+    const response = await this.client.get('/area-search/dhaka', { params });
     return response.data;
   }
 

@@ -10,48 +10,48 @@ export async function seedTracking() {
   const trackingData = [
     {
       driverId: drivers[0].id,
-      latitude: 23.8103,
-      longitude: 90.4125,
+      latitude: 23.7803,
+      longitude: 90.4168,
       accuracy: 10.0,
       speed: 25.0,
       heading: 180.0,
-      address: 'Dhaka Central, Dhaka'
+      address: 'Gulshan-1, Dhaka'
     },
     {
       driverId: drivers[1].id,
-      latitude: 23.7937,
-      longitude: 90.4066,
+      latitude: 23.8260,
+      longitude: 90.3800,
       accuracy: 15.0,
       speed: 0.0,
       heading: 0.0,
-      address: 'Dhaka North, Dhaka'
+      address: 'Mirpur-10, Dhaka'
     },
     {
       driverId: drivers[2].id,
-      latitude: 22.3419,
-      longitude: 91.8132,
+      latitude: 23.8151,
+      longitude: 90.4480,
       accuracy: 8.0,
       speed: 35.0,
       heading: 90.0,
-      address: 'Chittagong Port, Chittagong'
+      address: 'Bashundhara R/A, Dhaka'
     },
     {
       driverId: drivers[3].id,
-      latitude: 24.8949,
-      longitude: 91.8687,
+      latitude: 23.7564,
+      longitude: 90.3890,
       accuracy: 12.0,
       speed: 20.0,
       heading: 270.0,
-      address: 'Sylhet City, Sylhet'
+      address: 'Farmgate, Dhaka'
     },
     {
       driverId: drivers[4].id,
-      latitude: 23.7099,
-      longitude: 90.4071,
+      latitude: 23.7631,
+      longitude: 90.4255,
       accuracy: 5.0,
       speed: 15.0,
       heading: 45.0,
-      address: 'Dhaka South, Dhaka'
+      address: 'Rampura, Dhaka'
     }
   ];
 

@@ -85,6 +85,107 @@ export async function seedTruckCategories() {
       insideDhakaRate: 80,
       outsideDhakaRate: 40,
       description: 'Standard lorry for medium to heavy loads'
+    },
+    // Additional 10 categories
+    {
+      name: 'Pickup – 0.75T, 8ft',
+      truckType: 'PICKUP',
+      capacity: 0.75,
+      length: 8.0,
+      baseFare: 900,
+      insideDhakaRate: 35,
+      outsideDhakaRate: 25,
+      description: 'Light pickup ideal for small household items'
+    },
+    {
+      name: 'Pickup – 3T, 14ft',
+      truckType: 'PICKUP',
+      capacity: 3.0,
+      length: 14.0,
+      baseFare: 2200,
+      insideDhakaRate: 55,
+      outsideDhakaRate: 45,
+      description: 'Large pickup for heavy local transport'
+    },
+    {
+      name: 'Mini Truck – 0.8T, 7ft',
+      truckType: 'MINI_TRUCK',
+      capacity: 0.8,
+      length: 7.0,
+      baseFare: 850,
+      insideDhakaRate: 35,
+      outsideDhakaRate: 25,
+      description: 'Compact mini truck for quick city deliveries'
+    },
+    {
+      name: 'Mini Truck – 1.2T, 8ft',
+      truckType: 'MINI_TRUCK',
+      capacity: 1.2,
+      length: 8.0,
+      baseFare: 1100,
+      insideDhakaRate: 40,
+      outsideDhakaRate: 30,
+      description: 'Mini truck with extra capacity for bulkier items'
+    },
+    {
+      name: 'Lorry – 5T, 16ft',
+      truckType: 'LORRY',
+      capacity: 5.0,
+      length: 16.0,
+      baseFare: 3200,
+      insideDhakaRate: 120,
+      outsideDhakaRate: 50,
+      description: 'Lorry for medium-heavy cargo across the city'
+    },
+    {
+      name: 'Lorry – 7T, 18ft',
+      truckType: 'LORRY',
+      capacity: 7.0,
+      length: 18.0,
+      baseFare: 3800,
+      insideDhakaRate: 150,
+      outsideDhakaRate: 55,
+      description: 'High-capacity lorry for industrial goods'
+    },
+    {
+      name: 'Truck – 12T, 22ft',
+      truckType: 'TRUCK',
+      capacity: 12.0,
+      length: 22.0,
+      baseFare: 6000,
+      insideDhakaRate: 220,
+      outsideDhakaRate: 65,
+      description: 'Heavy-duty truck for large consignments'
+    },
+    {
+      name: 'Truck – 15T, 24ft',
+      truckType: 'TRUCK',
+      capacity: 15.0,
+      length: 24.0,
+      baseFare: 7000,
+      insideDhakaRate: 240,
+      outsideDhakaRate: 70,
+      description: 'Extra heavy-duty truck for maximum payloads'
+    },
+    {
+      name: 'Truck (Covered) – 2T, 12ft',
+      truckType: 'TRUCK',
+      capacity: 2.0,
+      length: 12.0,
+      baseFare: 2100,
+      insideDhakaRate: 60,
+      outsideDhakaRate: 45,
+      description: 'Covered truck for weather-sensitive goods'
+    },
+    {
+      name: 'Truck (Refrigerated) – 2T, 12ft',
+      truckType: 'TRUCK',
+      capacity: 2.0,
+      length: 12.0,
+      baseFare: 2600,
+      insideDhakaRate: 70,
+      outsideDhakaRate: 50,
+      description: 'Refrigerated truck for perishable items'
     }
   ];
 

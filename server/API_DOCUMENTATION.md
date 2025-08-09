@@ -606,7 +606,7 @@ POST /search/trucks
 
 ### Get Popular Trucks
 ```http
-GET /search/trucks/popular?limit=10
+GET /search/trucks?limit=10
 ```
 
 ### Get Nearby Trucks

@@ -28,6 +28,8 @@ export default function SearchPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [itemsPerPage] = useState(10);
+
+  // totalResults is set from API responses (or initial load length)
   
   // Filter states
   const [selectedTruckType, setSelectedTruckType] = useState<SearchFilters['truckType']>();
@@ -44,6 +46,27 @@ export default function SearchPage() {
   // Booking modal state
   const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+
+  // Helpers: ensure unique drivers by id
+  const dedupeById = useCallback((list: Driver[]): Driver[] => {
+    const map = new Map<string, Driver>();
+    for (const item of list) {
+      map.set(item.id, item);
+    }
+    return Array.from(map.values());
+  }, []);
+
+  const mergeUniqueById = useCallback((existing: Driver[], incoming: Driver[]): Driver[] => {
+    const seen = new Set(existing.map((d) => d.id));
+    const result = [...existing];
+    for (const d of incoming) {
+      if (!seen.has(d.id)) {
+        result.push(d);
+        seen.add(d.id);
+      }
+    }
+    return result;
+  }, []);
 
   const hasActiveFilters = selectedTruckType || selectedQuality || minCapacity || maxCapacity || 
                           minRating || maxRating || minTrips || maxTrips || availabilityFilter || verificationFilter;
@@ -142,11 +165,12 @@ export default function SearchPage() {
       console.log('Initial data response:', response);
       
       if (response.success && response.data) {
-        const drivers = response.data as Driver[];
-        console.log('Setting initial drivers:', drivers.length);
-        setDrivers(drivers);
-        setTotalResults(drivers.length);
-        setHasMore(drivers.length >= itemsPerPage);
+        const initialDrivers = response.data as Driver[];
+        const uniqueDrivers = dedupeById(initialDrivers);
+        console.log('Setting initial drivers:', uniqueDrivers.length);
+        setDrivers(uniqueDrivers);
+        setTotalResults(uniqueDrivers.length);
+        setHasMore(uniqueDrivers.length >= itemsPerPage);
       } else {
         console.error('Failed to load initial data:', response.message);
         setError(response.message || 'Failed to load trucks');
@@ -158,7 +182,7 @@ export default function SearchPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [itemsPerPage]);
+  }, [itemsPerPage, dedupeById]);
 
   const handleSearch = useCallback(async () => {
     try {
@@ -172,16 +196,17 @@ export default function SearchPage() {
       
       if (response.success && response.data) {
         // The API returns SearchResult with drivers array
-        const searchData = response.data as { drivers: Driver[]; total: number };
+        const searchData = response.data as { drivers: Driver[]; total: number; totalPages?: number };
         const drivers = searchData.drivers || [];
-        
+
         // Apply additional frontend filters that aren't supported by the API
         const filteredDrivers = applyFrontendFilters(drivers);
-        
-        console.log('Setting search results:', filteredDrivers.length);
-        setDrivers(filteredDrivers);
-        setTotalResults(filteredDrivers.length); // Use filtered count for accurate pagination
-        setHasMore(filteredDrivers.length >= itemsPerPage);
+        const uniqueFiltered = dedupeById(filteredDrivers);
+
+        console.log('Setting search results:', uniqueFiltered.length);
+        setDrivers(uniqueFiltered);
+        setTotalResults(typeof searchData.total === 'number' ? searchData.total : uniqueFiltered.length);
+        setHasMore(uniqueFiltered.length < (searchData.total ?? uniqueFiltered.length));
         setCurrentPage(1);
       } else {
         console.error('Search failed:', response.message);
@@ -194,7 +219,7 @@ export default function SearchPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [itemsPerPage, buildSearchFilters, applyFrontendFilters]);
+  }, [itemsPerPage, buildSearchFilters, applyFrontendFilters, dedupeById]);
 
   // Load initial data
   useEffect(() => {
@@ -237,15 +262,23 @@ export default function SearchPage() {
       
       if (response.success && response.data) {
         // The searchTrucks API returns SearchResult with drivers array
-        const searchData = response.data as { drivers: Driver[]; total: number };
+        const searchData = response.data as { drivers: Driver[]; total: number; totalPages?: number };
         let newDrivers = searchData.drivers || [];
-        
+
         // Apply additional frontend filters
         newDrivers = applyFrontendFilters(newDrivers);
-        
-        setDrivers(prev => [...prev, ...newDrivers]);
+
+        setDrivers(prev => {
+          const merged = mergeUniqueById(prev, dedupeById(newDrivers));
+          if (typeof searchData.total === 'number') {
+            setTotalResults(searchData.total);
+            setHasMore(merged.length < searchData.total);
+          } else {
+            setHasMore(newDrivers.length >= itemsPerPage);
+          }
+          return merged;
+        });
         setCurrentPage(nextPage);
-        setHasMore(newDrivers.length >= itemsPerPage);
       } else {
         setError(response.message || 'Failed to load more trucks');
       }
@@ -668,10 +701,7 @@ export default function SearchPage() {
                       Loading...
                     </>
                   ) : (
-                    <>
-                      <span className="sm:hidden">Load More</span>
-                      <span className="hidden sm:inline">Load More ({totalResults - drivers.length} remaining)</span>
-                    </>
+                    <>Load More</>
                   )}
                 </Button>
               </div>

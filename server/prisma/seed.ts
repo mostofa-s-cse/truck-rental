@@ -1,3 +1,14 @@
+import { seedDhakaAreas } from './seeders/dhakaAreaSeeder';
+
+async function main() {
+  await seedDhakaAreas();
+}
+
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});
+
 import { PrismaClient, UserRole, TruckType, TruckQuality, BookingStatus } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 

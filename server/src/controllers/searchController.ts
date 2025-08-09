@@ -67,16 +67,16 @@ export class SearchController {
 
   static async getPopularTrucks(req: Request, res: Response) {
     try {
-      const limit = parseInt(req.query.limit as string) || 10;
+      const limit = parseInt(req.query.limit as string) || undefined;
       const userId = (req as any).user?.userId || 'anonymous';
       
-      logDatabase('select', 'popular_trucks', { userId, limit });
+      logDatabase('select', 'all_trucks', { userId, limit });
       
-      const result = await SearchService.getPopularTrucks(limit);
+      const result = await SearchService.getAllTrucks(limit);
 
       const response: ApiResponse = {
         success: true,
-        message: 'Popular trucks retrieved successfully',
+        message: 'Trucks retrieved successfully',
         data: result
       };
 

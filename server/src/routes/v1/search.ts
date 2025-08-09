@@ -7,8 +7,8 @@ const router = Router();
 // Search trucks (Public)
 router.post('/trucks', SearchController.searchTrucks);
 
-// Get popular trucks (Public)
-router.get('/trucks/popular', SearchController.getPopularTrucks);
+// Get all trucks (Public)
+router.get('/trucks', SearchController.getPopularTrucks);
 
 // Get nearby trucks (Public)
 router.get('/trucks/nearby', SearchController.getNearbyTrucks);

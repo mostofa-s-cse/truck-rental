@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { seedSystemSettings } from './systemSettingsSeeder';
 import { seedTruckCategories } from './truckCategorySeeder';
+import { seedDhakaAreas } from './dhakaAreaSeeder';
 
 
 import { seedUsers } from './userSeeder';
@@ -28,7 +29,7 @@ async function main() {
     console.log('\n📋 Seeding order:');
     console.log('1. System Settings');
     console.log('2. Truck Categories');
-    console.log('3. Areas (Database-driven)');
+    console.log('3. Dhaka Areas (AreaSearch)');
     console.log('4. Users (Admins, Drivers, Regular Users)');
     console.log('5. Driver Profiles');
     console.log('6. Bookings');
@@ -42,7 +43,7 @@ async function main() {
     // Execute seeders in order
     await seedSystemSettings();
     await seedTruckCategories();
-
+    await seedDhakaAreas();
     await seedUsers();
     await seedDrivers();
     await seedBookings();
@@ -103,7 +104,7 @@ async function displaySeedingSummary() {
     const [
       systemSettingsCount,
       truckCategoriesCount,
-      // areasCount, // Areas are now dynamic
+      areaSearchesCount,
       usersCount,
       driversCount,
       bookingsCount,
@@ -115,7 +116,7 @@ async function displaySeedingSummary() {
     ] = await Promise.all([
       prisma.systemSetting.count(),
       prisma.truckCategory.count(),
-      // prisma.area.count(), // Areas are now dynamic
+      prisma.areaSearch.count(),
       prisma.user.count(),
       prisma.driver.count(),
       prisma.booking.count(),
@@ -128,7 +129,7 @@ async function displaySeedingSummary() {
 
     console.log(`⚙️  System Settings: ${systemSettingsCount}`);
     console.log(`🚛 Truck Categories: ${truckCategoriesCount}`);
-    console.log(`📍 Areas: Dynamic Search (No static data)`);
+    console.log(`📍 Dhaka Areas (AreaSearch): ${areaSearchesCount}`);
     console.log(`👥 Users: ${usersCount}`);
     console.log(`🚚 Drivers: ${driversCount}`);
     console.log(`📋 Bookings: ${bookingsCount}`);
@@ -138,7 +139,7 @@ async function displaySeedingSummary() {
     console.log(`📍 Tracking Records: ${trackingCount}`);
     console.log(`🚨 Emergency Alerts: ${emergencyAlertsCount}`);
     
-    const totalRecords = systemSettingsCount + truckCategoriesCount + 
+    const totalRecords = systemSettingsCount + truckCategoriesCount + areaSearchesCount +
                         usersCount + driversCount + bookingsCount + reviewsCount + 
                         messagesCount + paymentsCount + trackingCount + emergencyAlertsCount;
     
