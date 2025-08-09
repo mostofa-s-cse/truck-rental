@@ -6,6 +6,8 @@ export interface User {
   role: 'ADMIN' | 'DRIVER' | 'USER';
   avatar?: string;
   isActive: boolean;
+  // Driver-only: availability flag for accepting jobs
+  isAvailable?: boolean;
   createdAt: string;
 }
 

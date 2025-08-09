@@ -215,6 +215,14 @@ export class DriverService {
     return driver;
   }
 
+  static async updateUserAvatar(userId: string, avatarPath: string) {
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { avatar: avatarPath }
+    });
+    return { avatar: user.avatar };
+  }
+
   static async verifyDriver(driverId: string, isVerified: boolean) {
     const driver = await prisma.driver.update({
       where: { id: driverId },

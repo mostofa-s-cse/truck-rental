@@ -154,38 +154,92 @@ export const adminApi = {
 // Driver Dashboard APIs
 export const driverApi = {
   getDriverStats: async (): Promise<DriverStats> => {
-    const response = await apiClient.getClient().get('/driver/stats');
-    return response.data;
+    const response = await apiClient.getClient().get('/dashboard/driver/stats');
+    const data = response.data.data;
+    return {
+      totalTrips: data.totalTrips || 0,
+      averageRating: data.averageRating || 0,
+      completionRate: data.completionRate || 0,
+      responseTime: data.responseTime || '0 min'
+    };
   },
 
   getEarnings: async (): Promise<Earnings> => {
-    const response = await apiClient.getClient().get('/driver/earnings');
-    return response.data;
+    const response = await apiClient.getClient().get('/dashboard/driver/earnings');
+    const data = response.data.data;
+    return {
+      today: data.overview?.today || 0,
+      thisWeek: data.overview?.thisWeek || 0,
+      thisMonth: data.overview?.thisMonth || 0,
+      totalEarnings: data.overview?.totalEarnings || 0
+    };
+  },
+
+  getEarningsAnalytics: async (): Promise<{
+    overview: Earnings;
+    dailyEarnings: Array<{ date: string; earnings: number; trips: number; avgPerTrip: number }>;
+    weeklyEarnings: Array<{ week: string; earnings: number; trips: number; avgPerTrip: number }>;
+    monthlyEarnings: Array<{ month: string; earnings: number; trips: number; avgPerTrip: number }>;
+    earningsByStatus: Array<{ status: string; earnings: number; trips: number; percentage: number }>;
+    topEarningDays: Array<{ day: string; earnings: number; trips: number; avgPerTrip: number }>;
+    paymentMethods: Array<{ method: string; earnings: number; trips: number; percentage: number }>;
+    recentTransactions: Array<{ id: string; amount: number; method: string; date: string; status: string }>;
+  }> => {
+    const response = await apiClient.getClient().get('/dashboard/driver/earnings');
+    return response.data.data;
   },
 
   getRecentBookings: async (): Promise<Booking[]> => {
-    const response = await apiClient.getClient().get('/driver/bookings/recent');
-    return response.data;
+    const response = await apiClient.getClient().get('/bookings/driver/me');
+    const data = response.data.data;
+    return (data.bookings || []).map((booking: (ServerBookingWithDriver & { user?: { name: string; email?: string; phone?: string } })) => ({
+      id: booking.id,
+      source: booking.source,
+      destination: booking.destination,
+      fare: booking.fare,
+      status: booking.status,
+      date: booking.pickupTime || booking.createdAt,
+      createdAt: booking.createdAt,
+      pickupTime: booking.pickupTime,
+      completedAt: booking.completedAt,
+      distance: booking.distance,
+      user: booking.user?.name || 'User',
+      rating: booking.review?.rating
+    }));
   },
 
   updateAvailability: async (isAvailable: boolean): Promise<void> => {
-    await apiClient.getClient().put('/driver/availability', { isAvailable });
+    await apiClient.getClient().put('/dashboard/driver/availability', { isAvailable });
+  },
+
+  getAvailability: async (): Promise<boolean> => {
+    const response = await apiClient.getClient().get('/dashboard/driver/availability');
+    return Boolean(response.data?.data?.isAvailable);
   },
 
   acceptBooking: async (bookingId: string): Promise<void> => {
-    await apiClient.getClient().put(`/driver/bookings/${bookingId}/accept`);
+    await apiClient.getClient().put(`/dashboard/driver/bookings/${bookingId}/accept`);
   },
 
   declineBooking: async (bookingId: string): Promise<void> => {
-    await apiClient.getClient().put(`/driver/bookings/${bookingId}/decline`);
+    await apiClient.getClient().put(`/dashboard/driver/bookings/${bookingId}/decline`);
   },
 
   startTrip: async (bookingId: string): Promise<void> => {
-    await apiClient.getClient().put(`/driver/bookings/${bookingId}/start`);
+    await apiClient.getClient().put(`/dashboard/driver/bookings/${bookingId}/start`);
   },
 
   completeTrip: async (bookingId: string): Promise<void> => {
-    await apiClient.getClient().put(`/driver/bookings/${bookingId}/complete`);
+    await apiClient.getClient().put(`/dashboard/driver/bookings/${bookingId}/complete`);
+  },
+
+  uploadAvatar: async (file: File): Promise<{ avatarUrl: string; avatar?: string }> => {
+    const formData = new FormData();
+    formData.append('avatar', file);
+    const response = await apiClient.getClient().post('/drivers/profile/avatar', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data.data;
   }
 };
 
@@ -321,6 +375,15 @@ export const userApi = {
     const response = await apiClient.getClient().post(`/drivers/contact/${driverId}`, {
       message,
       bookingId
+    });
+    return response.data.data;
+  },
+
+  uploadAvatar: async (file: File): Promise<{ avatarUrl: string; avatar?: string }> => {
+    const formData = new FormData();
+    formData.append('avatar', file);
+    const response = await apiClient.getClient().post('/users/me/avatar', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
     });
     return response.data.data;
   },

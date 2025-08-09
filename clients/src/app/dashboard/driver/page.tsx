@@ -22,20 +22,22 @@ export default function DriverDashboard() {
   const [earnings, setEarnings] = useState<Earnings | null>(null);
   const [recentBookings, setRecentBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isAvailable, setIsAvailable] = useState(true);
+  const [isAvailable, setIsAvailable] = useState<boolean>(true);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const [statsData, earningsData, bookingsData] = await Promise.all([
+        const [statsData, earningsData, bookingsData, availability] = await Promise.all([
           driverApi.getDriverStats(),
           driverApi.getEarnings(),
-          driverApi.getRecentBookings()
+          driverApi.getRecentBookings(),
+          driverApi.getAvailability()
         ]);
         
         setStats(statsData);
         setEarnings(earningsData);
         setRecentBookings(bookingsData);
+        setIsAvailable(availability);
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
       } finally {
@@ -48,8 +50,9 @@ export default function DriverDashboard() {
 
   const handleToggleAvailability = async () => {
     try {
-      await driverApi.updateAvailability(!isAvailable);
-      setIsAvailable(!isAvailable);
+      const next = !isAvailable;
+      await driverApi.updateAvailability(next);
+      setIsAvailable(next);
     } catch (error) {
       console.error('Error updating availability:', error);
     }

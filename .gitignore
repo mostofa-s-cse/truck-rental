@@ -21,6 +21,7 @@ server/logs/
 /.next/
 /out/
 *.next/
+/server/uploads
 
 # production
 /build
