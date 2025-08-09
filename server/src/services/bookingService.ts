@@ -347,7 +347,7 @@ export class BookingService {
     };
   }
 
-  static async cancelBooking(bookingId: string, userId: string) {
+  static async cancelBooking(bookingId: string, userId: string, cancelReason?: string, cancelComment?: string) {
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId }
     });
@@ -360,13 +360,27 @@ export class BookingService {
       throw new Error('Unauthorized to cancel this booking');
     }
 
-    if (booking.status !== BookingStatus.PENDING) {
-      throw new Error('Cannot cancel booking that is not pending');
+    // Allow cancellation for PENDING and CONFIRMED bookings
+    if (booking.status !== BookingStatus.PENDING && booking.status !== BookingStatus.CONFIRMED) {
+      throw new Error('Cannot cancel booking that is not pending or confirmed');
+    }
+
+    const updateData: any = { 
+      status: BookingStatus.CANCELLED,
+      cancelledAt: new Date()
+    };
+
+    // Add cancellation reason and comment if provided
+    if (cancelReason) {
+      updateData.cancelReason = cancelReason;
+    }
+    if (cancelComment) {
+      updateData.cancelComment = cancelComment;
     }
 
     const updatedBooking = await prisma.booking.update({
       where: { id: bookingId },
-      data: { status: BookingStatus.CANCELLED },
+      data: updateData,
       include: {
         user: {
           select: {

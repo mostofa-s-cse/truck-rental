@@ -15,6 +15,7 @@ interface ServerBooking {
 
 interface ServerBookingWithDriver extends ServerBooking {
   driver?: {
+    id: string;
     user?: {
       name: string;
     };
@@ -84,6 +85,7 @@ export interface Booking {
     phone?: string;
   } | string;
   driver?: string;
+  driverId?: string; // Add driver ID for contact functionality
   source: string;
   destination: string;
   fare: number;
@@ -215,6 +217,7 @@ export const userApi = {
       completedAt: booking.completedAt,
       distance: booking.distance,
       driver: booking.driver?.user?.name || 'Driver Assigned',
+      driverId: booking.driver?.id, // Add driver ID for contact functionality
       rating: booking.review?.rating
     }));
   },
@@ -235,6 +238,7 @@ export const userApi = {
         completedAt: booking.completedAt,
         distance: booking.distance,
         driver: booking.driver?.user?.name || 'Driver Assigned',
+        driverId: booking.driver?.id, // Add driver ID for contact functionality
         rating: booking.review?.rating
       })),
       total: data.total || 0,
@@ -286,8 +290,39 @@ export const userApi = {
     return response.data.data;
   },
 
-  cancelBooking: async (bookingId: string): Promise<void> => {
-    await apiClient.getClient().delete(`/bookings/${bookingId}`);
+  cancelBooking: async (bookingId: string, cancelReason?: string, cancelComment?: string): Promise<void> => {
+    await apiClient.getClient().delete(`/bookings/${bookingId}`, {
+      data: { cancelReason, cancelComment }
+    });
+  },
+
+  // Submit rating for a booking
+  submitRating: async (bookingId: string, rating: number, comment?: string): Promise<void> => {
+    await apiClient.getClient().post(`/reviews/booking/${bookingId}`, {
+      rating,
+      comment
+    });
+  },
+
+  // Contact driver
+  contactDriver: async (driverId: string, message?: string, bookingId?: string): Promise<{
+    driver: {
+      id: string;
+      name: string;
+      phone: string;
+      email: string;
+    };
+    message: string;
+    contactInfo: {
+      phone: string;
+      email: string;
+    };
+  }> => {
+    const response = await apiClient.getClient().post(`/drivers/contact/${driverId}`, {
+      message,
+      bookingId
+    });
+    return response.data.data;
   },
 
   // Get user payment history

@@ -23,11 +23,12 @@ export default function LoginPage() {
 
   // Show error toast when error state changes
   useEffect(() => {
-    if (error && !isSubmitting) {
+    if (error) {
+      console.log('Error state changed:', error); // Debug log
       errorToast(error);
       dispatch(clearError());
     }
-  }, [error, isSubmitting, errorToast, dispatch]);
+  }, [error, errorToast, dispatch]);
 
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
@@ -72,7 +73,7 @@ export default function LoginPage() {
           dashboardPath = '/dashboard/user';
         }
         router.push(dashboardPath);
-      } else {
+      } else if (loginUser.rejected.match(result)) {
         console.log('Login failed'); // Debug log
         const errorMessage = result.payload as string || 'Login failed. Please check your credentials.';
         errorToast(errorMessage);

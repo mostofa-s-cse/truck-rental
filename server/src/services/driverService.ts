@@ -308,4 +308,74 @@ export class DriverService {
       totalPages: Math.ceil(total / limit)
     };
   }
+
+  static async contactDriver(userId: string, driverId: string, message?: string, bookingId?: string) {
+    // Check if driver exists
+    const driver = await prisma.driver.findUnique({
+      where: { id: driverId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true
+          }
+        }
+      }
+    });
+
+    if (!driver) {
+      throw new Error('Driver not found');
+    }
+
+    // Check if user exists
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true
+      }
+    });
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // If bookingId is provided, verify the booking exists and belongs to the user
+    if (bookingId) {
+      const booking = await prisma.booking.findUnique({
+        where: { id: bookingId }
+      });
+
+      if (!booking) {
+        throw new Error('Booking not found');
+      }
+
+      if (booking.userId !== userId) {
+        throw new Error('Unauthorized to contact driver for this booking');
+      }
+
+      if (booking.driverId !== driverId) {
+        throw new Error('Driver is not assigned to this booking');
+      }
+    }
+
+    // Return driver contact information
+    return {
+      driver: {
+        id: driver.id,
+        name: driver.user.name,
+        phone: driver.user.phone,
+        email: driver.user.email
+      },
+      message: 'Contact information provided. You can now contact the driver directly.',
+      contactInfo: {
+        phone: driver.user.phone,
+        email: driver.user.email
+      }
+    };
+  }
 } 

@@ -24,7 +24,9 @@ export const loginUser = createAsyncThunk(
   'auth/login',
   async ({ email, password }: { email: string; password: string }, { rejectWithValue }) => {
     try {
+      console.log('Attempting login with:', { email }); // Debug log
       const response = await apiClient.login({ email, password });
+      console.log('Login response:', response); // Debug log
       
       if (response.success && response.data) {
         const authData = response.data as { user: User; token: string };
@@ -35,10 +37,26 @@ export const loginUser = createAsyncThunk(
         
         return { user, token };
       } else {
-        return rejectWithValue(response.message || 'Login failed');
+        // Handle server error response
+        console.log('Login failed with response:', response); // Debug log
+        const errorMessage = response.message || response.error || 'Login failed';
+        console.log('Extracted error message:', errorMessage); // Debug log
+        return rejectWithValue(errorMessage);
       }
     } catch (error: unknown) {
+      console.log('Login caught error:', error); // Debug log
+      // Handle network or other errors
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { data?: { message?: string; error?: string } }; message?: string };
+        const errorMessage = axiosError.response?.data?.message || 
+                           axiosError.response?.data?.error || 
+                           axiosError.message || 
+                           'Login failed';
+        console.log('Extracted axios error message:', errorMessage); // Debug log
+        return rejectWithValue(errorMessage);
+      }
       const errorMessage = error instanceof Error ? error.message : 'Login failed';
+      console.log('Extracted generic error message:', errorMessage); // Debug log
       return rejectWithValue(errorMessage);
     }
   }
@@ -121,6 +139,7 @@ const authSlice = createSlice({
       .addCase(loginUser.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
+        console.log('Login rejected with error:', action.payload); // Debug log
       });
 
     // Register

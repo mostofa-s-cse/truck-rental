@@ -7,6 +7,9 @@ const router = Router();
 // Create a review (User only)
 router.post('/', auth, authorize('USER'), ReviewController.createReview);
 
+// Create a review for a specific booking (User only)
+router.post('/booking/:bookingId', auth, authorize('USER'), ReviewController.createReviewForBooking);
+
 // Get review statistics (Admin only)
 router.get('/stats', auth, authorize('ADMIN'), ReviewController.getReviewStats);
 

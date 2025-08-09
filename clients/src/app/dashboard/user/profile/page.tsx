@@ -15,7 +15,7 @@ import {
   CheckCircleIcon,
   StarIcon
 } from '@heroicons/react/24/outline';
-import { BellIcon, KeyIcon, ShieldCheckIcon } from 'lucide-react';
+import { KeyIcon } from 'lucide-react';
 import { userApi } from '@/lib/dashboardApi';
 
 interface UserProfile {
@@ -82,15 +82,7 @@ export default function UserProfilePage() {
     newPassword: '',
     confirmPassword: ''
   });
-  
-  // Preferences
-  const [preferences, setPreferences] = useState({
-    emailNotifications: true,
-    smsNotifications: false,
-    pushNotifications: true,
-    language: 'en',
-    timezone: 'Asia/Dhaka'
-  });
+
 
   const fetchProfileData = useCallback(async () => {
     try {
@@ -145,7 +137,6 @@ export default function UserProfilePage() {
         country: profileData.country || '',
         bio: profileData.bio || ''
       });
-      setPreferences(profileData.preferences);
     } catch (error) {
       console.error('Error fetching profile data:', error);
       errorToast('Failed to fetch profile data');
@@ -231,29 +222,6 @@ export default function UserProfilePage() {
     } catch (error) {
       console.error('Error changing password:', error);
       errorToast('Failed to change password');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleSavePreferences = async () => {
-    try {
-      setSaving(true);
-      
-      // TODO: Implement real API call to save preferences
-      // await apiClient.updateUserPreferences(preferences);
-      
-      if (profile) {
-        setProfile({
-          ...profile,
-          preferences
-        });
-      }
-      
-      successToast('Preferences saved successfully');
-    } catch (error) {
-      console.error('Error saving preferences:', error);
-      errorToast('Failed to save preferences');
     } finally {
       setSaving(false);
     }
@@ -498,22 +466,6 @@ export default function UserProfilePage() {
                   </div>
                 </div>
               </div>
-
-              {/* Bio */}
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Bio</h3>
-                {editMode ? (
-                  <textarea
-                    value={formData.bio}
-                    onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                    rows={4}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Tell us about yourself..."
-                  />
-                ) : (
-                  <p className="text-gray-900">{profile.bio || 'No bio provided'}</p>
-                )}
-              </div>
             </div>
 
             {/* Sidebar */}
@@ -529,20 +481,6 @@ export default function UserProfilePage() {
                   >
                     <KeyIcon className="h-4 w-4 mr-2" />
                     Change Password
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start"
-                  >
-                    <ShieldCheckIcon className="h-4 w-4 mr-2" />
-                    Security Settings
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start"
-                  >
-                    <BellIcon className="h-4 w-4 mr-2" />
-                    Notification Settings
                   </Button>
                 </div>
               </div>
@@ -585,87 +523,6 @@ export default function UserProfilePage() {
                   <div>
                     <span className="text-sm text-gray-600">Last Login</span>
                     <p className="text-sm text-gray-900">{new Date(profile.security.lastLogin).toLocaleString()}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Preferences */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium text-gray-900">Preferences</h3>
-              <Button
-                onClick={handleSavePreferences}
-                disabled={saving}
-                size="sm"
-              >
-                {saving ? 'Saving...' : 'Save Preferences'}
-              </Button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <h4 className="text-sm font-medium text-gray-700 mb-3">Notifications</h4>
-                <div className="space-y-3">
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={preferences.emailNotifications}
-                      onChange={(e) => setPreferences({ ...preferences, emailNotifications: e.target.checked })}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="ml-2 text-sm text-gray-700">Email Notifications</span>
-                  </label>
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={preferences.smsNotifications}
-                      onChange={(e) => setPreferences({ ...preferences, smsNotifications: e.target.checked })}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="ml-2 text-sm text-gray-700">SMS Notifications</span>
-                  </label>
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={preferences.pushNotifications}
-                      onChange={(e) => setPreferences({ ...preferences, pushNotifications: e.target.checked })}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="ml-2 text-sm text-gray-700">Push Notifications</span>
-                  </label>
-                </div>
-              </div>
-              <div>
-                <h4 className="text-sm font-medium text-gray-700 mb-3">Settings</h4>
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Language</label>
-                    <select
-                      value={preferences.language}
-                      onChange={(e) => setPreferences({ ...preferences, language: e.target.value })}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="en">English</option>
-                      <option value="bn">বাংলা (Bengali)</option>
-                      <option value="hi">हिंदी (Hindi)</option>
-                      <option value="ur">اردو (Urdu)</option>
-                      <option value="ar">العربية (Arabic)</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Timezone</label>
-                    <select
-                      value={preferences.timezone}
-                      onChange={(e) => setPreferences({ ...preferences, timezone: e.target.value })}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="Asia/Dhaka">Asia/Dhaka (Bangladesh)</option>
-                      <option value="UTC">UTC</option>
-                      <option value="Asia/Kolkata">Asia/Kolkata (India)</option>
-                      <option value="Asia/Karachi">Asia/Karachi (Pakistan)</option>
-                      <option value="Asia/Dubai">Asia/Dubai (UAE)</option>
-                    </select>
                   </div>
                 </div>
               </div>

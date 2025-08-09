@@ -17,11 +17,28 @@ import {
   ClockIcon,
   CheckCircleIcon,
   XCircleIcon,
-  ExclamationTriangleIcon
+  ExclamationTriangleIcon,
+  StarIcon,
+  PhoneIcon,
 } from '@heroicons/react/24/outline';
 
+interface CancelReason {
+  id: string;
+  label: string;
+  description: string;
+}
+
+const CANCEL_REASONS: CancelReason[] = [
+  { id: 'changed_plans', label: 'Changed Plans', description: 'I changed my mind or plans' },
+  { id: 'found_alternative', label: 'Found Alternative', description: 'I found a better option' },
+  { id: 'price_too_high', label: 'Price Too High', description: 'The fare was too expensive' },
+  { id: 'driver_delay', label: 'Driver Delay', description: 'Driver is taking too long' },
+  { id: 'emergency', label: 'Emergency', description: 'I have an emergency' },
+  { id: 'other', label: 'Other', description: 'Other reason' }
+];
+
 export default function UserBookingsPage() {
-  const { successToast, errorToast, question } = useSweetAlert();
+  const { successToast, errorToast } = useSweetAlert();
   
   // State
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -37,8 +54,12 @@ export default function UserBookingsPage() {
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [showRatingModal, setShowRatingModal] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
   const [rating, setRating] = useState(0);
   const [ratingComment, setRatingComment] = useState('');
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelComment, setCancelComment] = useState('');
+  const [hoveredStar, setHoveredStar] = useState(0);
   
   // Calculate pending ratings
   const pendingRatings = bookings.filter(b => b.status === 'COMPLETED' && !b.rating);
@@ -115,22 +136,28 @@ export default function UserBookingsPage() {
   };
 
   const handleCancelBooking = async (booking: Booking) => {
-    // Only allow cancellation for pending bookings
-    if (booking.status !== 'PENDING') {
-      errorToast('Only pending bookings can be cancelled');
+    // Only allow cancellation for pending and confirmed bookings
+    if (!['PENDING', 'CONFIRMED'].includes(booking.status)) {
+      errorToast('Only pending and confirmed bookings can be cancelled');
       return;
     }
 
-    const result = await question(
-      `Are you sure you want to cancel this booking?`,
-      'Cancel Booking'
-    );
+    setSelectedBooking(booking);
+    setCancelReason('');
+    setCancelComment('');
+    setShowCancelModal(true);
+  };
 
-    if (!result.isConfirmed) return;
+  const handleConfirmCancel = async () => {
+    if (!selectedBooking || !cancelReason) {
+      errorToast('Please select a cancellation reason');
+      return;
+    }
 
     try {
-      await userApi.cancelBooking(booking.id);
+      await userApi.cancelBooking(selectedBooking.id, cancelReason, cancelComment);
       successToast('Booking cancelled successfully');
+      setShowCancelModal(false);
       fetchBookings();
     } catch (error) {
       console.error('Error cancelling booking:', error);
@@ -142,6 +169,7 @@ export default function UserBookingsPage() {
     setSelectedBooking(booking);
     setRating(0);
     setRatingComment('');
+    setHoveredStar(0);
     setShowRatingModal(true);
   };
 
@@ -152,14 +180,29 @@ export default function UserBookingsPage() {
     }
 
     try {
-      // TODO: Implement API call to submit rating
-      console.log('Submitting rating:', { bookingId: selectedBooking.id, rating, comment: ratingComment });
+      await userApi.submitRating(selectedBooking.id, rating, ratingComment);
       successToast('Rating submitted successfully!');
       setShowRatingModal(false);
       fetchBookings(); // Refresh to show the rating
     } catch (error) {
       console.error('Error submitting rating:', error);
       errorToast('Failed to submit rating');
+    }
+  };
+
+  const handleContactDriver = async (booking: Booking) => {
+    if (!booking.driver || !booking.driverId) {
+      errorToast('No driver assigned to this booking yet');
+      return;
+    }
+
+    try {
+      const result = await userApi.contactDriver(booking.driverId, 'User wants to contact driver', booking.id);
+      
+      successToast(`Driver contact info: ${result.contactInfo.phone || result.contactInfo.email}`);
+    } catch (error) {
+      console.error('Error contacting driver:', error);
+      errorToast('Failed to contact driver');
     }
   };
 
@@ -196,8 +239,6 @@ export default function UserBookingsPage() {
         return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
-
-
 
   // Table columns
   const columns: Column<Booking>[] = [
@@ -251,7 +292,7 @@ export default function UserBookingsPage() {
     {
       key: 'status',
       header: 'Status',
-      render: (value) => {
+      render: (value, row) => {
         const statusValue = value as string;
         return (
           <div className="flex items-center space-x-2">
@@ -259,6 +300,12 @@ export default function UserBookingsPage() {
             <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(statusValue)}`}>
               {statusValue.replace('_', ' ')}
             </span>
+            {row.rating && (
+              <div className="flex items-center ml-2">
+                <StarIcon className="h-3 w-3 text-yellow-400" />
+                <span className="text-xs text-gray-600 ml-1">{row.rating}</span>
+              </div>
+            )}
           </div>
         );
       }
@@ -272,7 +319,7 @@ export default function UserBookingsPage() {
           <div className="text-gray-500">{new Date(value as string).toLocaleTimeString()}</div>
         </div>
       )
-    }
+    },
   ];
 
   const pagination = {
@@ -319,6 +366,17 @@ export default function UserBookingsPage() {
                     </div>
                   </div>
                 </div>
+                {pendingRatings.length > 0 && (
+                  <div className="bg-yellow-50 rounded-lg p-4">
+                    <div className="flex items-center">
+                      <StarIcon className="h-6 w-6 text-yellow-600" />
+                      <div className="ml-3">
+                        <p className="text-sm font-medium text-gray-600">Pending Ratings</p>
+                        <p className="text-2xl font-bold text-gray-900">{pendingRatings.length}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -327,7 +385,10 @@ export default function UserBookingsPage() {
           {pendingRatings.length > 0 && (
             <div className="bg-white rounded-xl shadow-lg p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Rate Your Completed Trips</h3>
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                  <StarIcon className="h-5 w-5 text-yellow-500 mr-2" />
+                  Rate Your Completed Trips
+                </h3>
                 <div className="text-sm text-gray-500">
                   {pendingRatings.length} trips pending rating
                 </div>
@@ -365,9 +426,10 @@ export default function UserBookingsPage() {
                         <Button
                           size="sm"
                           onClick={() => handleRateDriver(booking)}
-                          className="bg-yellow-500 hover:bg-yellow-600 text-white"
+                          className="bg-yellow-500 hover:bg-yellow-600 text-white flex items-center space-x-1"
                         >
-                          Rate Driver
+                          <StarIcon className="h-3 w-3" />
+                          <span>Rate Driver</span>
                         </Button>
                       </div>
                     </div>
@@ -484,6 +546,15 @@ export default function UserBookingsPage() {
                         </span>
                       </div>
                     )}
+                    {selectedBooking.rating && (
+                      <div className="flex items-center">
+                        <span className="text-sm font-medium text-gray-600 w-20">Rating:</span>
+                        <div className="flex items-center">
+                          <StarIcon className="h-4 w-4 text-yellow-400" />
+                          <span className="text-sm text-gray-900 ml-1">{selectedBooking.rating}/5</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -520,8 +591,6 @@ export default function UserBookingsPage() {
                 </div>
               </div>
 
-
-              
               {/* Action Buttons */}
               <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
                 <Button
@@ -530,7 +599,7 @@ export default function UserBookingsPage() {
                 >
                   Close
                 </Button>
-                {selectedBooking.status === 'PENDING' && (
+                {['PENDING', 'CONFIRMED'].includes(selectedBooking.status) && (
                   <Button
                     variant="danger"
                     onClick={() => {
@@ -547,10 +616,101 @@ export default function UserBookingsPage() {
                       handleRateDriver(selectedBooking);
                       setShowViewModal(false);
                     }}
+                    className="bg-yellow-500 hover:bg-yellow-600 text-white"
                   >
+                    <StarIcon className="h-4 w-4 mr-2" />
                     Rate Driver
                   </Button>
                 )}
+                {['CONFIRMED', 'IN_PROGRESS'].includes(selectedBooking.status) && selectedBooking.driver && (
+                  <Button
+                    onClick={() => handleContactDriver(selectedBooking)}
+                    className="bg-blue-500 hover:bg-blue-600 text-white"
+                  >
+                    <PhoneIcon className="h-4 w-4 mr-2" />
+                    Contact Driver
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+        </Modal>
+
+        {/* Cancel Booking Modal */}
+        <Modal
+          isOpen={showCancelModal}
+          onClose={() => setShowCancelModal(false)}
+          title="Cancel Booking"
+          size="md"
+        >
+          {selectedBooking && (
+            <div className="space-y-6">
+              {/* Booking Info */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h4 className="text-lg font-medium text-gray-900 mb-2">Booking Information</h4>
+                <div className="text-sm text-gray-600">
+                  <p><strong>Booking ID:</strong> #{selectedBooking.id.slice(-8).toUpperCase()}</p>
+                  <p><strong>Route:</strong> {selectedBooking.source} → {selectedBooking.destination}</p>
+                  <p><strong>Fare:</strong> ${selectedBooking.fare}</p>
+                </div>
+              </div>
+
+              {/* Cancellation Reason */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  Why are you cancelling this booking? *
+                </label>
+                <div className="space-y-2">
+                  {CANCEL_REASONS.map((reason) => (
+                    <label key={reason.id} className="flex items-start space-x-3 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="cancelReason"
+                        value={reason.id}
+                        checked={cancelReason === reason.id}
+                        onChange={(e) => setCancelReason(e.target.value)}
+                        className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                      />
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-gray-900">{reason.label}</div>
+                        <div className="text-sm text-gray-500">{reason.description}</div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Additional Comment */}
+              <div>
+                <label htmlFor="cancelComment" className="block text-sm font-medium text-gray-700 mb-2">
+                  Additional Comments (Optional)
+                </label>
+                <textarea
+                  id="cancelComment"
+                  value={cancelComment}
+                  onChange={(e) => setCancelComment(e.target.value)}
+                  rows={3}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+                  placeholder="Please provide any additional details about your cancellation..."
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowCancelModal(false)}
+                >
+                  Keep Booking
+                </Button>
+                <Button
+                  variant="danger"
+                  onClick={handleConfirmCancel}
+                  disabled={!cancelReason}
+                  className={!cancelReason ? 'opacity-50 cursor-not-allowed' : ''}
+                >
+                  Cancel Booking
+                </Button>
               </div>
             </div>
           )}
@@ -580,7 +740,7 @@ export default function UserBookingsPage() {
               {/* Rating Input */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-3">
-                  Rate your experience (1-5 stars)
+                  Rate your experience (1-5 stars) *
                 </label>
                 <div className="flex items-center space-x-2">
                   {[1, 2, 3, 4, 5].map((star) => (
@@ -588,8 +748,10 @@ export default function UserBookingsPage() {
                       key={star}
                       type="button"
                       onClick={() => setRating(star)}
+                      onMouseEnter={() => setHoveredStar(star)}
+                      onMouseLeave={() => setHoveredStar(0)}
                       className={`p-1 rounded-full transition-colors ${
-                        star <= rating ? 'text-yellow-400' : 'text-gray-300'
+                        star <= (hoveredStar || rating) ? 'text-yellow-400' : 'text-gray-300'
                       }`}
                     >
                       <svg
@@ -604,11 +766,11 @@ export default function UserBookingsPage() {
                 </div>
                 <p className="text-sm text-gray-500 mt-2">
                   {rating === 0 && 'Select a rating'}
-                  {rating === 1 && 'Poor'}
-                  {rating === 2 && 'Fair'}
-                  {rating === 3 && 'Good'}
-                  {rating === 4 && 'Very Good'}
-                  {rating === 5 && 'Excellent'}
+                  {rating === 1 && 'Poor - Very dissatisfied with the service'}
+                  {rating === 2 && 'Fair - Below average experience'}
+                  {rating === 3 && 'Good - Satisfactory service'}
+                  {rating === 4 && 'Very Good - Above average experience'}
+                  {rating === 5 && 'Excellent - Outstanding service'}
                 </p>
               </div>
 
@@ -623,7 +785,7 @@ export default function UserBookingsPage() {
                   onChange={(e) => setRatingComment(e.target.value)}
                   rows={3}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
-                  placeholder="Share your experience with this driver..."
+                  placeholder="Share your experience with this driver. What went well? What could be improved?"
                 />
               </div>
 
@@ -638,8 +800,9 @@ export default function UserBookingsPage() {
                 <Button
                   onClick={handleSubmitRating}
                   disabled={rating === 0}
-                  className={rating === 0 ? 'opacity-50 cursor-not-allowed' : ''}
+                  className={`${rating === 0 ? 'opacity-50 cursor-not-allowed' : 'bg-yellow-500 hover:bg-yellow-600 text-white'}`}
                 >
+                  <StarIcon className="h-4 w-4 mr-2" />
                   Submit Rating
                 </Button>
               </div>

@@ -274,10 +274,17 @@ export class BookingController {
     try {
       const { bookingId } = req.params;
       const userId = (req as any).user.userId;
+      const { cancelReason, cancelComment } = req.body;
       
-      logDatabase('update', 'bookings', { bookingId, userId, action: 'cancel' });
+      logDatabase('update', 'bookings', { 
+        bookingId, 
+        userId, 
+        action: 'cancel',
+        cancelReason,
+        hasComment: !!cancelComment
+      });
       
-      const result = await BookingService.cancelBooking(bookingId, userId);
+      const result = await BookingService.cancelBooking(bookingId, userId, cancelReason, cancelComment);
 
       logDatabase('update_success', 'bookings', { bookingId, userId, action: 'cancelled' });
 
@@ -294,7 +301,8 @@ export class BookingController {
       logError(error, { 
         operation: 'cancel_booking', 
         bookingId: req.params.bookingId,
-        userId
+        userId,
+        cancelReason: req.body.cancelReason
       });
 
       const response: ApiResponse = {

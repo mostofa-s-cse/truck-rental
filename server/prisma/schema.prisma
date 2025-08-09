@@ -104,6 +104,9 @@ model Booking {
   status       BookingStatus @default(PENDING)
   pickupTime   DateTime?
   completedAt  DateTime?
+  cancelledAt  DateTime?     // When the booking was cancelled
+  cancelReason String?       // Reason for cancellation
+  cancelComment String?      // Additional comment for cancellation
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
