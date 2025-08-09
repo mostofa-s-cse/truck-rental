@@ -282,13 +282,29 @@ export interface PaginatedResponse<T> {
 export const adminApi = {
   // Dashboard Statistics
   getDashboardStats: async (): Promise<AdminDashboardStats> => {
-    const response = await apiClient.getClient().get('/admin/dashboard');
-    return response.data.data;
+    const response = await apiClient.getClient().get('/dashboard/admin/stats');
+    const data = response.data.data;
+    
+    // Transform the data to match the expected AdminDashboardStats interface
+    return {
+      stats: {
+        totalUsers: data.totalUsers || 0,
+        totalDrivers: data.totalDrivers || 0,
+        totalBookings: data.totalBookings || 0,
+        pendingBookings: data.pendingBookings || 0,
+        completedBookings: data.completedBookings || 0,
+        totalRevenue: data.totalRevenue || 0,
+        averageRating: data.averageRating || 0,
+        activeDrivers: data.activeDrivers || 0
+      },
+      recentBookings: data.recentBookings || [],
+      topDrivers: data.topDrivers || []
+    };
   },
 
   // Analytics
   getBookingAnalytics: async (timeRange: 'day' | 'week' | 'month' | 'year' = 'month'): Promise<BookingAnalytics> => {
-    const response = await apiClient.getClient().get(`/admin/analytics/bookings?timeRange=${timeRange}`);
+    const response = await apiClient.getClient().get(`/dashboard/admin/analytics/bookings?timeRange=${timeRange}`);
     return response.data.data;
   },
 

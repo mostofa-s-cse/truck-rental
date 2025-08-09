@@ -50,17 +50,13 @@ const Navigation = () => {
       case 'ADMIN':
         return [
           { name: 'Admin Dashboard', href: '/dashboard/admin' },
-          { name: 'User Management', href: '/dashboard/admin/users' },
-          { name: 'Driver Management', href: '/dashboard/admin/drivers' },
-          { name: 'System Settings', href: '/dashboard/admin/settings' },
           { name: 'Profile', href: '/dashboard/admin/profile' },
+          { name: 'Settings', href: '/dashboard/admin/settings' },
           { name: 'Sign out', action: handleLogout, isAction: true }
         ];
       case 'DRIVER':
         return [
           { name: 'Driver Dashboard', href: '/dashboard/driver' },
-          { name: 'My Bookings', href: '/dashboard/driver/bookings' },
-          { name: 'Earnings', href: '/dashboard/driver/earnings' },
           { name: 'Profile', href: '/dashboard/driver/profile' },
           { name: 'Settings', href: '/dashboard/driver/settings' },
           { name: 'Sign out', action: handleLogout, isAction: true }
@@ -68,17 +64,15 @@ const Navigation = () => {
       case 'USER':
         return [
           { name: 'User Dashboard', href: '/dashboard/user' },
-          { name: 'My Bookings', href: '/dashboard/user/bookings' },
-          { name: 'Favorites', href: '/dashboard/user/favorites' },
           { name: 'Profile', href: '/dashboard/user/profile' },
           { name: 'Settings', href: '/dashboard/user/settings' },
           { name: 'Sign out', action: handleLogout, isAction: true }
         ];
       default:
         return [
-          { name: 'Dashboard', href: '/dashboard' },
-          { name: 'Profile', href: '/profile' },
-          { name: 'Settings', href: '/settings' },
+          { name: 'Dashboard', href: '/dashboard/user' },
+          { name: 'Profile', href: '/dashboard/user/profile' },
+          { name: 'Settings', href: '/dashboard/user/settings' },
           { name: 'Sign out', action: handleLogout, isAction: true }
         ];
     }

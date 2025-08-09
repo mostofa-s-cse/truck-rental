@@ -44,6 +44,45 @@ export class ReviewController {
     }
   }
 
+  static async createReviewForBooking(req: Request, res: Response) {
+    try {
+      const userId = (req as any).user.userId;
+      const { bookingId } = req.params;
+      const { rating, comment } = req.body;
+      
+      logDatabase('insert', 'reviews', { userId, bookingId, rating });
+      
+      const result = await ReviewService.createReviewForBooking(userId, bookingId, rating, comment);
+
+      logDatabase('insert_success', 'reviews', { reviewId: result.id, userId, bookingId });
+
+      const response: ApiResponse = {
+        success: true,
+        message: 'Review submitted successfully',
+        data: result
+      };
+
+      res.status(201).json(response);
+    } catch (error: any) {
+      const userId = (req as any).user?.userId || 'unknown';
+      
+      logError(error, { 
+        operation: 'create_review_for_booking', 
+        userId,
+        bookingId: req.params.bookingId,
+        rating: req.body.rating
+      });
+
+      const response: ApiResponse = {
+        success: false,
+        message: error.message || 'Failed to submit review',
+        error: error.message
+      };
+
+      res.status(400).json(response);
+    }
+  }
+
   static async getDriverReviews(req: Request, res: Response) {
     try {
       const { driverId } = req.params;

@@ -80,6 +80,82 @@ export class ReviewService {
     return review;
   }
 
+  static async createReviewForBooking(userId: string, bookingId: string, rating: number, comment?: string) {
+    // Check if booking exists and belongs to user
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: {
+        driver: true
+      }
+    });
+
+    if (!booking) {
+      throw new Error('Booking not found');
+    }
+
+    if (booking.userId !== userId) {
+      throw new Error('Unauthorized to review this booking');
+    }
+
+    if (booking.status !== 'COMPLETED') {
+      throw new Error('Can only review completed bookings');
+    }
+
+    if (!booking.driverId) {
+      throw new Error('No driver assigned to this booking');
+    }
+
+    // Check if review already exists
+    const existingReview = await prisma.review.findUnique({
+      where: { bookingId }
+    });
+
+    if (existingReview) {
+      throw new Error('Review already exists for this booking');
+    }
+
+    // Validate rating
+    if (rating < 1 || rating > 5) {
+      throw new Error('Rating must be between 1 and 5');
+    }
+
+    // Create review
+    const review = await prisma.review.create({
+      data: {
+        userId,
+        driverId: booking.driverId,
+        bookingId,
+        rating,
+        comment
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            avatar: true
+          }
+        },
+        driver: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                avatar: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    // Update driver's average rating
+    await this.updateDriverRating(booking.driverId);
+
+    return review;
+  }
+
   static async updateDriverRating(driverId: string) {
     const reviews = await prisma.review.findMany({
       where: { driverId },

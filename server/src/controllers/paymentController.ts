@@ -87,6 +87,54 @@ export class PaymentController {
     }
   };
 
+  // Get user payment history
+  getUserPaymentHistory = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const userId = req.user?.userId;
+      const page = parseInt(req.query['page'] as string) || 1;
+      const limit = parseInt(req.query['limit'] as string) || 10;
+      const statusParam = req.query['status'] as string;
+      const status = statusParam ? (statusParam as PaymentStatus) : undefined;
+      const search = req.query['search'] as string;
+
+      if (!userId) {
+        res.status(401).json({
+          success: false,
+          message: 'User not authenticated'
+        });
+        return;
+      }
+
+      const result = await this.paymentService.getUserPaymentHistory(userId, { 
+        page, 
+        limit, 
+        ...(status && { status }),
+        ...(search && { search })
+      });
+
+      res.json({
+        success: true,
+        message: 'User payment history retrieved successfully',
+        data: result
+      });
+    } catch (error) {
+      logError(error as Error, req);
+      
+      if (error instanceof AppError) {
+        res.status(error.statusCode).json({
+          success: false,
+          message: error.message
+        });
+        return;
+      }
+
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve user payment history'
+      });
+    }
+  };
+
   // Get payment by ID
   getPaymentById = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {

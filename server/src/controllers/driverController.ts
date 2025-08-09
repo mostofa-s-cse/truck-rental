@@ -301,4 +301,41 @@ export class DriverController {
       res.status(400).json(response);
     }
   }
+
+  static async contactDriver(req: Request, res: Response) {
+    try {
+      const userId = (req as any).user.userId;
+      const { driverId } = req.params;
+      const { message, bookingId } = req.body;
+      
+      logDatabase('contact', 'drivers', { userId, driverId, bookingId, hasMessage: !!message });
+      
+      const result = await DriverService.contactDriver(userId, driverId, message, bookingId);
+
+      const response: ApiResponse = {
+        success: true,
+        message: 'Contact request sent successfully',
+        data: result
+      };
+
+      res.status(200).json(response);
+    } catch (error: any) {
+      const userId = (req as any).user?.userId || 'unknown';
+      
+      logError(error, { 
+        operation: 'contact_driver', 
+        userId,
+        driverId: req.params.driverId,
+        bookingId: req.body.bookingId
+      });
+
+      const response: ApiResponse = {
+        success: false,
+        message: error.message || 'Failed to contact driver',
+        error: error.message
+      };
+
+      res.status(400).json(response);
+    }
+  }
 } 

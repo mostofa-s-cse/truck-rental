@@ -239,6 +239,70 @@ class ApiClient {
     return response.data;
   }
 
+  // Get user payment history
+  async getPaymentHistory(page = 1, limit = 10): Promise<ApiResponse<{
+    payments: Array<{
+      id: string;
+      amount: number;
+      paymentMethod: string;
+      status: string;
+      transactionId: string;
+      createdAt: string;
+      updatedAt: string;
+      booking: {
+        id: string;
+        source: string;
+        destination: string;
+        fare: number;
+        status: string;
+        driver: {
+          user: {
+            name: string;
+          };
+          truckType: string;
+        };
+      };
+    }>;
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      pages: number;
+    };
+  }>> {
+    const response = await this.client.get('/payments/user/history', { params: { page, limit } });
+    return response.data;
+  }
+
+  // Get payment details by transaction ID
+  async getPaymentDetails(tranId: string): Promise<ApiResponse<{
+    payment: {
+      id: string;
+      amount: number;
+      paymentMethod: string;
+      status: string;
+      transactionId: string;
+      createdAt: string;
+      updatedAt: string;
+      booking: {
+        id: string;
+        source: string;
+        destination: string;
+        fare: number;
+        status: string;
+        driver: {
+          user: {
+            name: string;
+          };
+          truckType: string;
+        };
+      };
+    };
+  }>> {
+    const response = await this.client.get(`/payments/${tranId}`);
+    return response.data;
+  }
+
   async getBookings(page = 1, limit = 10): Promise<ApiResponse> {
     const response = await this.client.get('/bookings', { params: { page, limit } });
     return response.data;

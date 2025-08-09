@@ -14,6 +14,9 @@ router.put('/location', auth, authorize('DRIVER'), DriverController.updateLocati
 // Public routes
 router.get('/search', DriverController.searchDrivers);
 
+// Contact driver (User only)
+router.post('/contact/:driverId', auth, authorize('USER'), DriverController.contactDriver);
+
 // Admin routes
 router.put('/verify/:driverId', auth, authorize('ADMIN'), DriverController.verifyDriver);
 router.get('/all', auth, authorize('ADMIN'), DriverController.getAllDrivers);
