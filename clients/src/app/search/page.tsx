@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Truck, MapPin, Star, Search, Phone, Loader2, Filter, X, TrendingUp, LogIn } from 'lucide-react';
+import { Truck, MapPin, Star, Search, Phone, Loader2, Filter, X, TrendingUp, LogIn, CheckCircle } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import BookingModal from '@/components/BookingModal';
 import { apiClient } from '@/lib/api';
-import { Driver, SearchFilters } from '@/types';
+import { userApi } from '@/lib/dashboardApi';
+import { Booking, Driver, SearchFilters } from '@/types';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -48,6 +49,9 @@ export default function SearchPage() {
   const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
 
+  // User bookings state
+  const [userBookings, setUserBookings] = useState<Booking[]>([]);
+
   // Helpers: ensure unique drivers by id
   const dedupeById = useCallback((list: Driver[]): Driver[] => {
     const map = new Map<string, Driver>();
@@ -56,6 +60,29 @@ export default function SearchPage() {
     }
     return Array.from(map.values());
   }, []);
+
+  // Fetch user's existing bookings
+  const fetchUserBookings = useCallback(async () => {
+    if (!isAuthenticated) return;
+    
+    try {
+      const response = await userApi.getUserBookings(1, 100); // Get up to 100 bookings
+      setUserBookings(response.bookings as unknown as Booking[]);
+    } catch (error) {
+      console.error('Failed to fetch user bookings:', error);
+    }
+  }, [isAuthenticated]);
+
+  // Check if user has already booked a specific driver
+  const hasBookedDriver = useCallback((driverId: string): boolean => {
+    return userBookings.some(booking => 
+      booking.driverId === driverId && 
+      ['PENDING', 'CONFIRMED', 'IN_PROGRESS'].includes(booking.status)
+    );
+  }, [userBookings]);
+
+  // Get existing booking for a driver
+
 
   const mergeUniqueById = useCallback((existing: Driver[], incoming: Driver[]): Driver[] => {
     const seen = new Set(existing.map((d) => d.id));
@@ -121,8 +148,16 @@ export default function SearchPage() {
     if (selectedQuality) filters.quality = selectedQuality;
     if (minCapacity) filters.capacity = parseFloat(minCapacity);
     if (minRating) filters.rating = parseFloat(minRating);
-    if (availabilityFilter === 'available') filters.availability = true;
-    if (availabilityFilter === 'busy') filters.availability = false;
+    
+    // Only apply availability filter if explicitly selected by user
+    // This ensures we show ALL drivers by default, including busy ones
+    if (availabilityFilter === 'available') {
+      filters.availability = true;
+    } else if (availabilityFilter === 'busy') {
+      filters.availability = false;
+    }
+    // If availabilityFilter is empty (default), don't filter by availability
+    
     if (verificationFilter === 'verified') filters.verified = true;
     if (verificationFilter === 'unverified') filters.verified = false;
     
@@ -253,6 +288,13 @@ export default function SearchPage() {
     }
   }, [selectedTruckType, selectedQuality, minCapacity, maxCapacity, minRating, maxRating, minTrips, maxTrips, availabilityFilter, verificationFilter, handleSearch, loadInitialData, searchQuery, hasActiveFilters]);
 
+  // Fetch user bookings when authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchUserBookings();
+    }
+  }, [isAuthenticated, fetchUserBookings]);
+
   const handleLoadMore = async () => {
     try {
       setIsLoadingMore(true);
@@ -342,7 +384,7 @@ export default function SearchPage() {
               Find Your Perfect Truck
             </h1>
             <p className="text-lg sm:text-xl md:text-2xl mb-6 sm:mb-8 text-blue-100 px-4">
-              Connect with verified drivers across Bangladesh
+              Connect with verified drivers across Bangladesh - Available and Busy
             </p>
             
             {/* Hero Search Bar */}
@@ -495,16 +537,16 @@ export default function SearchPage() {
                 {/* Availability */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Availability
+                    Availability Status
                   </label>
                   <select
                     value={availabilityFilter}
                     onChange={(e) => setAvailabilityFilter(e.target.value)}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
                   >
-                    <option value="">All</option>
-                    <option value="available">Available</option>
-                    <option value="busy">Busy</option>
+                    <option value="">Show All (Available & Busy)</option>
+                    <option value="available">Available Only</option>
+                    <option value="busy">Busy Only</option>
                   </select>
                 </div>
 
@@ -545,7 +587,7 @@ export default function SearchPage() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 gap-2 sm:gap-0">
               <div>
                 <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
-                  Available Trucks
+                  All Trucks
                 </h2>
                 <p className="text-sm sm:text-base text-gray-600">
                   {totalResults} trucks found
@@ -638,27 +680,47 @@ export default function SearchPage() {
                             Available Now
                           </span>
                         ) : (
-                          <span className="bg-red-100 text-red-800 text-xs sm:text-sm px-2 sm:px-3 py-1 rounded-full">
-                            Currently Busy
-                          </span>
+                          <div className="space-y-2">
+                            <span className="bg-red-100 text-red-800 text-xs sm:text-sm px-2 sm:px-3 py-1 rounded-full">
+                              Currently Busy
+                            </span>
+                            <p className="text-xs text-gray-600 mt-1">
+                              Driver has active bookings
+                            </p>
+                          </div>
                         )}
                       </div>
 
                       {/* Action Buttons */}
                       <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-                        <Button 
-                          onClick={isAuthenticated ? () => handleBookNow(driver) : handleLoginRedirect}
-                          className="flex-1 bg-blue-600 text-white hover:bg-blue-700 text-sm sm:text-base py-2 sm:py-2.5"
-                        >
-                          {isAuthenticated ? (
-                            'Book Now'
-                          ) : (
-                            <>
-                              <LogIn className="w-4 h-4 mr-2" />
-                              <span className='text-sm'>Login to Book</span>
-                            </>
-                          )}
-                        </Button>
+                      {isAuthenticated && hasBookedDriver(driver.id) ? (
+                          <Button 
+                          className="flex-1 text-sm sm:text-base py-2 sm:py-2.5 bg-gray-500 cursor-not-allowed">
+                            <div className="flex items-center gap-2 text-white">
+                              <CheckCircle className="w-4 h-4" />
+                              <span className="text-xs font-medium">Already Booked</span>
+                            </div>
+                          </Button>
+                        ) : <Button 
+                        onClick={isAuthenticated ? () => handleBookNow(driver) : handleLoginRedirect}
+                        className={`flex-1 text-sm sm:text-base py-2 sm:py-2.5 ${
+                          driver.isAvailable 
+                            ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                            : 'bg-gray-500 text-white hover:bg-gray-600 cursor-not-allowed'
+                        }`}
+                        disabled={!driver.isAvailable}
+                      >
+                        {isAuthenticated ? (
+                          driver.isAvailable ? 'Book Now' : 'Currently Busy'
+                        ) : (
+                          <>
+                            <LogIn className="w-4 h-4 mr-2" />
+                            <span className='text-sm'>Login to Book</span>
+                          </>
+                        )}
+                      </Button>}
+
+                        
                         <div className="flex gap-2 sm:gap-3">
                           <Link href={`tel:${driver.user.phone}`} className="text-gray-800 border border-gray-300 rounded-md px-3 py-2 flex-1 sm:flex-none flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 sm:py-2.5">
                             <Phone className="w-3 h-3 sm:w-4 sm:h-4" />
