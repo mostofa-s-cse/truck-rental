@@ -45,29 +45,57 @@ export class PaymentService {
       }
     }
     
-    // Search functionality
+    // Search functionality - improved to handle Payment ID, Booking ID, and other fields
     if (search) {
       where.OR = [
+        // Search by Payment ID
+        {
+          id: {
+            contains: search
+          }
+        },
+        // Search by Booking ID
+        {
+          bookingId: {
+            contains: search
+          }
+        },
+        // Search by Transaction ID
+        {
+          transactionId: {
+            contains: search
+          }
+        },
+        // Search by customer name
         {
           booking: {
             user: {
               name: {
-                contains: search,
-                mode: 'insensitive'
+                contains: search
               }
             }
           }
         },
+        // Search by customer email
         {
-          bookingId: {
-            contains: search,
-            mode: 'insensitive'
+          booking: {
+            user: {
+              email: {
+                contains: search
+              }
+            }
           }
         },
+        // Search by driver name
         {
-          transactionId: {
-            contains: search,
-            mode: 'insensitive'
+          booking: {
+            driver: {
+              user: {
+                name: {
+                  contains: search
+                }
+              }
+            }
           }
         }
       ];
@@ -127,16 +155,14 @@ export class PaymentService {
         {
           booking: {
             source: {
-              contains: search,
-              mode: 'insensitive'
+              contains: search
             }
           }
         },
         {
           booking: {
             destination: {
-              contains: search,
-              mode: 'insensitive'
+              contains: search
             }
           }
         },
@@ -145,8 +171,7 @@ export class PaymentService {
             driver: {
               user: {
                 name: {
-                  contains: search,
-                  mode: 'insensitive'
+                  contains: search
                 }
               }
             }
@@ -154,8 +179,7 @@ export class PaymentService {
         },
         {
           transactionId: {
-            contains: search,
-            mode: 'insensitive'
+            contains: search
           }
         }
       ];

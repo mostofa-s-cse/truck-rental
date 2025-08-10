@@ -4,8 +4,9 @@ const prisma = new PrismaClient();
 
 export class DashboardService {
   static async getUserDashboardStats(userId: string) {
-    // Get user's bookings
-    const userBookings = await prisma.booking.findMany({
+    try {
+      // Get user's bookings
+      const userBookings = await prisma.booking.findMany({
       where: { userId },
       include: {
         driver: {
@@ -98,28 +99,33 @@ export class DashboardService {
       spendingData,
       bookingStatusData
     };
+    } catch (error) {
+      console.error('Error in getUserDashboardStats:', error);
+      throw new Error('Failed to get user dashboard stats');
+    }
   }
 
   static async getDriverDashboardStats(userId: string) {
-    // Get driver profile
-    const driver = await prisma.driver.findUnique({
-      where: { userId },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true,
-            avatar: true
+    try {
+      // Get driver profile
+      const driver = await prisma.driver.findUnique({
+        where: { userId },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true,
+              avatar: true
+            }
           }
         }
-      }
-    });
+      });
 
-    if (!driver) {
-      throw new Error('Driver profile not found');
-    }
+      if (!driver) {
+        throw new Error('Driver profile not found');
+      }
 
     // Get driver's bookings
     const driverBookings = await prisma.booking.findMany({
@@ -193,6 +199,10 @@ export class DashboardService {
         totalEarnings
       }
     };
+    } catch (error) {
+      console.error('Error in getDriverDashboardStats:', error);
+      throw new Error('Failed to get driver dashboard stats');
+    }
   }
 
   static async getDriverEarnings(userId: string) {
@@ -319,45 +329,129 @@ export class DashboardService {
 
   // Admin Dashboard Methods
   static async getAdminDashboardStats() {
-    // Get total counts
-    const totalUsers = await prisma.user.count({
-      where: { role: UserRole.USER }
-    });
+    try {
+      // Get total counts
+      const totalUsers = await prisma.user.count({
+        where: { role: UserRole.USER }
+      });
 
-    const totalDrivers = await prisma.user.count({
-      where: { role: UserRole.DRIVER }
-    });
+      const totalDrivers = await prisma.user.count({
+        where: { role: UserRole.DRIVER }
+      });
 
-    const totalBookings = await prisma.booking.count();
+      const totalBookings = await prisma.booking.count();
 
-    // Calculate total revenue
-    const allBookings = await prisma.booking.findMany({
-      where: { status: BookingStatus.COMPLETED }
-    });
-    const totalRevenue = allBookings.reduce((sum, booking) => sum + booking.fare, 0);
+      // Calculate total revenue from completed bookings
+      const completedBookings = await prisma.booking.findMany({
+        where: { status: BookingStatus.COMPLETED }
+      });
+      const totalRevenue = completedBookings.reduce((sum, booking) => sum + booking.fare, 0);
 
-    // Get pending verifications
-    const pendingVerifications = await prisma.driver.count({
-      where: { isVerified: false }
-    });
+      // Get pending bookings (not confirmed yet)
+      const pendingBookings = await prisma.booking.count({
+        where: { status: BookingStatus.PENDING }
+      });
 
-    // Get active bookings
-    const activeBookings = await prisma.booking.count({
-      where: {
-        status: {
-          in: [BookingStatus.CONFIRMED, BookingStatus.IN_PROGRESS]
+      // Get completed bookings count
+      const completedBookingsCount = completedBookings.length;
+
+      // Get active drivers (verified and available)
+      const activeDrivers = await prisma.driver.count({
+        where: { 
+          isVerified: true,
+          isAvailable: true
         }
-      }
-    });
+      });
 
-    return {
-      totalUsers,
-      totalDrivers,
-      totalBookings,
-      totalRevenue,
-      pendingVerifications,
-      activeBookings
-    };
+      // Calculate average rating from all reviews
+      const allReviews = await prisma.review.findMany();
+      const averageRating = allReviews.length > 0 
+        ? allReviews.reduce((sum, review) => sum + review.rating, 0) / allReviews.length
+        : 0;
+
+      // Get recent bookings (last 10)
+      const recentBookings = await prisma.booking.findMany({
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true
+            }
+          },
+          driver: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true
+                }
+              }
+            }
+          }
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 10
+      });
+
+      // Get top drivers by rating and total trips
+      const topDrivers = await prisma.driver.findMany({
+        where: { 
+          isVerified: true,
+          rating: { gte: 4.0 }
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              avatar: true
+            }
+          }
+        },
+        orderBy: [
+          { rating: 'desc' },
+          { totalTrips: 'desc' }
+        ],
+        take: 5
+      });
+
+      return {
+        totalUsers,
+        totalDrivers,
+        totalBookings,
+        pendingBookings,
+        completedBookings: completedBookingsCount,
+        totalRevenue,
+        averageRating: Math.round(averageRating * 10) / 10,
+        activeDrivers,
+        recentBookings: recentBookings.map(booking => ({
+          id: booking.id,
+          user: booking.user.name,
+          driver: booking.driver?.user.name || 'Unassigned',
+          source: booking.source,
+          destination: booking.destination,
+          fare: booking.fare,
+          status: booking.status,
+          date: booking.createdAt,
+          pickupTime: booking.pickupTime
+        })),
+        topDrivers: topDrivers.map(driver => ({
+          id: driver.id,
+          name: driver.user.name,
+          email: driver.user.email,
+          rating: driver.rating,
+          totalTrips: driver.totalTrips || 0,
+          truckType: driver.truckType,
+          avatar: driver.user.avatar
+        }))
+      };
+    } catch (error) {
+      console.error('Error in getAdminDashboardStats:', error);
+      throw new Error('Failed to get admin dashboard stats');
+    }
   }
 
   static async getPendingDriverVerifications() {

@@ -12,8 +12,31 @@ export interface AdminDashboardStats {
     averageRating: number;
     activeDrivers: number;
   };
-  recentBookings: Booking[];
-  topDrivers: Driver[];
+  recentBookings: DashboardBooking[];
+  topDrivers: DashboardDriver[];
+}
+
+// Interface for the actual API response structure
+export interface DashboardBooking {
+  id: string;
+  user: string; // Direct string name from API
+  driver: string; // Direct string name from API
+  source: string;
+  destination: string;
+  fare: number;
+  status: string;
+  date: string;
+  pickupTime: string | null;
+}
+
+export interface DashboardDriver {
+  id: string;
+  name: string; // Direct string name from API
+  email: string;
+  rating: number;
+  totalTrips: number;
+  truckType: string;
+  avatar: string;
 }
 
 export interface BookingAnalytics {

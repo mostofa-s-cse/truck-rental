@@ -14,7 +14,6 @@ import {
   StarIcon,
   ClockIcon,
   CheckCircleIcon,
-  ChartBarIcon,
 
 } from '@heroicons/react/24/outline';
 import { TrendingUpIcon } from 'lucide-react';
@@ -239,11 +238,11 @@ export default function AdminDashboardPage() {
                         <div className="flex items-center">
                           <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
                             <span className="text-sm font-medium text-blue-600">
-                              {booking.user.name.charAt(0).toUpperCase()}
+                              {booking.user.charAt(0).toUpperCase()}
                             </span>
                           </div>
                           <div className="ml-3">
-                            <p className="text-sm font-medium text-gray-900">{booking.user.name}</p>
+                            <p className="text-sm font-medium text-gray-900">{booking.user}</p>
                             <p className="text-sm text-gray-500">
                               {booking.source} → {booking.destination}
                             </p>
@@ -282,7 +281,7 @@ export default function AdminDashboardPage() {
                             <span className="text-sm font-medium text-green-600">{index + 1}</span>
                           </div>
                           <div className="ml-3">
-                            <p className="text-sm font-medium text-gray-900">{driver.user.name}</p>
+                            <p className="text-sm font-medium text-gray-900">{driver.name}</p>
                             <p className="text-sm text-gray-500">{driver.truckType.replace('_', ' ')}</p>
                           </div>
                         </div>
@@ -291,51 +290,13 @@ export default function AdminDashboardPage() {
                             <StarIcon className="h-4 w-4 text-yellow-400 fill-current mr-1" />
                             <span className="text-sm font-medium text-gray-900">{driver.rating.toFixed(1)}</span>
                           </div>
-                          <p className="text-sm text-gray-500">{driver.totalBookings} trips</p>
+                          <p className="text-sm text-gray-500">{driver.totalTrips} trips</p>
                         </div>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
-            </div>
-          </div>
-
-          {/* Quick Actions */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Actions</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <button className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                <UsersIcon className="h-5 w-5 text-blue-600 mr-3" />
-                <div className="text-left">
-                  <p className="text-sm font-medium text-gray-900">Manage Users</p>
-                  <p className="text-xs text-gray-500">View and edit user accounts</p>
-                </div>
-              </button>
-              
-              <button className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                <TruckIcon className="h-5 w-5 text-green-600 mr-3" />
-                <div className="text-left">
-                  <p className="text-sm font-medium text-gray-900">Manage Drivers</p>
-                  <p className="text-xs text-gray-500">Verify and manage drivers</p>
-                </div>
-              </button>
-              
-              <button className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                <CalendarIcon className="h-5 w-5 text-purple-600 mr-3" />
-                <div className="text-left">
-                  <p className="text-sm font-medium text-gray-900">View Bookings</p>
-                  <p className="text-xs text-gray-500">Monitor all bookings</p>
-                </div>
-              </button>
-              
-              <button className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                <ChartBarIcon className="h-5 w-5 text-yellow-600 mr-3" />
-                <div className="text-left">
-                  <p className="text-sm font-medium text-gray-900">Analytics</p>
-                  <p className="text-xs text-gray-500">View detailed reports</p>
-                </div>
-              </button>
             </div>
           </div>
         </div>

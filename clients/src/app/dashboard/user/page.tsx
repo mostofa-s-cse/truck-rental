@@ -9,7 +9,6 @@ import {
   CalendarIcon, 
   CurrencyDollarIcon,
   StarIcon,
-  TruckIcon,
   ClockIcon,
   PlusIcon,
   UserIcon,
@@ -17,16 +16,23 @@ import {
   XCircleIcon,
   ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
+import Image from 'next/image';
 
 // Component props interface - currently no props needed
 type UserDashboardProps = Record<string, never>;
 
 export default function UserDashboard({}: UserDashboardProps) {
-  const { user } = useAppSelector((state) => state.auth);
+  const { user, isInitialized } = useAppSelector((state) => state.auth);
   const [stats, setStats] = useState<UserStats | null>(null);
   const [recentBookings, setRecentBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Debug logging for user data
+  useEffect(() => {
+    console.log('Current user data:', user);
+    console.log('Auth initialized:', isInitialized);
+  }, [user, isInitialized]);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -35,6 +41,7 @@ export default function UserDashboard({}: UserDashboardProps) {
         setError(null);
         
         console.log('Fetching dashboard data...');
+        console.log('Current user:', user);
         
         const [statsData, bookingsData, driversData] = await Promise.all([
           userApi.getUserStats(),
@@ -54,8 +61,11 @@ export default function UserDashboard({}: UserDashboardProps) {
       }
     };
 
-    fetchDashboardData();
-  }, []);
+    // Only fetch data if user is available and auth is initialized
+    if (user && isInitialized) {
+      fetchDashboardData();
+    }
+  }, [user, isInitialized]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -89,10 +99,50 @@ export default function UserDashboard({}: UserDashboardProps) {
 
   return (
     <ProtectedRoute requiredRole="USER">
-      <DashboardLayout title="User Dashboard" subtitle={`Welcome back, ${user?.name}`}>
-        {loading ? (
+      <DashboardLayout title="User Dashboard" subtitle={`Welcome back, ${user?.name || 'User'}`}>
+        {!isInitialized ? (
           <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Initializing...</p>
+            </div>
+          </div>
+        ) : loading ? (
+          <div className="space-y-6">
+            {/* Profile Skeleton Loader */}
+            <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg shadow-lg p-6 text-white">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <div className="w-16 h-16 bg-white bg-opacity-20 rounded-full animate-pulse"></div>
+                  <div className="space-y-2">
+                    <div className="h-8 w-32 bg-white bg-opacity-20 rounded animate-pulse"></div>
+                    <div className="h-4 w-24 bg-white bg-opacity-20 rounded animate-pulse"></div>
+                    <div className="h-4 w-20 bg-white bg-opacity-20 rounded animate-pulse"></div>
+                  </div>
+                </div>
+                <div className="text-right space-y-2">
+                  <div className="h-4 w-20 bg-white bg-opacity-20 rounded animate-pulse"></div>
+                  <div className="h-6 w-16 bg-white bg-opacity-20 rounded animate-pulse"></div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Stats Skeleton Loader */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-blue-500">
+                  <div className="space-y-3">
+                    <div className="h-4 w-20 bg-gray-200 rounded animate-pulse"></div>
+                    <div className="h-8 w-16 bg-gray-200 rounded animate-pulse"></div>
+                    <div className="h-3 w-24 bg-gray-200 rounded animate-pulse"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            <div className="flex items-center justify-center h-64">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            </div>
           </div>
         ) : error ? (
           <div className="text-center py-12">
@@ -110,30 +160,55 @@ export default function UserDashboard({}: UserDashboardProps) {
         ) : (
           <div className="space-y-6">
             {/* User Profile Summary */}
-            <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg shadow-lg p-6 text-white">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="w-16 h-16 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-                    <UserIcon className="h-8 w-8" />
+            {user ? (
+              <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg shadow-lg p-6 text-white">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-16 h-16 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                      {user.avatar ? (
+                        <Image 
+                          src={user.avatar} 
+                          alt={user.name || 'User'} 
+                          className="w-16 h-16 rounded-full object-cover"
+                          width={64}
+                          height={64}
+                        />
+                      ) : (
+                        <UserIcon className="h-8 w-8" />
+                      )}
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-bold">{user.name || 'User'}</h2>
+                      <p className="text-blue-100">{user.email || 'No email available'}</p>
+                      <p className="text-blue-100 text-sm">
+                        Member since {user.createdAt ? new Date(user.createdAt).getFullYear() : new Date().getFullYear()}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="text-2xl font-bold">{user?.name}</h2>
-                    <p className="text-blue-100">{user?.email}</p>
-                    <p className="text-blue-100 text-sm">Member since {new Date().getFullYear()}</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-blue-100 text-sm">Account Status</p>
-                  <div className="flex items-center space-x-2">
-                    <CheckCircleIcon className="h-5 w-5 text-green-300" />
-                    <span className="font-semibold">Active</span>
+                  <div className="text-right">
+                    <p className="text-blue-100 text-sm">Account Status</p>
+                    <div className="flex items-center space-x-2">
+                      <CheckCircleIcon className="h-5 w-5 text-green-300" />
+                      <span className="font-semibold">{user.isActive ? 'Active' : 'Inactive'}</span>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div className="bg-gradient-to-r from-red-500 to-pink-600 rounded-lg shadow-lg p-6 text-white">
+                <div className="flex items-center justify-center space-x-4">
+                  <UserIcon className="h-8 w-8" />
+                  <div className="text-center">
+                    <h2 className="text-2xl font-bold">Profile Not Available</h2>
+                    <p className="text-red-100">User information could not be loaded</p>
+                    <p className="text-red-100 text-sm">Please refresh the page or log in again</p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Enhanced Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-blue-500 hover:shadow-xl transition-shadow">
                 <div className="flex items-center justify-between">
                   <div>
@@ -183,19 +258,6 @@ export default function UserDashboard({}: UserDashboardProps) {
                   </div>
                   <div className="p-3 bg-yellow-100 rounded-full">
                     <StarIcon className="h-8 w-8 text-yellow-600" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-purple-500 hover:shadow-xl transition-shadow">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Favorite Drivers</p>
-                    <p className="text-3xl font-bold text-gray-900">{stats?.favoriteDrivers || 0}</p>
-                                         <p className="text-xs text-gray-500 mt-1">Drivers you&apos;ve used</p>
-                  </div>
-                  <div className="p-3 bg-purple-100 rounded-full">
-                    <TruckIcon className="h-8 w-8 text-purple-600" />
                   </div>
                 </div>
               </div>
