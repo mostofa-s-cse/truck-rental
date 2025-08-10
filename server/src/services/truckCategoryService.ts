@@ -5,25 +5,40 @@ const prisma = new PrismaClient();
 
 export interface CreateTruckCategoryRequest {
   name: string;
-  basePrice: number;
+  truckType: 'MINI_TRUCK' | 'PICKUP' | 'LORRY' | 'TRUCK';
+  capacity: number;
+  length: number;
+  baseFare: number;
+  insideDhakaRate: number;
+  outsideDhakaRate: number;
   description?: string;
 }
 
 export interface UpdateTruckCategoryRequest {
   name?: string;
-  basePrice?: number;
+  truckType?: 'MINI_TRUCK' | 'PICKUP' | 'LORRY' | 'TRUCK';
+  capacity?: number;
+  length?: number;
+  baseFare?: number;
+  insideDhakaRate?: number;
+  outsideDhakaRate?: number;
   description?: string;
   isActive?: boolean;
 }
 
 export class TruckCategoryService {
   static async createTruckCategory(data: CreateTruckCategoryRequest) {
-    logDatabase('insert', 'truck_categories', { name: data.name, basePrice: data.basePrice });
+    logDatabase('insert', 'truck_categories', { name: data.name, baseFare: data.baseFare });
     
     const truckCategory = await prisma.truckCategory.create({
       data: {
         name: data.name,
-        basePrice: data.basePrice,
+        truckType: data.truckType,
+        capacity: data.capacity,
+        length: data.length,
+        baseFare: data.baseFare,
+        insideDhakaRate: data.insideDhakaRate,
+        outsideDhakaRate: data.outsideDhakaRate,
         description: data.description
       }
     });

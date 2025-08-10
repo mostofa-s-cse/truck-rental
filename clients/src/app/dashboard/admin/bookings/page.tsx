@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback, Suspense } from 'react';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import DashboardLayout from '@/components/ui/DashboardLayout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import DataTable, { Column } from '@/components/ui/DataTable';
@@ -16,90 +17,305 @@ import {
   CurrencyDollarIcon,
 } from '@heroicons/react/24/outline';
 
-export default function AdminBookingsPage() {
+// Utility functions
+const formatDate = (date: string) => new Date(date).toLocaleDateString();
+
+const formatDateTime = (date: string) => new Date(date).toLocaleString();
+
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'PENDING': return 'bg-yellow-100 text-yellow-800';
+    case 'CONFIRMED': return 'bg-blue-100 text-blue-800';
+    case 'IN_PROGRESS': return 'bg-purple-100 text-purple-800';
+    case 'COMPLETED': return 'bg-green-100 text-green-800';
+    case 'CANCELLED': return 'bg-red-100 text-red-800';
+    default: return 'bg-gray-100 text-gray-800';
+  }
+};
+
+const getNextStatusAction = (currentStatus: string) => {
+  switch (currentStatus) {
+    case 'PENDING': return { nextStatus: 'CONFIRMED', label: 'Confirm Booking' };
+    case 'CONFIRMED': return { nextStatus: 'IN_PROGRESS', label: 'Start Trip' };
+    case 'IN_PROGRESS': return { nextStatus: 'COMPLETED', label: 'Complete Trip' };
+    default: return null;
+  }
+};
+
+// Sub-components
+const BookingDetails = ({ booking }: { booking: Booking }) => (
+  <div className="space-y-6">
+    {/* Booking Header */}
+    <div className="flex items-center justify-between">
+      <div>
+        <h3 className="text-lg font-medium text-gray-900">
+          Booking #{booking.id.slice(-8).toUpperCase()}
+        </h3>
+        <p className="text-sm text-gray-500">
+          Created on {formatDate(booking.createdAt)}
+        </p>
+      </div>
+      <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(booking.status)}`}>
+        {booking.status.replace('_', ' ')}
+      </span>
+    </div>
+
+    {/* Customer and Driver Info */}
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="bg-gray-50 rounded-lg p-4">
+        <h4 className="text-sm font-medium text-gray-700 mb-3">Customer Information</h4>
+        <div className="flex items-center mb-3">
+          <UserCircleIcon className="h-8 w-8 text-green-600 mr-3" />
+          <div>
+            <p className="text-sm font-medium text-gray-900">{booking.user.name}</p>
+            <p className="text-sm text-gray-500">{booking.user.email}</p>
+            {booking.user.phone && (
+              <p className="text-sm text-gray-500">{booking.user.phone}</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-gray-50 rounded-lg p-4">
+        <h4 className="text-sm font-medium text-gray-700 mb-3">Driver Information</h4>
+        <div className="flex items-center mb-3">
+          <TruckIcon className="h-8 w-8 text-blue-600 mr-3" />
+          <div>
+            <p className="text-sm font-medium text-gray-900">{booking.driver?.user.name || 'Not assigned'}</p>
+            <p className="text-sm text-gray-500">{booking.driver?.user.email || '-'}</p>
+            <p className="text-sm text-gray-500">{booking.driver?.truckType.replace('_', ' ') || '-'}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {/* Trip Details */}
+    <div className="bg-gray-50 rounded-lg p-4">
+      <h4 className="text-sm font-medium text-gray-700 mb-3">Trip Details</h4>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700">From</label>
+          <p className="text-sm text-gray-900">{booking.source}</p>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">To</label>
+          <p className="text-sm text-gray-900">{booking.destination}</p>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Date</label>
+          <p className="text-sm text-gray-900">{formatDate(booking.date)}</p>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Fare</label>
+          <p className="text-sm font-medium text-gray-900">${booking.fare}</p>
+        </div>
+        {booking.pickupTime && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Pickup Time</label>
+            <p className="text-sm text-gray-900">{formatDateTime(booking.pickupTime)}</p>
+          </div>
+        )}
+        {booking.completedAt && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Completed At</label>
+            <p className="text-sm text-gray-900">{formatDateTime(booking.completedAt)}</p>
+          </div>
+        )}
+      </div>
+    </div>
+
+    {/* Payment Information */}
+    <div className="bg-gray-50 rounded-lg p-4">
+      <h4 className="text-sm font-medium text-gray-700 mb-3">Payment Information</h4>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Payment Method</label>
+          <p className="text-sm text-gray-900">{booking.paymentMethod}</p>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Payment Status</label>
+          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+            booking.paymentStatus === 'PAID' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+          }`}>
+            {booking.paymentStatus}
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+// Main component
+function AdminBookingsContent() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { successToast, errorToast, withConfirmation } = useSweetAlert();
-  
+
   // State
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [totalBookings, setTotalBookings] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [filterStatus, setFilterStatus] = useState<string>('');
-  
+  const [isClient, setIsClient] = useState(false);
+  const [pendingFilterChange, setPendingFilterChange] = useState<{ statusFilter: string; shouldResetPage: boolean } | null>(null);
+  const [pendingURLUpdate, setPendingURLUpdate] = useState<{ page: number; limit: number; search: string; status: string } | null>(null);
+
   // Modal states
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
 
+  // Handle pending filter changes
   useEffect(() => {
-    fetchBookings();
-  }, [currentPage, pageSize, searchQuery, filterStatus]);
+    if (pendingFilterChange) {
+      setFilterStatus(pendingFilterChange.statusFilter);
+      if (pendingFilterChange.shouldResetPage) {
+        setCurrentPage(1);
+      }
+      setPendingFilterChange(null);
+    }
+  }, [pendingFilterChange]);
 
-  const fetchBookings = async () => {
+  // Handle pending URL updates
+  useEffect(() => {
+    if (pendingURLUpdate) {
+      const { page, limit, search, status } = pendingURLUpdate;
+      const params = new URLSearchParams();
+      if (page > 1) params.set('page', page.toString());
+      if (limit !== 10) params.set('limit', limit.toString());
+      if (search) params.set('search', search);
+      if (status) params.set('status', status);
+      const query = params.toString() ? `?${params.toString()}` : '';
+      router.push(`${pathname}${query}`, { scroll: false });
+      setPendingURLUpdate(null);
+    }
+  }, [pendingURLUpdate, router, pathname]);
+
+  // Update URL function - now schedules updates instead of immediate execution
+  const updateURL = useCallback((page: number, limit: number, search: string, status: string) => {
+    setPendingURLUpdate({ page, limit, search, status });
+  }, []);
+
+  // Set client flag to prevent hydration issues
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  // Sync local state with URL params
+  useEffect(() => {
+    if (!isClient) return;
+    
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const search = searchParams.get('search') || '';
+    const status = searchParams.get('status') || '';
+
+    setCurrentPage(page);
+    setPageSize(limit);
+    setSearchQuery(search);
+    setFilterStatus(status);
+  }, [searchParams, isClient]);
+
+  const fetchBookings = useCallback(async () => {
     try {
       setLoading(true);
       const response = await adminApi.getBookings(currentPage, pageSize, searchQuery, filterStatus || undefined);
       setBookings(response.data);
       setTotalBookings(response.pagination.total);
       setTotalPages(response.pagination.totalPages);
-    } catch (error) {
-      console.error('Error fetching bookings:', error);
+    } catch (err) {
+      console.error('Error fetching bookings:', err);
       errorToast('Failed to fetch bookings');
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, pageSize, searchQuery, filterStatus, errorToast]);
 
-  const handleSearch = async (query: string) => {
+  // Fetch bookings when dependencies change
+  useEffect(() => {
+    if (!isClient) return;
+    fetchBookings();
+  }, [currentPage, pageSize, searchQuery, filterStatus, isClient, fetchBookings]);
+
+  const handleSearch = useCallback((query: string) => {
     setSearchQuery(query);
     setCurrentPage(1);
-  };
+    updateURL(1, pageSize, query, filterStatus);
+  }, [pageSize, filterStatus, updateURL]);
 
-  const handlePageChange = (page: number) => {
+  const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page);
-  };
+    updateURL(page, pageSize, searchQuery, filterStatus);
+  }, [pageSize, searchQuery, filterStatus, updateURL]);
 
-  const handlePageSizeChange = (size: number) => {
+  const handlePageSizeChange = useCallback((size: number) => {
     setPageSize(size);
     setCurrentPage(1);
-  };
+    updateURL(1, size, searchQuery, filterStatus);
+  }, [searchQuery, filterStatus, updateURL]);
 
-  const handleDeleteBooking = async (booking: Booking) => {
+  const handleFilterChange = useCallback((filters: Record<string, string | boolean>) => {
+    try {
+      console.log('Bookings page handleFilterChange called:', filters);
+      
+      // Extract status filter from the filters object
+      const statusFilter = filters.status as string || '';
+      
+      console.log('Extracted status filter:', statusFilter);
+      
+      // Update URL with new filters immediately
+      updateURL(1, pageSize, searchQuery, statusFilter);
+      
+      // Schedule state updates for next render cycle
+      setPendingFilterChange({ statusFilter, shouldResetPage: true });
+      
+      console.log('Filter changes applied successfully');
+      
+    } catch (error) {
+      console.error('Error in handleFilterChange:', error);
+    }
+  }, [pageSize, searchQuery, updateURL]);
+
+  const handleDeleteBooking = useCallback(async (booking: Booking) => {
     await withConfirmation(
       async () => {
         await adminApi.deleteBooking(booking.id);
         successToast('Booking deleted successfully');
-        fetchBookings();
+        // Trigger a refetch by updating a dependency
+        setCurrentPage(prev => prev);
       },
       `Are you sure you want to delete this booking? This action cannot be undone.`,
       'Delete Booking'
     );
-  };
+  }, [withConfirmation, successToast]);
 
-  const handleUpdateStatus = async (booking: Booking, newStatus: string) => {
+  const handleUpdateStatus = useCallback(async (booking: Booking, newStatus: string) => {
     try {
       await adminApi.updateBooking(booking.id, { status: newStatus });
       successToast('Booking status updated successfully');
-      fetchBookings();
+      // Trigger a refetch by updating a dependency
+      setCurrentPage(prev => prev);
     } catch (error) {
       console.error('Error updating booking status:', error);
       errorToast('Failed to update booking status');
     }
-  };
+  }, [successToast, errorToast]);
 
-  const handleViewBooking = (booking: Booking) => {
+  const handleViewBooking = useCallback((booking: Booking) => {
     setSelectedBooking(booking);
     setShowViewModal(true);
-  };
+  }, []);
 
-  // Table columns
-  const columns: Column<Booking>[] = [
+  // Memoized values
+  const columns = useMemo((): Column<Booking>[] => [
     {
       key: 'id',
       header: 'Booking ID',
-      render: (value) => `#${value.slice(-8).toUpperCase()}`
+      render: (value) => `#${(value as string).slice(-8).toUpperCase()}`
     },
     {
       key: 'user.name',
@@ -125,8 +341,8 @@ export default function AdminBookingsPage() {
             <TruckIcon className="h-5 w-5 text-blue-600" />
           </div>
           <div className="ml-3">
-            <div className="text-sm font-medium text-gray-900">{row.driver.user.name}</div>
-            <div className="text-sm text-gray-500">{row.driver.truckType.replace('_', ' ')}</div>
+            <div className="text-sm font-medium text-gray-900">{row.driver?.user.name || 'Not assigned'}</div>
+            <div className="text-sm text-gray-500">{row.driver?.truckType.replace('_', ' ') || '-'}</div>
           </div>
         </div>
       )
@@ -150,43 +366,64 @@ export default function AdminBookingsPage() {
       render: (value) => (
         <div className="flex items-center">
           <CurrencyDollarIcon className="h-4 w-4 text-green-500 mr-1" />
-          <span className="text-sm font-medium text-gray-900">${value}</span>
+          <span className="text-sm font-medium text-gray-900">${value as number}</span>
         </div>
       )
     },
     {
       key: 'status',
       header: 'Status',
-      render: (value) => {
-        const statusColors = {
-          'PENDING': 'bg-yellow-100 text-yellow-800',
-          'CONFIRMED': 'bg-blue-100 text-blue-800',
-          'IN_PROGRESS': 'bg-purple-100 text-purple-800',
-          'COMPLETED': 'bg-green-100 text-green-800',
-          'CANCELLED': 'bg-red-100 text-red-800'
-        };
-        return (
-          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-            statusColors[value as keyof typeof statusColors] || 'bg-gray-100 text-gray-800'
-          }`}>
-            {value.replace('_', ' ')}
-          </span>
-        );
-      }
+      render: (value) => (
+        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(value as string)}`}>
+          {(value as string).replace('_', ' ')}
+        </span>
+      )
     },
     {
-      key: 'date',
+      key: 'createdAt',
       header: 'Date',
-      render: (value) => new Date(value).toLocaleDateString()
+      render: (value) => formatDate(value as string)
     }
-  ];
+  ], []);
+
+  const pagination = useMemo(() => ({
+    page: currentPage,
+    limit: pageSize,
+    total: totalBookings,
+    totalPages: totalPages
+  }), [currentPage, pageSize, totalBookings, totalPages]);
+
+  const actions = useMemo(() => ({
+    view: handleViewBooking,
+    delete: handleDeleteBooking
+  }), [handleViewBooking, handleDeleteBooking]);
+
+  // Don't render until client is ready to prevent hydration issues
+  if (!isClient) {
+    return (
+      <ProtectedRoute requiredRole="ADMIN">
+        <DashboardLayout title="Booking Management" subtitle="Manage all bookings in the system">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading...</p>
+            </div>
+          </div>
+        </DashboardLayout>
+      </ProtectedRoute>
+    );
+  }
 
   return (
     <ProtectedRoute requiredRole="ADMIN">
       <DashboardLayout title="Booking Management" subtitle="Manage all bookings in the system">
         <div className="space-y-6">
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="flex items-start justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">Booking Management</h2>
+              <p className="text-sm text-gray-500 mt-2">Manage all bookings in the system</p>
+            </div>
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex items-center">
                 <div className="p-2 bg-blue-100 rounded-lg">
@@ -200,46 +437,37 @@ export default function AdminBookingsPage() {
             </div>
           </div>
 
-          {/* Filters */}
-          <div className="bg-white rounded-lg shadow p-4">
-            <div className="flex items-center space-x-4">
-              <label className="text-sm font-medium text-gray-700">Filter by Status:</label>
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
-              >
-                <option value="">All Status</option>
-                <option value="PENDING">Pending</option>
-                <option value="CONFIRMED">Confirmed</option>
-                <option value="IN_PROGRESS">In Progress</option>
-                <option value="COMPLETED">Completed</option>
-                <option value="CANCELLED">Cancelled</option>
-              </select>
-            </div>
-          </div>
-
           {/* DataTable */}
           <DataTable
             data={bookings}
             columns={columns}
             loading={loading}
-            pagination={{
-              page: currentPage,
-              limit: pageSize,
-              total: totalBookings,
-              totalPages: totalPages
-            }}
+            pagination={pagination}
             onPageChange={handlePageChange}
             onLimitChange={handlePageSizeChange}
             onSearch={handleSearch}
-            searchPlaceholder="Search bookings by customer, driver, or location..."
-            showAddButton={false}
-            actions={{
-              view: handleViewBooking,
-              delete: handleDeleteBooking
-            }}
+            onFilter={handleFilterChange}
+            searchPlaceholder="Search by Booking ID, Customer name/email, Driver name/email, or Route..."
+            showSearch={true}
+            showFilters={true}
+            filterOptions={[
+              {
+                key: 'status',
+                label: 'Booking Status',
+                type: 'select',
+                options: [
+                  { value: 'PENDING', label: 'Pending' },
+                  { value: 'CONFIRMED', label: 'Confirmed' },
+                  { value: 'IN_PROGRESS', label: 'In Progress' },
+                  { value: 'COMPLETED', label: 'Completed' },
+                  { value: 'CANCELLED', label: 'Cancelled' }
+                ],
+                placeholder: 'Select booking status'
+              }
+            ]}
+            actions={actions}
             emptyMessage="No bookings found"
+            initialSearchQuery={searchQuery}
           />
         </div>
 
@@ -252,118 +480,19 @@ export default function AdminBookingsPage() {
         >
           {selectedBooking && (
             <div className="space-y-6">
-              {/* Booking Header */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-medium text-gray-900">
-                    Booking #{selectedBooking.id.slice(-8).toUpperCase()}
-                  </h3>
-                  <p className="text-sm text-gray-500">
-                    Created on {new Date(selectedBooking.createdAt).toLocaleDateString()}
-                  </p>
-                </div>
-                <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                  selectedBooking.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
-                  selectedBooking.status === 'CONFIRMED' ? 'bg-blue-100 text-blue-800' :
-                  selectedBooking.status === 'IN_PROGRESS' ? 'bg-purple-100 text-purple-800' :
-                  selectedBooking.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
-                  'bg-red-100 text-red-800'
-                }`}>
-                  {selectedBooking.status.replace('_', ' ')}
-                </span>
-              </div>
-
-              {/* Customer and Driver Info */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h4 className="text-sm font-medium text-gray-700 mb-3">Customer Information</h4>
-                  <div className="flex items-center mb-3">
-                    <UserCircleIcon className="h-8 w-8 text-green-600 mr-3" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{selectedBooking.user.name}</p>
-                      <p className="text-sm text-gray-500">{selectedBooking.user.email}</p>
-                      {selectedBooking.user.phone && (
-                        <p className="text-sm text-gray-500">{selectedBooking.user.phone}</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h4 className="text-sm font-medium text-gray-700 mb-3">Driver Information</h4>
-                  <div className="flex items-center mb-3">
-                    <TruckIcon className="h-8 w-8 text-blue-600 mr-3" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{selectedBooking.driver.user.name}</p>
-                      <p className="text-sm text-gray-500">{selectedBooking.driver.user.email}</p>
-                      <p className="text-sm text-gray-500">{selectedBooking.driver.truckType.replace('_', ' ')}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Trip Details */}
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h4 className="text-sm font-medium text-gray-700 mb-3">Trip Details</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">From</label>
-                    <p className="text-sm text-gray-900">{selectedBooking.source}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">To</label>
-                    <p className="text-sm text-gray-900">{selectedBooking.destination}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Date</label>
-                    <p className="text-sm text-gray-900">{new Date(selectedBooking.date).toLocaleDateString()}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Fare</label>
-                    <p className="text-sm font-medium text-gray-900">${selectedBooking.fare}</p>
-                  </div>
-                  {selectedBooking.pickupTime && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Pickup Time</label>
-                      <p className="text-sm text-gray-900">{new Date(selectedBooking.pickupTime).toLocaleString()}</p>
-                    </div>
-                  )}
-                  {selectedBooking.completedAt && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Completed At</label>
-                      <p className="text-sm text-gray-900">{new Date(selectedBooking.completedAt).toLocaleString()}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
+              <BookingDetails booking={selectedBooking} />
 
               {/* Status Update */}
               {selectedBooking.status !== 'COMPLETED' && selectedBooking.status !== 'CANCELLED' && (
                 <div className="bg-gray-50 rounded-lg p-4">
                   <h4 className="text-sm font-medium text-gray-700 mb-3">Update Status</h4>
                   <div className="flex space-x-2">
-                    {selectedBooking.status === 'PENDING' && (
+                    {getNextStatusAction(selectedBooking.status) && (
                       <Button
                         size="sm"
-                        onClick={() => handleUpdateStatus(selectedBooking, 'CONFIRMED')}
+                        onClick={() => handleUpdateStatus(selectedBooking, getNextStatusAction(selectedBooking.status)!.nextStatus)}
                       >
-                        Confirm Booking
-                      </Button>
-                    )}
-                    {selectedBooking.status === 'CONFIRMED' && (
-                      <Button
-                        size="sm"
-                        onClick={() => handleUpdateStatus(selectedBooking, 'IN_PROGRESS')}
-                      >
-                        Start Trip
-                      </Button>
-                    )}
-                    {selectedBooking.status === 'IN_PROGRESS' && (
-                      <Button
-                        size="sm"
-                        onClick={() => handleUpdateStatus(selectedBooking, 'COMPLETED')}
-                      >
-                        Complete Trip
+                        {getNextStatusAction(selectedBooking.status)!.label}
                       </Button>
                     )}
                     <Button
@@ -391,4 +520,29 @@ export default function AdminBookingsPage() {
       </DashboardLayout>
     </ProtectedRoute>
   );
-} 
+}
+
+// Loading component for Suspense fallback
+function AdminBookingsLoading() {
+  return (
+    <ProtectedRoute requiredRole="ADMIN">
+      <DashboardLayout title="Booking Management" subtitle="Manage all bookings in the system">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading bookings...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    </ProtectedRoute>
+  );
+}
+
+// Main export with Suspense wrapper
+export default function AdminBookingsPage() {
+  return (
+    <Suspense fallback={<AdminBookingsLoading />}>
+      <AdminBookingsContent />
+    </Suspense>
+  );
+}

@@ -15,9 +15,7 @@ export default function LayoutWrapper({ children }: LayoutWrapperProps) {
   // Check if current path is a dashboard route
   const isDashboardRoute = pathname.startsWith('/dashboard');
   
-  // Check if current path is a landing page (public pages)
-  const isLandingPage = ['/', '/login', '/register', '/about', '/contact', '/search'].includes(pathname) || 
-                       pathname.startsWith('/sweetalert');
+
 
   // For dashboard routes, don't wrap with Navigation/Footer
   if (isDashboardRoute) {

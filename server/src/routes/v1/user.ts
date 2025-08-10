@@ -1,8 +1,12 @@
 import { Router } from 'express';
 import { UserController } from '../../controllers/userController';
 import { auth, authorize } from '../../middleware/auth';
+import { createMulterUpload } from '../../utils/upload';
 
 const router = Router();
+
+// Multer setup for avatar uploads (local storage)
+const upload = createMulterUpload('avatars');
 
 // Get all users (Admin only)
 router.get('/', auth, authorize('ADMIN'), UserController.getAllUsers);
@@ -18,6 +22,9 @@ router.get('/me', auth, UserController.getCurrentUser);
 
 // Update current user profile
 router.put('/me', auth, UserController.updateCurrentUser);
+
+// Upload current user avatar
+router.post('/me/avatar', auth, upload.single('avatar'), UserController.uploadAvatar);
 
 // Get specific user by ID (Admin only)
 router.get('/:userId', auth, authorize('ADMIN'), UserController.getUserById);

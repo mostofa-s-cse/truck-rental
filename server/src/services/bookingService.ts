@@ -1,5 +1,6 @@
 import { PrismaClient, BookingStatus } from '@prisma/client';
 import { CreateBookingRequest, UpdateBookingRequest } from '../types';
+import { NotificationIntegrationService } from './notificationIntegrationService';
 
 const prisma = new PrismaClient();
 
@@ -7,14 +8,36 @@ export class BookingService {
   static async createBooking(userId: string, bookingData: CreateBookingRequest) {
     const { driverId, ...rest } = bookingData;
 
+    console.log('BookingService - Creating booking:', {
+      userId,
+      driverId,
+      bookingData: rest
+    });
+
+    // Check if user exists
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, name: true, email: true, role: true }
+    });
+
+    if (!user) {
+      console.error('BookingService - User not found:', userId);
+      throw new Error(`User not found with ID: ${userId}`);
+    }
+
+    console.log('BookingService - User found:', user);
+
     // Check if driver exists and is available
     const driver = await prisma.driver.findUnique({
       where: { id: driverId }
     });
 
     if (!driver) {
+      console.error('BookingService - Driver not found:', driverId);
       throw new Error('Driver not found');
     }
+
+    console.log('BookingService - Driver found:', driver);
 
     if (!driver.isAvailable) {
       throw new Error('Driver is not available');
@@ -24,12 +47,19 @@ export class BookingService {
       throw new Error('Driver is not verified');
     }
 
-    // Create booking
+    // Create booking with payment record
     const booking = await prisma.booking.create({
       data: {
         userId,
         driverId,
-        ...rest
+        ...rest,
+        payment: {
+          create: {
+            amount: rest.fare,
+            paymentMethod: 'PENDING',
+            status: 'PENDING'
+          }
+        }
       },
       include: {
         user: {
@@ -51,9 +81,18 @@ export class BookingService {
               }
             }
           }
-        }
+        },
+        payment: true
       }
     });
+
+    // Send notifications for booking creation
+    try {
+      await NotificationIntegrationService.onBookingCreated(booking.id);
+    } catch (error) {
+      console.error('Failed to send booking creation notifications:', error);
+      // Don't fail the booking creation if notifications fail
+    }
 
     return booking;
   }
@@ -96,6 +135,28 @@ export class BookingService {
           }
         }
       });
+
+      // Send trip completion notifications
+      try {
+        await NotificationIntegrationService.onTripCompleted(booking.id);
+      } catch (error) {
+        console.error('Failed to send trip completion notifications:', error);
+      }
+    }
+
+    // Send notifications for other status changes
+    if (updateData.status && updateData.status !== booking.status) {
+      try {
+        if (updateData.status === BookingStatus.IN_PROGRESS) {
+          await NotificationIntegrationService.onTripStarted(booking.id);
+        } else if (updateData.status === BookingStatus.CONFIRMED) {
+          await NotificationIntegrationService.onBookingStatusChanged(booking.id, 'CONFIRMED', booking.driverId);
+        } else if (updateData.status === BookingStatus.CANCELLED) {
+          await NotificationIntegrationService.onBookingStatusChanged(booking.id, 'CANCELLED', booking.driverId);
+        }
+      } catch (error) {
+        console.error('Failed to send status change notifications:', error);
+      }
     }
 
     return booking;
@@ -226,15 +287,21 @@ export class BookingService {
     };
   }
 
-  static async getAllBookings(page = 1, limit = 10, status?: BookingStatus) {
+  static async getAllBookings(page = 1, limit = 10, status?: BookingStatus, search?: string) {
     const skip = (page - 1) * limit;
-    const where = status ? { status } : {};
+    
+    // Build where clause for filtering
+    let where: any = {};
+    
+    if (status) {
+      where.status = status;
+    }
 
-    const [bookings, total] = await Promise.all([
+    // For search, we'll fetch all bookings and filter them in the application
+    // This ensures we can search across all fields including nested relations
+    const [allBookings, total] = await Promise.all([
       prisma.booking.findMany({
         where,
-        skip,
-        take: limit,
         include: {
           user: {
             select: {
@@ -264,16 +331,54 @@ export class BookingService {
       prisma.booking.count({ where })
     ]);
 
+    // Apply search filtering if search term is provided
+    let filteredBookings = allBookings;
+    let finalTotal = total;
+    
+    if (search && search.trim()) {
+      const searchTerm = search.trim().toLowerCase();
+      
+      filteredBookings = allBookings.filter(booking => {
+        // Check booking ID
+        const bookingId = booking.id.toLowerCase();
+        
+        // Check user name and email
+        const userName = booking.user.name.toLowerCase();
+        const userEmail = booking.user.email.toLowerCase();
+        
+        // Check driver name and email (if driver exists)
+        const driverName = booking.driver?.user.name.toLowerCase() || '';
+        const driverEmail = booking.driver?.user.email.toLowerCase() || '';
+        
+        // Check source and destination
+        const source = booking.source.toLowerCase();
+        const destination = booking.destination.toLowerCase();
+        
+        return bookingId.includes(searchTerm) || 
+               userName.includes(searchTerm) || 
+               userEmail.includes(searchTerm) || 
+               driverName.includes(searchTerm) || 
+               driverEmail.includes(searchTerm) ||
+               source.includes(searchTerm) || 
+               destination.includes(searchTerm);
+      });
+      
+      finalTotal = filteredBookings.length;
+    }
+
+    // Apply pagination to filtered results
+    const paginatedBookings = filteredBookings.slice(skip, skip + limit);
+
     return {
-      bookings,
-      total,
+      bookings: paginatedBookings,
+      total: finalTotal,
       page,
       limit,
-      totalPages: Math.ceil(total / limit)
+      totalPages: Math.ceil(finalTotal / limit)
     };
   }
 
-  static async cancelBooking(bookingId: string, userId: string) {
+  static async cancelBooking(bookingId: string, userId: string, cancelReason?: string, cancelComment?: string) {
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId }
     });
@@ -286,13 +391,27 @@ export class BookingService {
       throw new Error('Unauthorized to cancel this booking');
     }
 
-    if (booking.status !== BookingStatus.PENDING) {
-      throw new Error('Cannot cancel booking that is not pending');
+    // Allow cancellation for PENDING and CONFIRMED bookings
+    if (booking.status !== BookingStatus.PENDING && booking.status !== BookingStatus.CONFIRMED) {
+      throw new Error('Cannot cancel booking that is not pending or confirmed');
+    }
+
+    const updateData: any = { 
+      status: BookingStatus.CANCELLED,
+      cancelledAt: new Date()
+    };
+
+    // Add cancellation reason and comment if provided
+    if (cancelReason) {
+      updateData.cancelReason = cancelReason;
+    }
+    if (cancelComment) {
+      updateData.cancelComment = cancelComment;
     }
 
     const updatedBooking = await prisma.booking.update({
       where: { id: bookingId },
-      data: { status: BookingStatus.CANCELLED },
+      data: updateData,
       include: {
         user: {
           select: {

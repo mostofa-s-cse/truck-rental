@@ -1,3 +1,15 @@
+import { seedDhakaAreas } from './seeders/dhakaAreaSeeder';
+import { seedNotifications } from './seeders/notificationSeeder';
+
+async function main() {
+  await seedDhakaAreas();
+}
+
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});
+
 import { PrismaClient, UserRole, TruckType, TruckQuality, BookingStatus } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
@@ -21,6 +33,7 @@ async function main() {
   await seedPayments();
   await seedTracking();
   await seedEmergencyAlerts();
+  await seedNotifications();
 
   console.log('✅ Database seeding completed successfully!');
 }
@@ -39,7 +52,8 @@ async function clearDatabase() {
     'users',
     'areas',
     'truck_categories',
-    'system_settings'
+    'system_settings',
+    'notifications'
   ];
 
   for (const table of tables) {
@@ -660,6 +674,42 @@ async function seedEmergencyAlerts() {
   for (const alert of alerts) {
     await prisma.emergencyAlert.create({
       data: alert
+    });
+  }
+}
+
+async function seedNotifications() {
+  console.log('🔔 Seeding notifications...');
+  
+  const users = await prisma.user.findMany();
+  
+  const notifications = [
+    {
+      userId: users[0].id,
+      type: 'BOOKING_CONFIRMED',
+      message: 'Your booking #12345 has been confirmed by driver Ahmed Khan.',
+      isRead: false,
+      link: '/booking/12345'
+    },
+    {
+      userId: users[1].id,
+      type: 'BOOKING_COMPLETED',
+      message: 'Your booking #12346 has been completed. Rate your driver!',
+      isRead: false,
+      link: '/booking/12346'
+    },
+    {
+      userId: users[2].id,
+      type: 'EMERGENCY_ALERT',
+      message: 'Emergency alert from driver Rahim Uddin. Location: Dhaka Central, Dhaka. Description: Engine overheating, need immediate assistance.',
+      isRead: false,
+      link: '/emergency/12347'
+    }
+  ];
+
+  for (const notification of notifications) {
+    await prisma.notification.create({
+      data: notification
     });
   }
 }

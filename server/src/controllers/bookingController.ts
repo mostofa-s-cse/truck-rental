@@ -4,11 +4,37 @@ import { CreateBookingRequest, UpdateBookingRequest, ApiResponse } from '../type
 import { logError, logDatabase } from '../utils/logger';
 import { PrismaClient } from '@prisma/client';
 
+const prisma = new PrismaClient();
+
 export class BookingController {
   static async createBooking(req: Request, res: Response) {
     try {
       const userId = (req as any).user.userId;
       const bookingData: CreateBookingRequest = req.body;
+      
+      // Debug: Log the user information
+      console.log('Booking creation - User info:', {
+        userId: userId,
+        user: (req as any).user,
+        token: req.header('Authorization')?.replace('Bearer ', '').substring(0, 20) + '...'
+      });
+      
+      // Verify user exists in database
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, name: true, email: true, role: true }
+      });
+      
+      if (!user) {
+        console.error('User not found in database:', userId);
+        return res.status(400).json({
+          success: false,
+          message: 'User not found in database',
+          error: 'USER_NOT_FOUND'
+        });
+      }
+      
+      console.log('User found in database:', user);
       
       logDatabase('insert', 'bookings', { userId, bookingData: { ...bookingData, driverId: bookingData.driverId } });
       
@@ -208,11 +234,12 @@ export class BookingController {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
       const status = req.query.status as string;
+      const search = req.query.search as string;
       const userId = (req as any).user?.userId || 'anonymous';
       
-      logDatabase('select', 'bookings', { page, limit, status, requestedBy: userId, operation: 'all_bookings' });
+      logDatabase('select', 'bookings', { page, limit, status, search, requestedBy: userId, operation: 'all_bookings' });
       
-      const result = await BookingService.getAllBookings(page, limit, status as any);
+      const result = await BookingService.getAllBookings(page, limit, status as any, search);
 
       const response: ApiResponse = {
         success: true,
@@ -229,7 +256,8 @@ export class BookingController {
         userId,
         page: req.query.page,
         limit: req.query.limit,
-        status: req.query.status
+        status: req.query.status,
+        search: req.query.search
       });
 
       const response: ApiResponse = {
@@ -246,10 +274,17 @@ export class BookingController {
     try {
       const { bookingId } = req.params;
       const userId = (req as any).user.userId;
+      const { cancelReason, cancelComment } = req.body;
       
-      logDatabase('update', 'bookings', { bookingId, userId, action: 'cancel' });
+      logDatabase('update', 'bookings', { 
+        bookingId, 
+        userId, 
+        action: 'cancel',
+        cancelReason,
+        hasComment: !!cancelComment
+      });
       
-      const result = await BookingService.cancelBooking(bookingId, userId);
+      const result = await BookingService.cancelBooking(bookingId, userId, cancelReason, cancelComment);
 
       logDatabase('update_success', 'bookings', { bookingId, userId, action: 'cancelled' });
 
@@ -266,7 +301,8 @@ export class BookingController {
       logError(error, { 
         operation: 'cancel_booking', 
         bookingId: req.params.bookingId,
-        userId
+        userId,
+        cancelReason: req.body.cancelReason
       });
 
       const response: ApiResponse = {

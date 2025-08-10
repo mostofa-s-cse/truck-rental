@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { User, RegisterData, ApiResponse } from '@/types';
+import { User, RegisterData } from '@/types';
 import { apiClient } from '@/lib/api';
 import { setAuthData, getAuthData, clearAuthData } from '@/utils/auth';
 
@@ -24,20 +24,40 @@ export const loginUser = createAsyncThunk(
   'auth/login',
   async ({ email, password }: { email: string; password: string }, { rejectWithValue }) => {
     try {
+      console.log('Attempting login with:', { email }); // Debug log
       const response = await apiClient.login({ email, password });
+      console.log('Login response:', response); // Debug log
       
       if (response.success && response.data) {
-        const { user, token } = response.data;
+        const authData = response.data as { user: User; token: string };
+        const { user, token } = authData;
         
         // Store auth data using utility function
         setAuthData(user, token);
         
         return { user, token };
       } else {
-        return rejectWithValue(response.message || 'Login failed');
+        // Handle server error response
+        console.log('Login failed with response:', response); // Debug log
+        const errorMessage = response.message || response.error || 'Login failed';
+        console.log('Extracted error message:', errorMessage); // Debug log
+        return rejectWithValue(errorMessage);
       }
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || error.message || 'Login failed');
+    } catch (error: unknown) {
+      console.log('Login caught error:', error); // Debug log
+      // Handle network or other errors
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { data?: { message?: string; error?: string } }; message?: string };
+        const errorMessage = axiosError.response?.data?.message || 
+                           axiosError.response?.data?.error || 
+                           axiosError.message || 
+                           'Login failed';
+        console.log('Extracted axios error message:', errorMessage); // Debug log
+        return rejectWithValue(errorMessage);
+      }
+      const errorMessage = error instanceof Error ? error.message : 'Login failed';
+      console.log('Extracted generic error message:', errorMessage); // Debug log
+      return rejectWithValue(errorMessage);
     }
   }
 );
@@ -49,7 +69,8 @@ export const registerUser = createAsyncThunk(
       const response = await apiClient.register(userData);
       
       if (response.success && response.data) {
-        const { user, token } = response.data;
+        const authData = response.data as { user: User; token: string };
+        const { user, token } = authData;
         
         // Store auth data using utility function
         setAuthData(user, token);
@@ -58,8 +79,9 @@ export const registerUser = createAsyncThunk(
       } else {
         return rejectWithValue(response.message || 'Registration failed');
       }
-    } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || error.message || 'Registration failed');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Registration failed';
+      return rejectWithValue(errorMessage);
     }
   }
 );
@@ -84,7 +106,7 @@ export const checkAuthStatus = createAsyncThunk(
       }
       
       return rejectWithValue('No stored auth data');
-    } catch (error) {
+    } catch {
       return rejectWithValue('Failed to check auth status');
     }
   }
@@ -99,6 +121,21 @@ const authSlice = createSlice({
     },
     setLoading: (state, action: PayloadAction<boolean>) => {
       state.loading = action.payload;
+    },
+    updateUser: (state, action: PayloadAction<Partial<User>>) => {
+      if (!state.user) {
+        state.user = action.payload as User;
+      } else {
+        state.user = { ...state.user, ...action.payload } as User;
+      }
+      try {
+        localStorage.setItem('user', JSON.stringify(state.user));
+        if (action.payload && typeof action.payload === 'object' && 'role' in action.payload) {
+          setAuthData(state.user as unknown as { role: string }, state.token || '');
+        }
+      } catch {
+        // ignore storage errors
+      }
     },
   },
   extraReducers: (builder) => {
@@ -117,6 +154,7 @@ const authSlice = createSlice({
       .addCase(loginUser.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
+        console.log('Login rejected with error:', action.payload); // Debug log
       });
 
     // Register
@@ -165,5 +203,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { clearError, setLoading } = authSlice.actions;
+export const { clearError, setLoading, updateUser } = authSlice.actions;
 export default authSlice.reducer; 

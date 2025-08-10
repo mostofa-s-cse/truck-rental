@@ -12,86 +12,14 @@ export async function seedBookings() {
   const drivers = await prisma.driver.findMany();
   
   const routes = [
-    {
-      source: 'Dhaka Central, Dhaka',
-      destination: 'Dhaka South, Dhaka',
-      sourceLat: 23.8103,
-      sourceLng: 90.4125,
-      destLat: 23.7099,
-      destLng: 90.4071,
-      distance: 12.5,
-      fare: 625.0
-    },
-    {
-      source: 'Dhaka North, Dhaka',
-      destination: 'Chittagong City, Chittagong',
-      sourceLat: 23.7937,
-      sourceLng: 90.4066,
-      destLat: 22.3419,
-      destLng: 91.8132,
-      distance: 250.0,
-      fare: 12500.0
-    },
-    {
-      source: 'Chittagong Port, Chittagong',
-      destination: 'Khulna City, Khulna',
-      sourceLat: 22.3419,
-      sourceLng: 91.8132,
-      destLat: 22.8456,
-      destLng: 89.5403,
-      distance: 180.0,
-      fare: 9000.0
-    },
-    {
-      source: 'Sylhet City, Sylhet',
-      destination: 'Barisal City, Barisal',
-      sourceLat: 24.8949,
-      sourceLng: 91.8687,
-      destLat: 22.7010,
-      destLng: 90.3535,
-      distance: 320.0,
-      fare: 16000.0
-    },
-    {
-      source: 'Rajshahi City, Rajshahi',
-      destination: 'Rangpur City, Rangpur',
-      sourceLat: 24.3745,
-      sourceLng: 88.6042,
-      destLat: 25.7439,
-      destLng: 89.2752,
-      distance: 150.0,
-      fare: 7500.0
-    },
-    {
-      source: 'Gulshan, Dhaka',
-      destination: 'Mirpur, Dhaka',
-      sourceLat: 23.7937,
-      sourceLng: 90.4066,
-      destLat: 23.8103,
-      destLng: 90.3654,
-      distance: 8.0,
-      fare: 400.0
-    },
-    {
-      source: 'Banani, Dhaka',
-      destination: 'Uttara, Dhaka',
-      sourceLat: 23.7937,
-      sourceLng: 90.4066,
-      destLat: 23.8709,
-      destLng: 90.3835,
-      distance: 15.0,
-      fare: 750.0
-    },
-    {
-      source: 'Dhanmondi, Dhaka',
-      destination: 'Savar, Dhaka',
-      sourceLat: 23.7465,
-      sourceLng: 90.3760,
-      destLat: 23.8500,
-      destLng: 90.2600,
-      distance: 25.0,
-      fare: 1250.0
-    }
+    { source: 'Gulshan-1, Dhaka', destination: 'Mirpur-10, Dhaka', sourceLat: 23.7803, sourceLng: 90.4168, destLat: 23.8260, destLng: 90.3800, distance: 10.5, fare: 525.0 },
+    { source: 'Banani, Dhaka', destination: 'Uttara, Dhaka', sourceLat: 23.7936, sourceLng: 90.4068, destLat: 23.8747, destLng: 90.4006, distance: 15.0, fare: 750.0 },
+    { source: 'Dhanmondi, Dhaka', destination: 'Shahbagh, Dhaka', sourceLat: 23.7465, sourceLng: 90.3760, destLat: 23.7372, destLng: 90.3949, distance: 5.0, fare: 250.0 },
+    { source: 'Mohammadpur, Dhaka', destination: 'Farmgate, Dhaka', sourceLat: 23.7586, sourceLng: 90.3580, destLat: 23.7564, destLng: 90.3890, distance: 4.2, fare: 210.0 },
+    { source: 'Bashundhara R/A, Dhaka', destination: 'Baridhara DOHS, Dhaka', sourceLat: 23.8151, sourceLng: 90.4480, destLat: 23.8085, destLng: 90.4218, distance: 6.8, fare: 340.0 },
+    { source: 'Khilgaon, Dhaka', destination: 'Rampura, Dhaka', sourceLat: 23.7460, sourceLng: 90.4479, destLat: 23.7631, destLng: 90.4255, distance: 3.9, fare: 195.0 },
+    { source: 'Gabtali, Dhaka', destination: 'Mirpur-1, Dhaka', sourceLat: 23.7743, sourceLng: 90.3448, destLat: 23.8046, destLng: 90.3650, distance: 6.5, fare: 325.0 },
+    { source: 'Khilkhet, Dhaka', destination: 'Gulshan-2, Dhaka', sourceLat: 23.8284, sourceLng: 90.4259, destLat: 23.7916, destLng: 90.4145, distance: 7.2, fare: 360.0 },
   ];
 
   const bookings = [

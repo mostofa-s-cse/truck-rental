@@ -252,6 +252,32 @@ export class SearchService {
     }
   }
 
+  static async getAllTrucks(limit?: number): Promise<any[]> {
+    try {
+      logDatabase('select', 'all_trucks', { limit });
+
+      const result = await prisma.driver.findMany({
+        include: {
+          user: {
+            select: { id: true, name: true, email: true, phone: true, avatar: true }
+          },
+          reviews: {
+            select: { rating: true }
+          }
+        },
+        orderBy: [
+          { createdAt: 'desc' }
+        ],
+        take: limit
+      });
+
+      return result;
+    } catch (error) {
+      logError(error, { operation: 'get_all_trucks', limit });
+      throw error;
+    }
+  }
+
   static async getNearbyTrucks(
     latitude: number,
     longitude: number,

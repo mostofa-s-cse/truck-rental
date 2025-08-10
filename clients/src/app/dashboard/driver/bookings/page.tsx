@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useAppSelector } from '@/hooks/redux';
+import { useState, useEffect, useCallback } from 'react';
 import DashboardLayout from '@/components/ui/DashboardLayout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import DataTable, { Column } from '@/components/ui/DataTable';
@@ -18,12 +17,12 @@ import {
 } from '@heroicons/react/24/outline';
 
 export default function DriverBookingsPage() {
-  const { successToast, errorToast } = useSweetAlert();
+  const { successToast, errorToast, question } = useSweetAlert();
   
   // State
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
+
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [totalBookings, setTotalBookings] = useState(0);
@@ -34,27 +33,26 @@ export default function DriverBookingsPage() {
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
 
-  useEffect(() => {
-    fetchBookings();
-  }, [currentPage, pageSize, searchQuery, filterStatus]);
-
-  const fetchBookings = async () => {
+  const fetchBookings = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await driverApi.getBookings(currentPage, pageSize, filterStatus || undefined);
-      setBookings(response.data);
-      setTotalBookings(response.pagination.total);
-      setTotalPages(response.pagination.totalPages);
+      const response = await driverApi.getRecentBookings();
+      setBookings(response);
+      setTotalBookings(response.length);
+      setTotalPages(Math.ceil(response.length / pageSize));
     } catch (error) {
       console.error('Error fetching bookings:', error);
       errorToast('Failed to fetch bookings');
     } finally {
       setLoading(false);
     }
-  };
+  }, [pageSize, errorToast]);
 
-  const handleSearch = async (query: string) => {
-    setSearchQuery(query);
+  useEffect(() => {
+    fetchBookings();
+  }, [fetchBookings]);
+
+  const handleSearch = async () => {
     setCurrentPage(1);
   };
 
@@ -68,12 +66,12 @@ export default function DriverBookingsPage() {
   };
 
   const handleAcceptBooking = async (booking: Booking) => {
-    const confirmed = await confirmDialog(
-      'Accept Booking',
-      `Are you sure you want to accept this booking from ${booking.user.name}?`
+    const result = await question(
+      `Are you sure you want to accept this booking from ${booking.user || 'customer'}?`,
+      'Accept Booking'
     );
 
-    if (!confirmed) return;
+    if (!result.isConfirmed) return;
 
     try {
       await driverApi.acceptBooking(booking.id);
@@ -86,12 +84,12 @@ export default function DriverBookingsPage() {
   };
 
   const handleDeclineBooking = async (booking: Booking) => {
-    const confirmed = await confirmDialog(
-      'Decline Booking',
-      `Are you sure you want to decline this booking from ${booking.user.name}?`
+    const result = await question(
+      `Are you sure you want to decline this booking from ${booking.user || 'customer'}?`,
+      'Decline Booking'
     );
 
-    if (!confirmed) return;
+    if (!result.isConfirmed) return;
 
     try {
       await driverApi.declineBooking(booking.id);
@@ -135,22 +133,26 @@ export default function DriverBookingsPage() {
     {
       key: 'id',
       header: 'Booking ID',
-      render: (value) => `#${value.slice(-8).toUpperCase()}`
+      render: (value) => `#${(value as string).slice(-8).toUpperCase()}`
     },
     {
       key: 'user.name',
       header: 'Customer',
-      render: (value, row) => (
-        <div className="flex items-center">
-          <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
-            <UserCircleIcon className="h-5 w-5 text-green-600" />
+      render: (value, row) => {
+        const userName = typeof row.user === 'string' ? row.user : row.user?.name || 'Unknown';
+        const userEmail = typeof row.user === 'string' ? '' : row.user?.email || '';
+        return (
+          <div className="flex items-center">
+            <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
+              <UserCircleIcon className="h-5 w-5 text-green-600" />
+            </div>
+            <div className="ml-3">
+              <div className="text-sm font-medium text-gray-900">{userName}</div>
+              {userEmail && <div className="text-sm text-gray-500">{userEmail}</div>}
+            </div>
           </div>
-          <div className="ml-3">
-            <div className="text-sm font-medium text-gray-900">{row.user.name}</div>
-            <div className="text-sm text-gray-500">{row.user.email}</div>
-          </div>
-        </div>
-      )
+        );
+      }
     },
     {
       key: 'source',
@@ -171,7 +173,7 @@ export default function DriverBookingsPage() {
       render: (value) => (
         <div className="flex items-center">
           <CurrencyDollarIcon className="h-4 w-4 text-green-500 mr-1" />
-          <span className="text-sm font-medium text-gray-900">${value}</span>
+          <span className="text-sm font-medium text-gray-900">${value as number}</span>
         </div>
       )
     },
@@ -186,11 +188,12 @@ export default function DriverBookingsPage() {
           'COMPLETED': 'bg-green-100 text-green-800',
           'CANCELLED': 'bg-red-100 text-red-800'
         };
+        const statusValue = value as string;
         return (
           <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-            statusColors[value as keyof typeof statusColors] || 'bg-gray-100 text-gray-800'
+            statusColors[statusValue as keyof typeof statusColors] || 'bg-gray-100 text-gray-800'
           }`}>
-            {value.replace('_', ' ')}
+            {statusValue.replace('_', ' ')}
           </span>
         );
       }
@@ -198,7 +201,7 @@ export default function DriverBookingsPage() {
     {
       key: 'date',
       header: 'Date',
-      render: (value) => new Date(value).toLocaleDateString()
+      render: (value) => new Date(value as string).toLocaleDateString()
     }
   ];
 
@@ -255,13 +258,8 @@ export default function DriverBookingsPage() {
             onLimitChange={handlePageSizeChange}
             onSearch={handleSearch}
             searchPlaceholder="Search bookings by customer name or location..."
-            showAddButton={false}
             actions={{
-              view: handleViewBooking,
-              accept: handleAcceptBooking,
-              decline: handleDeclineBooking,
-              start: handleStartTrip,
-              complete: handleCompleteTrip
+              view: handleViewBooking
             }}
             emptyMessage="No bookings found"
           />
@@ -283,7 +281,7 @@ export default function DriverBookingsPage() {
                     Booking #{selectedBooking.id.slice(-8).toUpperCase()}
                   </h3>
                   <p className="text-sm text-gray-500">
-                    Created on {new Date(selectedBooking.createdAt).toLocaleDateString()}
+                    Created on {selectedBooking.createdAt ? new Date(selectedBooking.createdAt).toLocaleDateString() : 'Unknown'}
                   </p>
                 </div>
                 <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
@@ -303,9 +301,13 @@ export default function DriverBookingsPage() {
                 <div className="flex items-center mb-3">
                   <UserCircleIcon className="h-8 w-8 text-green-600 mr-3" />
                   <div>
-                    <p className="text-sm font-medium text-gray-900">{selectedBooking.user.name}</p>
-                    <p className="text-sm text-gray-500">{selectedBooking.user.email}</p>
-                    {selectedBooking.user.phone && (
+                    <p className="text-sm font-medium text-gray-900">
+                      {typeof selectedBooking.user === 'string' ? selectedBooking.user : selectedBooking.user?.name || 'Unknown'}
+                    </p>
+                    {typeof selectedBooking.user === 'object' && selectedBooking.user?.email && (
+                      <p className="text-sm text-gray-500">{selectedBooking.user.email}</p>
+                    )}
+                    {typeof selectedBooking.user === 'object' && selectedBooking.user?.phone && (
                       <div className="flex items-center mt-1">
                         <PhoneIcon className="h-4 w-4 text-gray-400 mr-1" />
                         <span className="text-sm text-gray-500">{selectedBooking.user.phone}</span>

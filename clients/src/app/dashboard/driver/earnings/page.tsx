@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useAppSelector } from '@/hooks/redux';
+import { useState, useCallback, useEffect } from 'react';
 import DashboardLayout from '@/components/ui/DashboardLayout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { driverApi, Earnings } from '@/lib/dashboardApi';
@@ -19,13 +18,49 @@ import { TrendingUpIcon } from 'lucide-react';
 
 interface EarningsData {
   overview: Earnings;
-  dailyEarnings: any[];
-  weeklyEarnings: any[];
-  monthlyEarnings: any[];
-  earningsByStatus: any[];
-  topEarningDays: any[];
-  paymentMethods: any[];
-  recentTransactions: any[];
+  dailyEarnings: Array<{
+    date: string;
+    earnings: number;
+    trips: number;
+    avgPerTrip: number;
+  }>;
+  weeklyEarnings: Array<{
+    week: string;
+    earnings: number;
+    trips: number;
+    avgPerTrip: number;
+  }>;
+  monthlyEarnings: Array<{
+    month: string;
+    earnings: number;
+    trips: number;
+    avgPerTrip: number;
+  }>;
+  earningsByStatus: Array<{
+    status: string;
+    earnings: number;
+    trips: number;
+    percentage: number;
+  }>;
+  topEarningDays: Array<{
+    day: string;
+    earnings: number;
+    trips: number;
+    avgPerTrip: number;
+  }>;
+  paymentMethods: Array<{
+    method: string;
+    earnings: number;
+    trips: number;
+    percentage: number;
+  }>;
+  recentTransactions: Array<{
+    id: string;
+    amount: number;
+    method: string;
+    date: string;
+    status: string;
+  }>;
 }
 
 export default function DriverEarningsPage() {
@@ -36,77 +71,51 @@ export default function DriverEarningsPage() {
   const [earningsData, setEarningsData] = useState<EarningsData | null>(null);
   const [timeRange, setTimeRange] = useState<'day' | 'week' | 'month' | 'year'>('month');
 
-  useEffect(() => {
-    fetchEarningsData();
-  }, [timeRange]);
-
-  const fetchEarningsData = async () => {
+  const fetchEarningsData = useCallback(async () => {
     try {
       setLoading(true);
-      
-      // Fetch earnings data from API
-      const earnings = await driverApi.getEarnings();
-      
-      // Mock data for detailed earnings (replace with real API calls)
-      const mockData: EarningsData = {
-        overview: earnings,
-        dailyEarnings: [
-          { date: '2024-01-01', earnings: 125, trips: 3, avgPerTrip: 41.7 },
-          { date: '2024-01-02', earnings: 180, trips: 4, avgPerTrip: 45.0 },
-          { date: '2024-01-03', earnings: 95, trips: 2, avgPerTrip: 47.5 },
-          { date: '2024-01-04', earnings: 220, trips: 5, avgPerTrip: 44.0 },
-          { date: '2024-01-05', earnings: 165, trips: 4, avgPerTrip: 41.3 },
-          { date: '2024-01-06', earnings: 195, trips: 4, avgPerTrip: 48.8 },
-          { date: '2024-01-07', earnings: 140, trips: 3, avgPerTrip: 46.7 }
-        ],
-        weeklyEarnings: [
-          { week: 'Week 1', earnings: 1120, trips: 25, avgPerTrip: 44.8 },
-          { week: 'Week 2', earnings: 1280, trips: 28, avgPerTrip: 45.7 },
-          { week: 'Week 3', earnings: 1350, trips: 30, avgPerTrip: 45.0 },
-          { week: 'Week 4', earnings: 1420, trips: 32, avgPerTrip: 44.4 }
-        ],
-        monthlyEarnings: [
-          { month: 'Jan', earnings: 5200, trips: 115, avgPerTrip: 45.2 },
-          { month: 'Feb', earnings: 5800, trips: 128, avgPerTrip: 45.3 },
-          { month: 'Mar', earnings: 6200, trips: 135, avgPerTrip: 45.9 },
-          { month: 'Apr', earnings: 6800, trips: 145, avgPerTrip: 46.9 },
-          { month: 'May', earnings: 7200, trips: 152, avgPerTrip: 47.4 },
-          { month: 'Jun', earnings: 7800, trips: 160, avgPerTrip: 48.8 }
-        ],
-        earningsByStatus: [
-          { status: 'COMPLETED', earnings: 6800, trips: 145, percentage: 85 },
-          { status: 'IN_PROGRESS', earnings: 800, trips: 15, percentage: 10 },
-          { status: 'CANCELLED', earnings: 400, trips: 10, percentage: 5 }
-        ],
-        topEarningDays: [
-          { day: 'Friday', earnings: 195, trips: 4, avgPerTrip: 48.8 },
-          { day: 'Thursday', earnings: 220, trips: 5, avgPerTrip: 44.0 },
-          { day: 'Saturday', earnings: 180, trips: 4, avgPerTrip: 45.0 },
-          { day: 'Wednesday', earnings: 165, trips: 4, avgPerTrip: 41.3 },
-          { day: 'Tuesday', earnings: 140, trips: 3, avgPerTrip: 46.7 }
-        ],
-        paymentMethods: [
-          { method: 'CASH', earnings: 4000, trips: 85, percentage: 50 },
-          { method: 'CARD', earnings: 2400, trips: 50, percentage: 30 },
-          { method: 'MOBILE_MONEY', earnings: 1600, trips: 35, percentage: 20 }
-        ],
-        recentTransactions: [
-          { id: 'TXN001', amount: 85, method: 'CASH', date: '2024-01-15', status: 'COMPLETED' },
-          { id: 'TXN002', amount: 120, method: 'CARD', date: '2024-01-14', status: 'COMPLETED' },
-          { id: 'TXN003', amount: 95, method: 'MOBILE_MONEY', date: '2024-01-13', status: 'COMPLETED' },
-          { id: 'TXN004', amount: 110, method: 'CASH', date: '2024-01-12', status: 'COMPLETED' },
-          { id: 'TXN005', amount: 75, method: 'CARD', date: '2024-01-11', status: 'COMPLETED' }
-        ]
-      };
 
-      setEarningsData(mockData);
+      // Fetch full analytics data from API
+      const analytics = await driverApi.getEarningsAnalytics();
+      setEarningsData(analytics);
     } catch (error) {
       console.error('Error fetching earnings data:', error);
       errorToast('Failed to fetch earnings data');
     } finally {
       setLoading(false);
     }
-  };
+  }, [errorToast]);
+
+  useEffect(() => {
+    fetchEarningsData();
+    const interval = setInterval(fetchEarningsData, 15000);
+    return () => clearInterval(interval);
+  }, [fetchEarningsData]);
+
+  // Derived dataset based on timeRange selector
+  const rangeItems = (() => {
+    if (!earningsData) return [] as Array<{ label: string; earnings: number; trips: number; avgPerTrip: number }>;
+    switch (timeRange) {
+      case 'day':
+        return earningsData.dailyEarnings.map(d => ({ label: d.date, earnings: d.earnings, trips: d.trips, avgPerTrip: d.avgPerTrip }));
+      case 'week':
+        return earningsData.weeklyEarnings.map(w => ({ label: w.week, earnings: w.earnings, trips: w.trips, avgPerTrip: w.avgPerTrip }));
+      case 'month':
+      case 'year':
+        // We currently have last 6 months; reuse for both month/year views
+        return earningsData.monthlyEarnings.map(m => ({ label: m.month, earnings: m.earnings, trips: m.trips, avgPerTrip: m.avgPerTrip }));
+      default:
+        return earningsData.dailyEarnings.map(d => ({ label: d.date, earnings: d.earnings, trips: d.trips, avgPerTrip: d.avgPerTrip }));
+    }
+  })();
+
+  const rangeTitle = timeRange === 'day'
+    ? 'Daily Earnings (Last 7 Days)'
+    : timeRange === 'week'
+      ? 'Weekly Earnings (Last 4 Weeks)'
+      : 'Monthly Earnings (Last 6 Months)';
+
+  const totalTripsInRange = rangeItems.reduce((sum, item) => sum + item.trips, 0);
 
   const getMethodIcon = (method: string) => {
     switch (method) {
@@ -160,7 +169,7 @@ export default function DriverEarningsPage() {
               <h3 className="text-lg font-medium text-gray-900">Time Range</h3>
               <select
                 value={timeRange}
-                onChange={(e) => setTimeRange(e.target.value as any)}
+                onChange={(e) => setTimeRange(e.target.value as 'day' | 'week' | 'month' | 'year')}
                 className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
               >
                 <option value="day">Last 24 Hours</option>
@@ -228,31 +237,33 @@ export default function DriverEarningsPage() {
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Total Trips</p>
-                  <p className="text-2xl font-bold text-gray-900">{earningsData.overview.totalTrips || 0}</p>
-                  <p className="text-sm text-gray-500">Avg: ${earningsData.overview.averagePerTrip?.toFixed(2) || 0}</p>
+                  <p className="text-2xl font-bold text-gray-900">{totalTripsInRange}</p>
+                  <p className="text-sm text-gray-500">Avg: ${(
+                    earningsData.overview.totalEarnings / Math.max(1, totalTripsInRange)
+                  ).toFixed(2)}</p>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Daily Earnings Chart */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Daily Earnings (Last 7 Days)</h3>
-            <div className="space-y-3">
-              {earningsData.dailyEarnings.map((day, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center space-x-4">
-                    <span className="text-sm text-gray-600">{day.date}</span>
-                    <span className="text-sm font-medium text-gray-900">${day.earnings}</span>
+            <div className="bg-white rounded-lg shadow p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">{rangeTitle}</h3>
+              <div className="space-y-3">
+                {rangeItems.map((item, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center space-x-4">
+                      <span className="text-sm text-gray-600">{item.label}</span>
+                      <span className="text-sm font-medium text-gray-900">${item.earnings}</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm text-gray-600">{item.trips} trips</span>
+                      <span className="text-sm text-green-600">Avg: ${item.avgPerTrip}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm text-gray-600">{day.trips} trips</span>
-                    <span className="text-sm text-green-600">Avg: ${day.avgPerTrip}</span>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
 
           {/* Earnings by Status and Payment Methods */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

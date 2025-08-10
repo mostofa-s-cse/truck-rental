@@ -222,6 +222,43 @@ export class DriverController {
     }
   }
 
+  static async uploadAvatar(req: Request, res: Response) {
+    try {
+      const userId = (req as any).user.userId;
+      const file = (req as any).file as Express.Multer.File | undefined;
+
+      if (!file) {
+        return res.status(400).json({ success: false, message: 'No file uploaded' });
+      }
+
+      logDatabase('upload', 'driver_avatar', { userId, fileName: file.filename, size: file.size });
+
+      const avatarPath = `/uploads/avatars/${file.filename}`;
+      const result = await DriverService.updateUserAvatar(userId, avatarPath);
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+
+      const response: ApiResponse = {
+        success: true,
+        message: 'Avatar uploaded successfully',
+        data: {
+          ...result,
+          avatarUrl: `${baseUrl}${avatarPath}`
+        }
+      };
+
+      res.status(200).json(response);
+    } catch (error: any) {
+      const userId = (req as any).user?.userId || 'unknown';
+      logError(error, { operation: 'upload_avatar', userId });
+      const response: ApiResponse = {
+        success: false,
+        message: error.message || 'Failed to upload avatar',
+        error: error.message
+      };
+      res.status(400).json(response);
+    }
+  }
+
   static async verifyDriver(req: Request, res: Response) {
     try {
       const { driverId } = req.params;
@@ -265,11 +302,13 @@ export class DriverController {
     try {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
+      const search = req.query.search as string;
+      const status = req.query.status as string;
       const userId = (req as any).user?.userId || 'anonymous';
       
-      logDatabase('select', 'drivers', { page, limit, requestedBy: userId, operation: 'get_all_drivers' });
+      logDatabase('select', 'drivers', { page, limit, search, status, requestedBy: userId, operation: 'get_all_drivers' });
       
-      const result = await DriverService.getAllDrivers(page, limit);
+      const result = await DriverService.getAllDrivers(page, limit, search, status);
 
       const response: ApiResponse = {
         success: true,
@@ -285,12 +324,51 @@ export class DriverController {
         operation: 'get_all_drivers', 
         userId,
         page: req.query.page,
-        limit: req.query.limit
+        limit: req.query.limit,
+        search: req.query.search,
+        status: req.query.status
       });
 
       const response: ApiResponse = {
         success: false,
         message: error.message || 'Failed to get drivers',
+        error: error.message
+      };
+
+      res.status(400).json(response);
+    }
+  }
+
+  static async contactDriver(req: Request, res: Response) {
+    try {
+      const userId = (req as any).user.userId;
+      const { driverId } = req.params;
+      const { message, bookingId } = req.body;
+      
+      logDatabase('contact', 'drivers', { userId, driverId, bookingId, hasMessage: !!message });
+      
+      const result = await DriverService.contactDriver(userId, driverId, message, bookingId);
+
+      const response: ApiResponse = {
+        success: true,
+        message: 'Contact request sent successfully',
+        data: result
+      };
+
+      res.status(200).json(response);
+    } catch (error: any) {
+      const userId = (req as any).user?.userId || 'unknown';
+      
+      logError(error, { 
+        operation: 'contact_driver', 
+        userId,
+        driverId: req.params.driverId,
+        bookingId: req.body.bookingId
+      });
+
+      const response: ApiResponse = {
+        success: false,
+        message: error.message || 'Failed to contact driver',
         error: error.message
       };
 

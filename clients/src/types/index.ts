@@ -6,6 +6,8 @@ export interface User {
   role: 'ADMIN' | 'DRIVER' | 'USER';
   avatar?: string;
   isActive: boolean;
+  // Driver-only: availability flag for accepting jobs
+  isAvailable?: boolean;
   createdAt: string;
 }
 
@@ -75,7 +77,7 @@ export interface Message {
   receiver: User;
 }
 
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   message: string;
   data?: T;
@@ -161,4 +163,47 @@ export interface SearchResult {
   limit: number;
   totalPages: number;
   filters: SearchFilters;
+}
+
+// Notification types
+export type NotificationType =
+  | 'BOOKING_CREATED'
+  | 'BOOKING_ACCEPTED'
+  | 'BOOKING_REJECTED'
+  | 'TRIP_STARTED'
+  | 'TRIP_COMPLETED'
+  | 'TRIP_CANCELLED'
+  | 'PAYMENT_RECEIVED'
+  | 'PAYMENT_FAILED'
+  | 'DRIVER_ARRIVED'
+  | 'SYSTEM_ALERT'
+  | 'EMERGENCY_ALERT';
+
+export type NotificationPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+
+export interface Notification {
+  id: string;
+  userId?: string;
+  driverId?: string;
+  adminId?: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  isRead: boolean;
+  relatedId?: string;
+  relatedType?: string;
+  priority: NotificationPriority;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NotificationResponse {
+  success: boolean;
+  data: Notification[];
+  message?: string;
+}
+
+export interface UnreadCountResponse {
+  success: boolean;
+  data: { unreadCount: number };
 } 

@@ -77,6 +77,57 @@ export class AdminService {
       }
     });
 
+    // Transform recentBookings to match frontend expectations
+    const transformedRecentBookings = recentBookings.map(booking => ({
+      id: booking.id,
+      user: {
+        id: booking.user.id,
+        name: booking.user.name,
+        email: booking.user.email
+      },
+      driver: booking.driver ? {
+        user: {
+          id: booking.driver.user.id,
+          name: booking.driver.user.name,
+          email: booking.driver.user.email
+        },
+        truckType: booking.driver.truckType || 'UNKNOWN'
+      } : null,
+      source: booking.source,
+      destination: booking.destination,
+      fare: booking.fare,
+      status: booking.status,
+      date: booking.createdAt.toISOString(),
+      pickupTime: booking.pickupTime?.toISOString(),
+      createdAt: booking.createdAt.toISOString()
+    }));
+
+    // Transform topDrivers to match frontend expectations
+    const transformedTopDrivers = topDrivers.map(driver => ({
+      id: driver.id,
+      user: {
+        id: driver.user.id,
+        name: driver.user.name,
+        email: driver.user.email
+      },
+      truckType: driver.truckType,
+      capacity: driver.capacity,
+      quality: driver.quality,
+      license: driver.license,
+      registration: driver.registration,
+      location: driver.location,
+      latitude: driver.latitude,
+      longitude: driver.longitude,
+      rating: driver.rating,
+      totalTrips: driver.totalTrips || 0,
+      isVerified: driver.isVerified,
+      isAvailable: driver.isAvailable,
+      totalBookings: driver.totalTrips || 0, // Map totalTrips to totalBookings for frontend compatibility
+      completedBookings: 0, // Not available in current schema
+      totalRevenue: 0, // Not available in current schema
+      createdAt: driver.createdAt.toISOString()
+    }));
+
     return {
       stats: {
         totalUsers,
@@ -88,8 +139,8 @@ export class AdminService {
         averageRating: averageRating._avg.rating || 0,
         activeDrivers
       },
-      recentBookings,
-      topDrivers
+      recentBookings: transformedRecentBookings,
+      topDrivers: transformedTopDrivers
     };
   }
 

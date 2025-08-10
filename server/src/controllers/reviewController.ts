@@ -44,6 +44,45 @@ export class ReviewController {
     }
   }
 
+  static async createReviewForBooking(req: Request, res: Response) {
+    try {
+      const userId = (req as any).user.userId;
+      const { bookingId } = req.params;
+      const { rating, comment } = req.body;
+      
+      logDatabase('insert', 'reviews', { userId, bookingId, rating });
+      
+      const result = await ReviewService.createReviewForBooking(userId, bookingId, rating, comment);
+
+      logDatabase('insert_success', 'reviews', { reviewId: result.id, userId, bookingId });
+
+      const response: ApiResponse = {
+        success: true,
+        message: 'Review submitted successfully',
+        data: result
+      };
+
+      res.status(201).json(response);
+    } catch (error: any) {
+      const userId = (req as any).user?.userId || 'unknown';
+      
+      logError(error, { 
+        operation: 'create_review_for_booking', 
+        userId,
+        bookingId: req.params.bookingId,
+        rating: req.body.rating
+      });
+
+      const response: ApiResponse = {
+        success: false,
+        message: error.message || 'Failed to submit review',
+        error: error.message
+      };
+
+      res.status(400).json(response);
+    }
+  }
+
   static async getDriverReviews(req: Request, res: Response) {
     try {
       const { driverId } = req.params;
@@ -125,11 +164,12 @@ export class ReviewController {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
       const rating = req.query.rating ? parseInt(req.query.rating as string) : undefined;
+      const search = req.query.search as string;
       const userId = (req as any).user?.userId || 'anonymous';
       
-      logDatabase('select', 'reviews', { page, limit, rating, requestedBy: userId, operation: 'all_reviews' });
+      logDatabase('select', 'reviews', { page, limit, rating, search, requestedBy: userId, operation: 'all_reviews' });
       
-      const result = await ReviewService.getAllReviews(page, limit, rating);
+      const result = await ReviewService.getAllReviews(page, limit, rating, search);
 
       const response: ApiResponse = {
         success: true,

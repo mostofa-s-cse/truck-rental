@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { CreateDriverRequest, SearchDriversRequest } from '../types';
+import { NotificationIntegrationService } from './notificationIntegrationService';
 
 const prisma = new PrismaClient();
 
@@ -215,6 +216,14 @@ export class DriverService {
     return driver;
   }
 
+  static async updateUserAvatar(userId: string, avatarPath: string) {
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { avatar: avatarPath }
+    });
+    return { avatar: user.avatar };
+  }
+
   static async verifyDriver(driverId: string, isVerified: boolean) {
     const driver = await prisma.driver.update({
       where: { id: driverId },
@@ -232,14 +241,49 @@ export class DriverService {
       }
     });
 
+    // Send driver verification notification
+    try {
+      await NotificationIntegrationService.sendDriverVerificationNotification(driverId, isVerified);
+    } catch (error) {
+      console.error('Failed to send driver verification notification:', error);
+      // Don't fail the verification if notification fails
+    }
+
     return driver;
   }
 
-  static async getAllDrivers(page = 1, limit = 10) {
+  static async getAllDrivers(page = 1, limit = 10, search?: string, status?: string) {
     const skip = (page - 1) * limit;
+    
+    let where: any = {};
+    let countWhere: any = {};
+    
+    // Handle search
+    if (search) {
+      where.OR = [
+        { user: { name: { contains: search } } },
+        { user: { email: { contains: search } } },
+        { location: { contains: search } }
+      ];
+      countWhere.OR = [
+        { user: { name: { contains: search } } },
+        { user: { email: { contains: search } } },
+        { location: { contains: search } }
+      ];
+    }
+    
+    // Handle status filter
+    if (status === 'verified') {
+      where.isVerified = true;
+      countWhere.isVerified = true;
+    } else if (status === 'pending') {
+      where.isVerified = false;
+      countWhere.isVerified = false;
+    }
 
     const [drivers, total] = await Promise.all([
       prisma.driver.findMany({
+        where,
         skip,
         take: limit,
         include: {
@@ -251,21 +295,104 @@ export class DriverService {
               phone: true,
               avatar: true
             }
+          },
+          _count: {
+            select: {
+              bookings: true
+            }
           }
         },
         orderBy: {
           createdAt: 'desc'
         }
       }),
-      prisma.driver.count()
+      prisma.driver.count({ where: countWhere })
     ]);
 
+    // Transform the data to match the expected format
+    const transformedDrivers = drivers.map(driver => ({
+      ...driver,
+      totalBookings: driver._count.bookings,
+      completedBookings: 0, // This would need to be calculated from bookings if needed
+      totalRevenue: 0 // This would need to be calculated from bookings if needed
+    }));
+
     return {
-      drivers,
+      drivers: transformedDrivers,
       total,
       page,
       limit,
       totalPages: Math.ceil(total / limit)
+    };
+  }
+
+  static async contactDriver(userId: string, driverId: string, message?: string, bookingId?: string) {
+    // Check if driver exists
+    const driver = await prisma.driver.findUnique({
+      where: { id: driverId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true
+          }
+        }
+      }
+    });
+
+    if (!driver) {
+      throw new Error('Driver not found');
+    }
+
+    // Check if user exists
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true
+      }
+    });
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // If bookingId is provided, verify the booking exists and belongs to the user
+    if (bookingId) {
+      const booking = await prisma.booking.findUnique({
+        where: { id: bookingId }
+      });
+
+      if (!booking) {
+        throw new Error('Booking not found');
+      }
+
+      if (booking.userId !== userId) {
+        throw new Error('Unauthorized to contact driver for this booking');
+      }
+
+      if (booking.driverId !== driverId) {
+        throw new Error('Driver is not assigned to this booking');
+      }
+    }
+
+    // Return driver contact information
+    return {
+      driver: {
+        id: driver.id,
+        name: driver.user.name,
+        phone: driver.user.phone,
+        email: driver.user.email
+      },
+      message: 'Contact information provided. You can now contact the driver directly.',
+      contactInfo: {
+        phone: driver.user.phone,
+        email: driver.user.email
+      }
     };
   }
 } 

@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useAppSelector } from '@/hooks/redux';
+import { useState, useEffect, useCallback } from 'react';
+import Image from 'next/image';
+import { useAppSelector, useAppDispatch } from '@/hooks/redux';
 import DashboardLayout from '@/components/ui/DashboardLayout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import Button from '@/components/ui/Button';
@@ -9,17 +10,14 @@ import Modal from '@/components/ui/Modal';
 import { useSweetAlert } from '@/hooks/useSweetAlert';
 import { 
   UserCircleIcon, 
-  EnvelopeIcon,
-  PhoneIcon,
-  MapPinIcon,
   PencilIcon,
   CameraIcon,
   CheckCircleIcon,
-  StarIcon,
-  CalendarIcon,
-  CurrencyDollarIcon
+  StarIcon
 } from '@heroicons/react/24/outline';
-import { BellIcon, KeyIcon, ShieldCheckIcon } from 'lucide-react';
+import { KeyIcon } from 'lucide-react';
+import { userApi } from '@/lib/dashboardApi';
+import { updateUser } from '@/store/slices/authSlice';
 
 interface UserProfile {
   id: string;
@@ -41,7 +39,11 @@ interface UserProfile {
   };
   security: {
     lastLogin: string;
-    loginHistory: any[];
+    loginHistory: Array<{
+      date: string;
+      ip: string;
+      device: string;
+    }>;
     twoFactorEnabled: boolean;
   };
   stats: {
@@ -54,6 +56,7 @@ interface UserProfile {
 
 export default function UserProfilePage() {
   const { user } = useAppSelector((state) => state.auth);
+  const dispatch = useAppDispatch();
   const { successToast, errorToast } = useSweetAlert();
   
   // State
@@ -81,42 +84,33 @@ export default function UserProfilePage() {
     newPassword: '',
     confirmPassword: ''
   });
-  
-  // Preferences
-  const [preferences, setPreferences] = useState({
-    emailNotifications: true,
-    smsNotifications: false,
-    pushNotifications: true,
-    language: 'en',
-    timezone: 'UTC'
-  });
 
-  useEffect(() => {
-    fetchProfileData();
-  }, []);
 
-  const fetchProfileData = async () => {
+  const fetchProfileData = useCallback(async () => {
     try {
       setLoading(true);
       
-      // Mock profile data (replace with real API call)
-      const mockProfile: UserProfile = {
+      // Get user stats from dashboard API
+      const userStats = await userApi.getUserStats();
+      
+      // Create profile data from user info and stats
+      const profileData: UserProfile = {
         id: user?.id || '1',
         name: user?.name || 'User Name',
         email: user?.email || 'user@example.com',
-        phone: '+1 (555) 123-4567',
+        phone: user?.phone || '+880-3333-333331',
         role: 'USER',
-        avatar: undefined,
-        address: '123 User Street',
-        city: 'User City',
-        country: 'United States',
-        bio: 'Regular customer who frequently uses truck booking services for business and personal needs.',
+        avatar: user?.avatar,
+        address: 'Dhaka, Bangladesh',
+        city: 'Dhaka',
+        country: 'Bangladesh',
+        bio: 'Regular user of the truck booking service.',
         preferences: {
           emailNotifications: true,
           smsNotifications: false,
           pushNotifications: true,
           language: 'en',
-          timezone: 'UTC'
+          timezone: 'Asia/Dhaka'
         },
         security: {
           lastLogin: new Date().toISOString(),
@@ -128,31 +122,34 @@ export default function UserProfilePage() {
           twoFactorEnabled: false
         },
         stats: {
-          totalBookings: 25,
-          totalSpent: 1250.50,
-          averageRating: 4.6,
-          favoriteDrivers: 3
+          totalBookings: userStats.totalBookings,
+          totalSpent: userStats.totalSpent,
+          averageRating: userStats.averageRating,
+          favoriteDrivers: userStats.favoriteDrivers
         }
       };
 
-      setProfile(mockProfile);
+      setProfile(profileData);
       setFormData({
-        name: mockProfile.name,
-        email: mockProfile.email,
-        phone: mockProfile.phone || '',
-        address: mockProfile.address || '',
-        city: mockProfile.city || '',
-        country: mockProfile.country || '',
-        bio: mockProfile.bio || ''
+        name: profileData.name,
+        email: profileData.email,
+        phone: profileData.phone || '',
+        address: profileData.address || '',
+        city: profileData.city || '',
+        country: profileData.country || '',
+        bio: profileData.bio || ''
       });
-      setPreferences(mockProfile.preferences);
     } catch (error) {
       console.error('Error fetching profile data:', error);
       errorToast('Failed to fetch profile data');
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, errorToast]);
+
+  useEffect(() => {
+    fetchProfileData();
+  }, [fetchProfileData]);
 
   const handleSaveProfile = async () => {
     try {
@@ -164,8 +161,8 @@ export default function UserProfilePage() {
         return;
       }
 
-      // Mock API call (replace with real API call)
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // TODO: Implement real API call to update user profile
+      // await apiClient.updateUserProfile(formData);
       
       // Update profile state
       if (profile) {
@@ -211,8 +208,11 @@ export default function UserProfilePage() {
         return;
       }
 
-      // Mock API call (replace with real API call)
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // TODO: Implement real API call to change password
+      // await apiClient.changePassword({
+      //   oldPassword: passwordForm.currentPassword,
+      //   newPassword: passwordForm.newPassword
+      // });
       
       setShowPasswordModal(false);
       setPasswordForm({
@@ -229,50 +229,18 @@ export default function UserProfilePage() {
     }
   };
 
-  const handleSavePreferences = async () => {
-    try {
-      setSaving(true);
-      
-      // Mock API call (replace with real API call)
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      if (profile) {
-        setProfile({
-          ...profile,
-          preferences
-        });
-      }
-      
-      successToast('Preferences saved successfully');
-    } catch (error) {
-      console.error('Error saving preferences:', error);
-      errorToast('Failed to save preferences');
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     try {
       setSaving(true);
-      
-      // Mock file upload (replace with real upload logic)
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        if (profile) {
-          setProfile({
-            ...profile,
-            avatar: e.target?.result as string
-          });
-        }
-      };
-      reader.readAsDataURL(file);
-      
+      const { avatarUrl } = await userApi.uploadAvatar(file);
+      if (profile) {
+        const nextSrc = avatarUrl.replace(/^https?:\/\/localhost:\d+/, '');
+        setProfile({ ...profile, avatar: nextSrc });
+        dispatch(updateUser({ avatar: nextSrc }));
+      }
       setShowAvatarModal(false);
       successToast('Avatar updated successfully');
     } catch (error) {
@@ -333,9 +301,11 @@ export default function UserProfilePage() {
               <div className="flex items-center space-x-4">
                 <div className="relative">
                   {profile.avatar ? (
-                    <img 
+                    <Image 
                       src={profile.avatar} 
                       alt={profile.name}
+                      width={80}
+                      height={80}
                       className="h-20 w-20 rounded-full object-cover"
                     />
                   ) : (
@@ -487,22 +457,6 @@ export default function UserProfilePage() {
                   </div>
                 </div>
               </div>
-
-              {/* Bio */}
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Bio</h3>
-                {editMode ? (
-                  <textarea
-                    value={formData.bio}
-                    onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                    rows={4}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Tell us about yourself..."
-                  />
-                ) : (
-                  <p className="text-gray-900">{profile.bio || 'No bio provided'}</p>
-                )}
-              </div>
             </div>
 
             {/* Sidebar */}
@@ -518,20 +472,6 @@ export default function UserProfilePage() {
                   >
                     <KeyIcon className="h-4 w-4 mr-2" />
                     Change Password
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start"
-                  >
-                    <ShieldCheckIcon className="h-4 w-4 mr-2" />
-                    Security Settings
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start"
-                  >
-                    <BellIcon className="h-4 w-4 mr-2" />
-                    Notification Settings
                   </Button>
                 </div>
               </div>
@@ -574,84 +514,6 @@ export default function UserProfilePage() {
                   <div>
                     <span className="text-sm text-gray-600">Last Login</span>
                     <p className="text-sm text-gray-900">{new Date(profile.security.lastLogin).toLocaleString()}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Preferences */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium text-gray-900">Preferences</h3>
-              <Button
-                onClick={handleSavePreferences}
-                disabled={saving}
-                size="sm"
-              >
-                {saving ? 'Saving...' : 'Save Preferences'}
-              </Button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <h4 className="text-sm font-medium text-gray-700 mb-3">Notifications</h4>
-                <div className="space-y-3">
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={preferences.emailNotifications}
-                      onChange={(e) => setPreferences({ ...preferences, emailNotifications: e.target.checked })}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="ml-2 text-sm text-gray-700">Email Notifications</span>
-                  </label>
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={preferences.smsNotifications}
-                      onChange={(e) => setPreferences({ ...preferences, smsNotifications: e.target.checked })}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="ml-2 text-sm text-gray-700">SMS Notifications</span>
-                  </label>
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={preferences.pushNotifications}
-                      onChange={(e) => setPreferences({ ...preferences, pushNotifications: e.target.checked })}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="ml-2 text-sm text-gray-700">Push Notifications</span>
-                  </label>
-                </div>
-              </div>
-              <div>
-                <h4 className="text-sm font-medium text-gray-700 mb-3">Settings</h4>
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Language</label>
-                    <select
-                      value={preferences.language}
-                      onChange={(e) => setPreferences({ ...preferences, language: e.target.value })}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="en">English</option>
-                      <option value="es">Spanish</option>
-                      <option value="fr">French</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Timezone</label>
-                    <select
-                      value={preferences.timezone}
-                      onChange={(e) => setPreferences({ ...preferences, timezone: e.target.value })}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="UTC">UTC</option>
-                      <option value="EST">Eastern Time</option>
-                      <option value="PST">Pacific Time</option>
-                      <option value="GMT">GMT</option>
-                    </select>
                   </div>
                 </div>
               </div>
@@ -732,9 +594,11 @@ export default function UserProfilePage() {
             <div className="text-center">
               <div className="mx-auto w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center mb-4">
                 {profile.avatar ? (
-                  <img 
+                  <Image 
                     src={profile.avatar} 
                     alt="Current avatar"
+                    width={96}
+                    height={96}
                     className="w-24 h-24 rounded-full object-cover"
                   />
                 ) : (

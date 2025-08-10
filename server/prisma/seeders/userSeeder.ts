@@ -129,51 +129,142 @@ export async function seedUsers() {
       avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face',
       isActive: true
     },
+    // Additional driver users
+    {
+      email: 'driver11@truckbook.com',
+      password: hashedPassword,
+      name: 'Imtiaz Ahmed',
+      phone: '+880-2222-222231',
+      role: UserRole.DRIVER,
+      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+      isActive: true
+    },
+    {
+      email: 'driver12@truckbook.com',
+      password: hashedPassword,
+      name: 'Shafiq Hasan',
+      phone: '+880-2222-222232',
+      role: UserRole.DRIVER,
+      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
+      isActive: true
+    },
+    {
+      email: 'driver13@truckbook.com',
+      password: hashedPassword,
+      name: 'Rafiul Islam',
+      phone: '+880-2222-222233',
+      role: UserRole.DRIVER,
+      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face',
+      isActive: true
+    },
+    {
+      email: 'driver14@truckbook.com',
+      password: hashedPassword,
+      name: 'Jubayer Khan',
+      phone: '+880-2222-222234',
+      role: UserRole.DRIVER,
+      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+      isActive: true
+    },
+    {
+      email: 'driver15@truckbook.com',
+      password: hashedPassword,
+      name: 'Tareq Rahman',
+      phone: '+880-2222-222235',
+      role: UserRole.DRIVER,
+      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
+      isActive: true
+    },
+    {
+      email: 'driver16@truckbook.com',
+      password: hashedPassword,
+      name: 'Nizam Uddin',
+      phone: '+880-2222-222236',
+      role: UserRole.DRIVER,
+      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face',
+      isActive: true
+    },
+    {
+      email: 'driver17@truckbook.com',
+      password: hashedPassword,
+      name: 'Shahriar Alam',
+      phone: '+880-2222-222237',
+      role: UserRole.DRIVER,
+      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+      isActive: true
+    },
+    {
+      email: 'driver18@truckbook.com',
+      password: hashedPassword,
+      name: 'Zubair Hossain',
+      phone: '+880-2222-222238',
+      role: UserRole.DRIVER,
+      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
+      isActive: true
+    },
+    {
+      email: 'driver19@truckbook.com',
+      password: hashedPassword,
+      name: 'Hasan Mahmud',
+      phone: '+880-2222-222239',
+      role: UserRole.DRIVER,
+      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face',
+      isActive: true
+    },
+    {
+      email: 'driver20@truckbook.com',
+      password: hashedPassword,
+      name: 'Sajid Ahmed',
+      phone: '+880-2222-222240',
+      role: UserRole.DRIVER,
+      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+      isActive: true
+    },
     
     // Regular users
     {
       email: 'user1@example.com',
       password: hashedPassword,
-      name: 'Fatima Begum',
+      name: 'Arif Hossain',
       phone: '+880-3333-333331',
       role: UserRole.USER,
-      avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face',
+      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
       isActive: true
     },
     {
       email: 'user2@example.com',
       password: hashedPassword,
-      name: 'Aisha Rahman',
+      name: 'Mahfuz Ahmed',
       phone: '+880-3333-333332',
       role: UserRole.USER,
-      avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face',
+      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
       isActive: true
     },
     {
       email: 'user3@example.com',
       password: hashedPassword,
-      name: 'Zara Ahmed',
+      name: 'Shahriar Kabir',
       phone: '+880-3333-333333',
       role: UserRole.USER,
-      avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&h=150&fit=crop&crop=face',
+      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face',
       isActive: true
     },
     {
       email: 'user4@example.com',
       password: hashedPassword,
-      name: 'Nadia Islam',
+      name: 'Naeem Islam',
       phone: '+880-3333-333334',
       role: UserRole.USER,
-      avatar: 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=150&h=150&fit=crop&crop=face',
+      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
       isActive: true
     },
     {
       email: 'user5@example.com',
       password: hashedPassword,
-      name: 'Sadia Khan',
+      name: 'Sajid Khan',
       phone: '+880-3333-333335',
       role: UserRole.USER,
-      avatar: 'https://images.unsplash.com/photo-1489424731084-a5d8b219a5bb?w=150&h=150&fit=crop&crop=face',
+      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
       isActive: true
     },
     {
@@ -188,10 +279,10 @@ export async function seedUsers() {
     {
       email: 'user7@example.com',
       password: hashedPassword,
-      name: 'Tahmina Akter',
+      name: 'Tareq Aziz',
       phone: '+880-3333-333337',
       role: UserRole.USER,
-      avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face',
+      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
       isActive: true
     },
     {
@@ -206,10 +297,10 @@ export async function seedUsers() {
     {
       email: 'user9@example.com',
       password: hashedPassword,
-      name: 'Sabina Yasmin',
+      name: 'Sabbir Rahman',
       phone: '+880-3333-333339',
       role: UserRole.USER,
-      avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face',
+      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face',
       isActive: true
     },
     {
@@ -224,10 +315,10 @@ export async function seedUsers() {
     {
       email: 'user11@example.com',
       password: hashedPassword,
-      name: 'Nasreen Akter',
+      name: 'Nasir Uddin',
       phone: '+880-3333-333341',
       role: UserRole.USER,
-      avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&h=150&fit=crop&crop=face',
+      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face',
       isActive: true
     },
     {
@@ -242,10 +333,10 @@ export async function seedUsers() {
     {
       email: 'user13@example.com',
       password: hashedPassword,
-      name: 'Farhana Begum',
+      name: 'Farhan Ahmed',
       phone: '+880-3333-333343',
       role: UserRole.USER,
-      avatar: 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=150&h=150&fit=crop&crop=face',
+      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
       isActive: true
     },
     {
@@ -260,10 +351,10 @@ export async function seedUsers() {
     {
       email: 'user15@example.com',
       password: hashedPassword,
-      name: 'Shahana Parvin',
+      name: 'Shahadat Parvez',
       phone: '+880-3333-333345',
       role: UserRole.USER,
-      avatar: 'https://images.unsplash.com/photo-1489424731084-a5d8b219a5bb?w=150&h=150&fit=crop&crop=face',
+      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
       isActive: true
     }
   ];

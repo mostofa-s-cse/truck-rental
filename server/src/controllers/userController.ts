@@ -333,4 +333,40 @@ export class UserController {
       res.status(400).json(response);
     }
   }
+
+  static async uploadAvatar(req: Request, res: Response) {
+    try {
+      const userId = (req as any).user.userId;
+      const file = (req as any).file as Express.Multer.File | undefined;
+      if (!file) {
+        return res.status(400).json({ success: false, message: 'No file uploaded' });
+      }
+
+      logDatabase('upload', 'user_avatar', { userId, fileName: file.filename, size: file.size });
+
+      const avatarPath = `/uploads/avatars/${file.filename}`;
+      const result = await UserService.updateUser(userId, { avatar: avatarPath });
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+
+      const response: ApiResponse = {
+        success: true,
+        message: 'Avatar uploaded successfully',
+        data: {
+          avatar: result.avatar,
+          avatarUrl: `${baseUrl}${avatarPath}`
+        }
+      };
+
+      res.status(200).json(response);
+    } catch (error: any) {
+      const userId = (req as any).user?.userId || 'unknown';
+      logError(error, { operation: 'upload_user_avatar', userId });
+      const response: ApiResponse = {
+        success: false,
+        message: error.message || 'Failed to upload avatar',
+        error: error.message
+      };
+      res.status(400).json(response);
+    }
+  }
 } 

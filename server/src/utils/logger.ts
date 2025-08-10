@@ -20,7 +20,19 @@ const consoleFormat = winston.format.combine(
   winston.format.colorize(),
   winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
   winston.format.printf(({ timestamp, level, message, ...meta }) => {
-    return `${timestamp} [${level}]: ${message} ${Object.keys(meta).length ? JSON.stringify(meta, null, 2) : ''}`;
+    // Filter out circular references and sensitive data
+    const safeMeta = Object.keys(meta).reduce((acc, key) => {
+      if (key !== 'req' && key !== 'res' && key !== 'socket') {
+        try {
+          acc[key] = meta[key];
+        } catch (e) {
+          acc[key] = '[Circular Reference]';
+        }
+      }
+      return acc;
+    }, {} as any);
+    
+    return `${timestamp} [${level}]: ${message} ${Object.keys(safeMeta).length ? JSON.stringify(safeMeta, null, 2) : ''}`;
   })
 );
 
@@ -182,10 +194,22 @@ export const logRequest = (req: any, res: any, next: any) => {
 };
 
 export const logError = (error: any, context?: any) => {
+  // Sanitize context to remove circular references
+  let sanitizedContext = context;
+  if (context && typeof context === 'object') {
+    sanitizedContext = {
+      method: context.method,
+      url: context.url,
+      ip: context.ip,
+      userId: context.user?.userId,
+      // Add other safe properties as needed
+    };
+  }
+
   logger.error('Application Error', {
     error: error.message,
     stack: error.stack,
-    context
+    context: sanitizedContext
   });
 };
 

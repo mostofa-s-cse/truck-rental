@@ -23,11 +23,12 @@ export default function LoginPage() {
 
   // Show error toast when error state changes
   useEffect(() => {
-    if (error && !isSubmitting) {
+    if (error) {
+      console.log('Error state changed:', error); // Debug log
       errorToast(error);
       dispatch(clearError());
     }
-  }, [error, isSubmitting, errorToast, dispatch]);
+  }, [error, errorToast, dispatch]);
 
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
@@ -72,7 +73,7 @@ export default function LoginPage() {
           dashboardPath = '/dashboard/user';
         }
         router.push(dashboardPath);
-      } else {
+      } else if (loginUser.rejected.match(result)) {
         console.log('Login failed'); // Debug log
         const errorMessage = result.payload as string || 'Login failed. Please check your credentials.';
         errorToast(errorMessage);
@@ -196,27 +197,7 @@ export default function LoginPage() {
                 <p><strong>Driver:</strong> driver1@truckbook.com / password123</p>
                 <p><strong>User:</strong> user1@example.com / password123</p>
               </div>
-              
-              {/* Test Toast Button */}
-              <div className="mt-4 pt-4 border-t border-gray-200">
-                <p className="text-sm text-gray-600 mb-2 font-medium">Test Toasts:</p>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => successToast('Success toast test!')}
-                    className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
-                  >
-                    Success
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => errorToast('Error toast test!')}
-                    className="px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
-                  >
-                    Error
-                  </button>
-                </div>
-              </div>
+            
             </div>
           </form>
         </div>

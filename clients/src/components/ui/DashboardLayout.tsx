@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAppSelector, useAppDispatch } from '@/hooks/redux';
 import { useSweetAlert } from '@/hooks/useSweetAlert';
 import { 
@@ -8,27 +8,21 @@ import {
   TruckIcon, 
   CalendarIcon, 
   CogIcon,
-  BellIcon,
   UserCircleIcon,
   Bars3Icon,
   XMarkIcon,
   CreditCardIcon,
-  DocumentTextIcon,
-  ClipboardIcon,
   StarIcon,
-  ClockIcon,
-  MapPinIcon,
-  PhoneIcon,
-  CheckCircleIcon,
-  XCircleIcon,
-  InformationCircleIcon,
   ArrowRightEndOnRectangleIcon,
   ChartBarIcon,
-  CurrencyDollarIcon
+  CurrencyDollarIcon,
+  ArrowTopRightOnSquareIcon
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { logoutUser } from '@/store/slices/authSlice';
+import Image from 'next/image';
+import NotificationDropdown from './NotificationDropdown';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -45,17 +39,17 @@ interface MenuItem {
 }
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ 
-  children, 
-  title = "Dashboard",
-  subtitle 
+  children,
 }) => {
   const { user } = useAppSelector((state) => state.auth);
+  const { unreadCount } = useAppSelector((state) => state.notifications);
   const { successToast } = useSweetAlert();
   const dispatch = useAppDispatch();
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
   const [openMenuItems, setOpenMenuItems] = useState<Set<string>>(new Set());
 
   const handleLogout = () => {
@@ -64,7 +58,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     router.push('/login');
   };
 
-  const getMenuItems = (): MenuItem[] => {
+  const getMenuItems = useCallback((): MenuItem[] => {
     // Admin-specific menu items
     if (user?.role === 'ADMIN') {
       return [
@@ -116,68 +110,63 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       ];
     }
 
+    // Driver-specific menu items
+    if (user?.role === 'DRIVER') {
+      return [
+        {
+          name: 'Dashboard',
+          href: '/dashboard/driver',
+          icon: HomeIcon
+        },
+        {
+          name: 'My Bookings',
+          href: '/dashboard/driver/bookings',
+          icon: CalendarIcon,
+        },
+        {
+          name: 'Earnings',
+          href: '/dashboard/driver/earnings',
+          icon: CurrencyDollarIcon,
+        },
+        {
+          name: 'Reviews',
+          href: '/dashboard/driver/reviews',
+          icon: StarIcon,
+        },
+        {
+          name: 'Profile',
+          href: '/dashboard/driver/profile',
+          icon: UserCircleIcon,
+        }
+      ];
+    }
+
     // Regular user menu items
     return [
       {
         name: 'Dashboard',
-        href: '/dashboard',
+        href: '/dashboard/user',
         icon: HomeIcon
       },
       {
-        name: 'Search Trucks',
-        href: '/search',
-        icon: TruckIcon
-      },
-      {
         name: 'My Bookings',
-        href: '/dashboard/bookings',
+        href: '/dashboard/user/bookings',
         icon: CalendarIcon,
-        children: [
-          { name: 'Active', href: '/dashboard/bookings/active', icon: ClockIcon },
-          { name: 'Upcoming', href: '/dashboard/bookings/upcoming', icon: CalendarIcon },
-          { name: 'Completed', href: '/dashboard/bookings/completed', icon: CheckCircleIcon },
-          { name: 'Cancelled', href: '/dashboard/bookings/cancelled', icon: XCircleIcon }
-        ]
-      },
-      {
-        name: 'Favorites',
-        href: '/dashboard/favorites',
-        icon: StarIcon
       },
       {
         name: 'Payments',
-        href: '/dashboard/payments',
+        href: '/dashboard/user/payments',
         icon: CreditCardIcon,
-        children: [
-          { name: 'Payment Methods', href: '/dashboard/payments/methods', icon: CreditCardIcon },
-          { name: 'Transaction History', href: '/dashboard/payments/history', icon: ClipboardIcon },
-          { name: 'Invoices', href: '/dashboard/payments/invoices', icon: DocumentTextIcon }
-        ]
       },
       {
         name: 'Profile',
-        href: '/dashboard/profile',
+        href: '/dashboard/user/profile',
         icon: UserCircleIcon,
-        children: [
-          { name: 'Personal Info', href: '/dashboard/profile', icon: UserCircleIcon },
-          { name: 'Addresses', href: '/dashboard/profile/addresses', icon: MapPinIcon },
-          { name: 'Preferences', href: '/dashboard/profile/preferences', icon: CogIcon }
-        ]
       },
-      {
-        name: 'Support',
-        href: '/dashboard/support',
-        icon: PhoneIcon,
-        children: [
-          { name: 'Help Center', href: '/dashboard/support/help', icon: InformationCircleIcon },
-          { name: 'Contact Support', href: '/dashboard/support/contact', icon: PhoneIcon },
-          { name: 'FAQ', href: '/dashboard/support/faq', icon: InformationCircleIcon }
-        ]
-      }
     ];
-  };
+  }, [user?.role]);
 
-  const menuItems = useMemo(() => getMenuItems(), [user?.role]);
+  const menuItems = useMemo(() => getMenuItems(), [getMenuItems]);
 
   useEffect(() => {
     const activeMenuItem = menuItems.find(item => 
@@ -192,17 +181,25 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         return newSet;
       });
     }
-  }, [pathname]);
+  }, [pathname, menuItems]);
 
   const isActiveMenuItem = (href: string): boolean => {
+    if (!pathname) return false;
     if (href === pathname) return true;
-    
-    // For parent menu items with children, check if any child is active
+
+    // For top-level dashboard entries, only exact match should be active
+    const isTopDashboard = href === '/dashboard/user' || href === '/dashboard/admin' || href === '/dashboard/driver';
+    if (isTopDashboard) return false;
+
+    // Treat non-top-level items as active if the current path starts with their href (for nested routes)
+    if (pathname.startsWith(href + '/')) return true;
+
+    // For parent menu items with children, check if any child is active (supports nested)
     const menuItem = menuItems.find(item => item.href === href);
     if (menuItem?.children) {
-      return menuItem.children.some(child => child.href === pathname);
+      return menuItem.children.some(child => pathname === child.href || pathname.startsWith(child.href + '/'));
     }
-    
+
     return false;
   };
 
@@ -298,17 +295,17 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           
           <div className="flex-1 px-4 flex justify-between">
             <div className="flex-1 flex items-center">
-              <h1 className="text-2xl font-semibold text-gray-900">{title}</h1>
-              {subtitle && (
-                <span className="ml-4 text-sm text-gray-500">{subtitle}</span>
-              )}
+              <Link href="/" className="text-sm font-semibold text-blue-500 flex items-center">Visit Site <ArrowTopRightOnSquareIcon className="h-4 w-4 ml-1" /></Link>
             </div>
             
             <div className="ml-4 flex items-center md:ml-6 space-x-4">
               {/* Notifications */}
-              <button className="p-2 rounded-full text-gray-400 hover:text-gray-500 hover:bg-gray-100">
-                <BellIcon className="h-6 w-6" />
-              </button>
+              <NotificationDropdown 
+                isOpen={notificationOpen}
+                userRole={user?.role || 'USER'}
+                onToggle={() => setNotificationOpen(!notificationOpen)}
+                unreadCount={unreadCount}
+              />
               
               {/* User menu */}
               <div className="relative">
@@ -316,21 +313,29 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
                   className="flex items-center max-w-xs text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
-                  <UserCircleIcon className="h-8 w-8 text-gray-400" />
+                  {user?.avatar ? (
+                    <Image src={user.avatar} alt="User Avatar" width={32} height={32} className="h-8 w-8 rounded-full object-cover" />
+                  ) : (
+                    <UserCircleIcon className="h-8 w-8 text-gray-400" />
+                  )}
+                  
                   <span className="ml-2 text-gray-700">{user?.name}</span>
                 </button>
                 
                 {userMenuOpen && (
                   <div className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5">
                     <div className="py-1">
-                      <a href="/dashboard/admin/profile" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                      <Link href={user?.role === 'ADMIN' ? '/dashboard/admin/profile' : user?.role === 'DRIVER' ? '/dashboard/driver/profile' : '/dashboard/user/profile'} className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                         <UserCircleIcon className="mr-3 h-4 w-4" />
                         Profile
-                      </a>
-                      <a href="/dashboard/admin/settings" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                      </Link>
+                      {user?.role === 'ADMIN' ? <>
+                        <Link href='/dashboard/admin/settings' className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                         <CogIcon className="mr-3 h-4 w-4" />
                         Settings
-                      </a>
+                      </Link>
+                      </> : user?.role === 'DRIVER' ? '' : ''}
+                      
                       <button
                         onClick={handleLogout}
                         className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"

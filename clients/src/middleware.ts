@@ -7,9 +7,7 @@ export function middleware(request: NextRequest) {
   // Get token from cookies
   const token = request.cookies.get('token')?.value;
   
-  // Public routes that don't require authentication
-  const publicRoutes = ['/', '/login', '/register', '/about', '/contact', '/search'];
-  const isPublicRoute = publicRoutes.some(route => pathname === route || pathname.startsWith(route));
+
   
   // Dashboard routes that require authentication
   const dashboardRoutes = ['/dashboard'];
@@ -50,7 +48,7 @@ export function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL('/dashboard', request.url));
       }
       
-    } catch (error) {
+    } catch {
       // If token is invalid, redirect to login
       const loginUrl = new URL('/login', request.url);
       loginUrl.searchParams.set('redirect', pathname);
