@@ -33,7 +33,7 @@ export default function HomePage() {
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
           <div className="text-center">
             <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
-              Truck Lagbe
+              TruckBook
             </h1>
             <p className="text-xl md:text-2xl mb-8 text-blue-100 max-w-3xl mx-auto">
                              Bangladesh&apos;s #1 platform for truck rentals. Connect with verified drivers instantly.
@@ -87,7 +87,7 @@ export default function HomePage() {
       <div className="bg-white py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">Why Choose Truck Lagbe?</h2>
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">Why Choose TruckBook?</h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
               The most trusted and reliable platform for truck rentals in Bangladesh
             </p>
@@ -290,7 +290,7 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-4xl font-bold mb-4">Ready to Get Started?</h2>
           <p className="text-xl mb-8 text-blue-100">
-            Join thousands of customers who trust Truck Lagbe for their transportation needs
+            Join thousands of customers who trust TruckBook for their transportation needs
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/search">

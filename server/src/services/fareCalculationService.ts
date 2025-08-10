@@ -76,7 +76,7 @@ export class FareCalculationService {
       // Determine if trip is inside or outside Dhaka
       const isInsideDhaka = this.isInsideDhaka(request.source) && this.isInsideDhaka(request.destination);
       
-      // Calculate fare components using Truck Lagbe formula
+      // Calculate fare components using TruckBook formula
       const baseFare = truckCategory.baseFare;
       const ratePerKm = isInsideDhaka ? truckCategory.insideDhakaRate : truckCategory.outsideDhakaRate;
       const distanceCost = distance * ratePerKm;

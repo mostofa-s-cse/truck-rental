@@ -350,7 +350,7 @@ Authorization: Bearer {{auth_token}}
 {
   "info": {
     "name": "Fare Calculation API",
-    "description": "Truck Lagbe fare calculation system",
+    "description": "TruckBook fare calculation system",
     "version": "1.0.0"
   },
   "variable": [

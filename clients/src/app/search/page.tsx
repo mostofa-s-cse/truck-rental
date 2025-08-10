@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Truck, MapPin, Star, Search, Phone, MessageCircle, Loader2, Filter, X, TrendingUp, LogIn } from 'lucide-react';
+import { Truck, MapPin, Star, Search, Phone, Loader2, Filter, X, TrendingUp, LogIn } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import BookingModal from '@/components/BookingModal';
 import { apiClient } from '@/lib/api';
 import { Driver, SearchFilters } from '@/types';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export default function SearchPage() {
   const { user, token } = useAuth();
@@ -659,14 +660,14 @@ export default function SearchPage() {
                           )}
                         </Button>
                         <div className="flex gap-2 sm:gap-3">
-                          <Button variant="outline" className="flex-1 sm:flex-none flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 sm:py-2.5">
+                          <Link href={`tel:${driver.user.phone}`} className="text-gray-800 border border-gray-300 rounded-md px-3 py-2 flex-1 sm:flex-none flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 sm:py-2.5">
                             <Phone className="w-3 h-3 sm:w-4 sm:h-4" />
                             <span className="hidden sm:inline">Call</span>
-                          </Button>
-                          <Button variant="outline" className="flex-1 sm:flex-none flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 sm:py-2.5">
+                          </Link>
+                          {/* <Button variant="outline" className="flex-1 sm:flex-none flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 sm:py-2.5">
                             <MessageCircle className="w-3 h-3 sm:w-4 sm:h-4" />
                             <span className="hidden sm:inline">Message</span>
-                          </Button>
+                          </Button> */}
                         </div>
                       </div>
                     </div>

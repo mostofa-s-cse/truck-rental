@@ -13,14 +13,14 @@
 
 ## 🎯 Overview
 
-The fare calculation system implements the **Truck Lagbe pricing model** for truck rentals in Bangladesh. It provides accurate, location-based pricing with comprehensive breakdowns for different truck types and trip scenarios.
+The fare calculation system implements the **TruckBook pricing model** for truck rentals in Bangladesh. It provides accurate, location-based pricing with comprehensive breakdowns for different truck types and trip scenarios.
 
 ### Key Features
 - ✅ **Location-based pricing** (Inside/Outside Dhaka)
 - ✅ **Truck-specific rates** (8 different categories)
 - ✅ **Real-time calculation** with Google Maps integration
 - ✅ **Comprehensive breakdown** (base fare, distance, weight, urgency, tolls)
-- ✅ **Market-accurate pricing** based on Truck Lagbe model
+- ✅ **Market-accurate pricing** based on TruckBook model
 
 ## 💰 Fare Structure
 
@@ -433,4 +433,4 @@ For technical support or questions about the fare calculation system:
 
 *Last Updated: August 6, 2024*
 *Version: 1.0.0*
-*Based on Truck Lagbe Pricing Model* 
+*Based on TruckBook Pricing Model* 
