@@ -8,7 +8,6 @@ import {
   TruckIcon, 
   CalendarIcon, 
   CogIcon,
-  BellIcon,
   UserCircleIcon,
   Bars3Icon,
   XMarkIcon,
@@ -69,11 +68,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           icon: HomeIcon
         },
         {
-          name: 'Notifications',
-          href: '/dashboard/notifications',
-          icon: BellIcon
-        },
-        {
           name: 'User Management',
           href: '/dashboard/admin/users',
           icon: UserCircleIcon
@@ -125,11 +119,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           icon: HomeIcon
         },
         {
-          name: 'Notifications',
-          href: '/dashboard/notifications',
-          icon: BellIcon
-        },
-        {
           name: 'My Bookings',
           href: '/dashboard/driver/bookings',
           icon: CalendarIcon,
@@ -158,11 +147,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         name: 'Dashboard',
         href: '/dashboard/user',
         icon: HomeIcon
-      },
-      {
-        name: 'Notifications',
-        href: '/dashboard/notifications',
-        icon: BellIcon
       },
       {
         name: 'My Bookings',
