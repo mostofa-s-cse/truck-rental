@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { PrismaClient, UserRole } from '@prisma/client';
 import { CreateUserRequest, LoginRequest, JWTPayload } from '../types';
 import { logDatabase } from '../utils/logger';
+import { NotificationIntegrationService } from './notificationIntegrationService';
 
 const prisma = new PrismaClient();
 
@@ -47,6 +48,14 @@ export class AuthService {
 
     // Generate JWT token
     const token = this.generateToken(user.id, user.email, user.role);
+
+    // Send welcome notification
+    try {
+      await NotificationIntegrationService.sendWelcomeNotification(user.id, user.name);
+    } catch (error) {
+      console.error('Failed to send welcome notification:', error);
+      // Don't fail the registration if welcome notification fails
+    }
 
     return { user, token };
   }

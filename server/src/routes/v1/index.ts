@@ -16,6 +16,7 @@ import emergencyAlertRoutes from './emergencyAlert';
 import trackingRoutes from './tracking';
 import searchRoutes from './search';
 import dashboardRoutes from './dashboard';
+import notificationRoutes from './notifications';
 
 const router = Router();
 
@@ -37,6 +38,7 @@ router.use('/emergency-alerts', emergencyAlertRoutes);
 router.use('/tracking', trackingRoutes);
 router.use('/search', searchRoutes);
 router.use('/dashboard', dashboardRoutes);
+router.use('/notifications', notificationRoutes);
 
 // Health check for v1
 router.get('/health', (req, res) => {

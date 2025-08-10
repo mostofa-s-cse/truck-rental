@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { CreateDriverRequest, SearchDriversRequest } from '../types';
+import { NotificationIntegrationService } from './notificationIntegrationService';
 
 const prisma = new PrismaClient();
 
@@ -239,6 +240,14 @@ export class DriverService {
         }
       }
     });
+
+    // Send driver verification notification
+    try {
+      await NotificationIntegrationService.sendDriverVerificationNotification(driverId, isVerified);
+    } catch (error) {
+      console.error('Failed to send driver verification notification:', error);
+      // Don't fail the verification if notification fails
+    }
 
     return driver;
   }

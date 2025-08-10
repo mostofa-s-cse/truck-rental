@@ -23,6 +23,7 @@ import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { logoutUser } from '@/store/slices/authSlice';
 import Image from 'next/image';
+import NotificationDropdown from './NotificationDropdown';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -42,12 +43,14 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   children,
 }) => {
   const { user } = useAppSelector((state) => state.auth);
+  const { unreadCount } = useAppSelector((state) => state.notifications);
   const { successToast } = useSweetAlert();
   const dispatch = useAppDispatch();
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
   const [openMenuItems, setOpenMenuItems] = useState<Set<string>>(new Set());
 
   const handleLogout = () => {
@@ -64,6 +67,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           name: 'Dashboard',
           href: '/dashboard/admin',
           icon: HomeIcon
+        },
+        {
+          name: 'Notifications',
+          href: '/dashboard/notifications',
+          icon: BellIcon
         },
         {
           name: 'User Management',
@@ -117,6 +125,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           icon: HomeIcon
         },
         {
+          name: 'Notifications',
+          href: '/dashboard/notifications',
+          icon: BellIcon
+        },
+        {
           name: 'My Bookings',
           href: '/dashboard/driver/bookings',
           icon: CalendarIcon,
@@ -145,6 +158,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         name: 'Dashboard',
         href: '/dashboard/user',
         icon: HomeIcon
+      },
+      {
+        name: 'Notifications',
+        href: '/dashboard/notifications',
+        icon: BellIcon
       },
       {
         name: 'My Bookings',
@@ -298,9 +316,12 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             
             <div className="ml-4 flex items-center md:ml-6 space-x-4">
               {/* Notifications */}
-              <button className="p-2 rounded-full text-gray-400 hover:text-gray-500 hover:bg-gray-100">
-                <BellIcon className="h-6 w-6" />
-              </button>
+              <NotificationDropdown 
+                isOpen={notificationOpen}
+                userRole={user?.role || 'USER'}
+                onToggle={() => setNotificationOpen(!notificationOpen)}
+                unreadCount={unreadCount}
+              />
               
               {/* User menu */}
               <div className="relative">

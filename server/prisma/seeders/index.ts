@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { seedSystemSettings } from './systemSettingsSeeder';
 import { seedTruckCategories } from './truckCategorySeeder';
 import { seedDhakaAreas } from './dhakaAreaSeeder';
-
+import { seedNotifications } from './notificationSeeder';
 
 import { seedUsers } from './userSeeder';
 import { seedDrivers } from './driverSeeder';
@@ -38,6 +38,7 @@ async function main() {
     console.log('9. Payments');
     console.log('10. Tracking Data');
     console.log('11. Emergency Alerts');
+    console.log('12. Notifications');
     console.log('==============================================\n');
 
     // Execute seeders in order
@@ -52,6 +53,7 @@ async function main() {
     await seedPayments();
     await seedTracking();
     await seedEmergencyAlerts();
+    await seedNotifications();
 
     console.log('\n==============================================');
     console.log('✅ All seeders completed successfully!');
@@ -82,7 +84,8 @@ async function clearDatabase() {
     'users',
     'area_searches',
     'truck_categories',
-    'system_settings'
+    'system_settings',
+    'notifications'
   ];
 
   for (const table of tables) {
