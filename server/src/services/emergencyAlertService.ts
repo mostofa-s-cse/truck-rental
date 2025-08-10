@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { logDatabase } from '../utils/logger';
+import { NotificationIntegrationService } from './notificationIntegrationService';
 
 const prisma = new PrismaClient();
 
@@ -66,6 +67,14 @@ export class EmergencyAlertService {
     });
 
     logDatabase('insert_success', 'emergency_alerts', { alertId: alert.id });
+
+    // Send emergency alert notifications
+    try {
+      await NotificationIntegrationService.onEmergencyAlertCreated(alert.id);
+    } catch (error) {
+      console.error('Failed to send emergency alert notifications:', error);
+      // Don't fail the emergency alert creation if notifications fail
+    }
 
     // TODO: Send real-time notification to admins
     await this.notifyAdmins(alert);

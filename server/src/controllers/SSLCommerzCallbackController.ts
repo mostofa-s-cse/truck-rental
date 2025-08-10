@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { SSLCommerzService } from '../services/SSLCommerzService';
 import { logError } from '../utils/logger';
+import { NotificationIntegrationService } from '../services/notificationIntegrationService';
 
 export class SSLCommerzCallbackController {
   private sslCommerzService: SSLCommerzService;
@@ -52,6 +53,16 @@ export class SSLCommerzCallbackController {
         console.log('Payment status is valid, updating to completed');
         // Update payment and booking status
         await this.updatePaymentStatus(tran_id, 'COMPLETED', value_a);
+        
+        // Send payment success notifications
+        try {
+          if (value_a) {
+            await NotificationIntegrationService.onPaymentStatusChanged(tran_id, 'COMPLETED');
+          }
+        } catch (error) {
+          console.error('Failed to send payment success notifications:', error);
+        }
+        
         // URL encode the parameters to handle special characters
         const encodedTranId = encodeURIComponent(tran_id);
         const encodedAmount = encodeURIComponent(amount || '0');
@@ -62,6 +73,16 @@ export class SSLCommerzCallbackController {
         console.warn('Payment status from callback is not valid:', status);
         console.warn('Available status values:', ['VALID', 'SUCCESS', 'FAILED', 'CANCELLED']);
         await this.updatePaymentStatus(tran_id, 'FAILED', value_a);
+        
+        // Send payment failure notifications
+        try {
+          if (value_a) {
+            await NotificationIntegrationService.onPaymentStatusChanged(tran_id, 'FAILED');
+          }
+        } catch (error) {
+          console.error('Failed to send payment failure notifications:', error);
+        }
+        
         return this.redirectToFrontend(req, res, `/payment/fail?tran_id=${tran_id}&error=invalid_status&status=${status}`);
       }
 
@@ -92,6 +113,15 @@ export class SSLCommerzCallbackController {
 
       if (tran_id) {
         await this.updatePaymentStatus(tran_id, 'FAILED', value_a);
+        
+        // Send payment failure notifications
+        try {
+          if (value_a) {
+            await NotificationIntegrationService.onPaymentStatusChanged(tran_id, 'FAILED');
+          }
+        } catch (error) {
+          console.error('Failed to send payment failure notifications:', error);
+        }
       }
 
       const errorMsg = error || errorReason || failedreason || 'Payment failed';
@@ -121,6 +151,15 @@ export class SSLCommerzCallbackController {
 
       if (tran_id) {
         await this.updatePaymentStatus(tran_id, 'CANCELLED', value_a);
+        
+        // Send payment cancellation notifications
+        try {
+          if (value_a) {
+            await NotificationIntegrationService.onPaymentStatusChanged(tran_id, 'CANCELLED');
+          }
+        } catch (error) {
+          console.error('Failed to send payment cancellation notifications:', error);
+        }
       }
 
       return this.redirectToFrontend(req, res, `/payment/cancel?tran_id=${tran_id || 'unknown'}`);

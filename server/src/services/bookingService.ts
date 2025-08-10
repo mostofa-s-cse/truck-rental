@@ -1,5 +1,6 @@
 import { PrismaClient, BookingStatus } from '@prisma/client';
 import { CreateBookingRequest, UpdateBookingRequest } from '../types';
+import { NotificationIntegrationService } from './notificationIntegrationService';
 
 const prisma = new PrismaClient();
 
@@ -85,6 +86,14 @@ export class BookingService {
       }
     });
 
+    // Send notifications for booking creation
+    try {
+      await NotificationIntegrationService.onBookingCreated(booking.id);
+    } catch (error) {
+      console.error('Failed to send booking creation notifications:', error);
+      // Don't fail the booking creation if notifications fail
+    }
+
     return booking;
   }
 
@@ -126,6 +135,28 @@ export class BookingService {
           }
         }
       });
+
+      // Send trip completion notifications
+      try {
+        await NotificationIntegrationService.onTripCompleted(booking.id);
+      } catch (error) {
+        console.error('Failed to send trip completion notifications:', error);
+      }
+    }
+
+    // Send notifications for other status changes
+    if (updateData.status && updateData.status !== booking.status) {
+      try {
+        if (updateData.status === BookingStatus.IN_PROGRESS) {
+          await NotificationIntegrationService.onTripStarted(booking.id);
+        } else if (updateData.status === BookingStatus.CONFIRMED) {
+          await NotificationIntegrationService.onBookingStatusChanged(booking.id, 'CONFIRMED', booking.driverId);
+        } else if (updateData.status === BookingStatus.CANCELLED) {
+          await NotificationIntegrationService.onBookingStatusChanged(booking.id, 'CANCELLED', booking.driverId);
+        }
+      } catch (error) {
+        console.error('Failed to send status change notifications:', error);
+      }
     }
 
     return booking;

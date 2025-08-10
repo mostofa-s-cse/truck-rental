@@ -38,6 +38,27 @@ enum TruckQuality {
   POOR
 }
 
+enum NotificationType {
+  BOOKING_CREATED
+  BOOKING_ACCEPTED
+  BOOKING_REJECTED
+  TRIP_STARTED
+  TRIP_COMPLETED
+  TRIP_CANCELLED
+  PAYMENT_RECEIVED
+  PAYMENT_FAILED
+  DRIVER_ARRIVED
+  SYSTEM_ALERT
+  EMERGENCY_ALERT
+}
+
+enum NotificationPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -57,6 +78,8 @@ model User {
   sentMessages     Message[] @relation("MessageSender")
   receivedMessages Message[] @relation("MessageReceiver")
   emergencyAlerts  EmergencyAlert[]
+  userNotifications Notification[] @relation("UserNotifications")
+  adminNotifications Notification[] @relation("AdminNotifications")
 
   @@map("users")
 }
@@ -85,6 +108,7 @@ model Driver {
   bookings Booking[]
   reviews  Review[]
   tracking Tracking[]
+  notifications Notification[] @relation("DriverNotifications")
 
   @@map("drivers")
 }
@@ -247,4 +271,27 @@ model EmergencyAlert {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("emergency_alerts")
+}
+
+model Notification {
+  id          String   @id @default(cuid())
+  userId      String?  // null for admin notifications
+  driverId    String?  // null for user/admin notifications
+  adminId     String?  // null for user/driver notifications
+  type        NotificationType
+  title       String
+  message     String
+  isRead      Boolean  @default(false)
+  relatedId   String?  // ID of related entity (booking, etc.)
+  relatedType String?  // Type of related entity (BOOKING, PAYMENT, etc.)
+  priority    NotificationPriority @default(MEDIUM)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  user   User?   @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  driver Driver? @relation("DriverNotifications", fields: [driverId], references: [id], onDelete: Cascade)
+  admin  User?   @relation("AdminNotifications", fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
 }
