@@ -201,32 +201,63 @@ const StatusCheckbox = ({
 const DriverDetails = ({ driver }: { driver: Driver }) => (
   <div className="space-y-6">
     {/* Driver Header */}
-    <div className="flex items-center">
-      {driver.user.avatar ? (
-        <img
-          src={driver.user?.avatar || ''}
-          alt={driver.user.name}
-          className="h-20 w-20 rounded-full object-cover border-4 border-blue-200 shadow-lg"
-        />
-      ) : (
-        <div className="h-20 w-20 rounded-full bg-blue-100 flex items-center justify-center border-4 border-blue-200 shadow-lg">
-          <TruckIcon className="h-10 w-10 text-blue-600" />
+    <div className="flex items-center justify-between">
+      <div className="flex items-center">
+        {driver.user.avatar ? (
+          <img
+            src={driver.user?.avatar || ""}
+            alt={driver.user.name}
+            className="h-20 w-20 rounded-full object-cover border-4 border-blue-200 shadow-lg"
+          />
+        ) : (
+          <div className="h-20 w-20 rounded-full bg-blue-100 flex items-center justify-center border-4 border-blue-200 shadow-lg">
+            <TruckIcon className="h-10 w-10 text-blue-600" />
+          </div>
+        )}
+        <div className="ml-4">
+          <h3 className="text-lg font-medium text-gray-900">
+            {driver.user.name}
+          </h3>
+          <p className="text-sm text-gray-500">{driver.user.email}</p>
+          <span
+            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium mt-1 ${getTruckTypeColor(
+              driver.truckType
+            )}`}
+          >
+            {driver.truckType.replace("_", " ")}
+          </span>
+        </div>
+      </div>
+
+      {/* Truck Image Preview */}
+      {driver.truckImage && (
+        <div className="flex-shrink-0">
+          <img
+            src={driver.truckImage}
+            alt={`${driver.truckType} truck`}
+            className="h-20 w-32 object-cover rounded-lg border-2 border-gray-200 shadow-md"
+          />
         </div>
       )}
-      <div className="ml-4">
-        <h3 className="text-lg font-medium text-gray-900">
-          {driver.user.name}
-        </h3>
-        <p className="text-sm text-gray-500">{driver.user.email}</p>
-        <span
-          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium mt-1 ${getTruckTypeColor(
-            driver.truckType
-          )}`}
-        >
-          {driver.truckType.replace("_", " ")}
-        </span>
-      </div>
     </div>
+
+    {/* Truck Images Gallery */}
+    {driver.truckImages && driver.truckImages.length > 0 && (
+      <div className="bg-gray-50 rounded-lg p-4">
+        <h4 className="text-sm font-medium text-gray-700 mb-3">Truck Images</h4>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {driver.truckImages.map((image, index) => (
+            <div key={index} className="relative group">
+              <img
+                src={image}
+                alt={`Truck ${index + 1}`}
+                className="w-full h-24 object-cover rounded-lg border-2 border-gray-200 group-hover:border-blue-500 transition-all cursor-pointer shadow-sm hover:shadow-md"
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
 
     {/* Driver Information */}
     <div className="bg-gray-50 rounded-lg p-4">
@@ -676,25 +707,41 @@ function AdminDriversContent() {
     (): Column<Driver>[] => [
       {
         key: "user.name",
-        header: "Driver",
+        header: "Driver & Truck",
         render: (value, row) => (
-          <div className="flex items-center">
+          <div className="flex items-center gap-3">
+            {/* Driver Photo */}
             {row.user?.avatar ? (
               <img
                 src={row.user?.avatar || ""}
                 alt={row.user.name}
-                className="h-10 w-10 rounded-full object-cover border-2 border-gray-200"
+                className="h-12 w-12 rounded-full object-cover border-2 border-blue-200 shadow-sm"
               />
             ) : (
-              <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                <UserCircleIcon className="h-6 w-6 text-blue-600" />
+              <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center border-2 border-blue-200">
+                <UserCircleIcon className="h-7 w-7 text-blue-600" />
               </div>
             )}
-            <div className="ml-3">
+
+            {/* Truck Photo */}
+            {row.truckImage ? (
+              <img
+                src={row.truckImage}
+                alt={`${row.truckType} truck`}
+                className="h-12 w-16 object-cover rounded-md border-2 border-gray-200 shadow-sm"
+              />
+            ) : (
+              <div className="h-12 w-16 rounded-md bg-gray-100 flex items-center justify-center border-2 border-gray-200">
+                <TruckIcon className="h-6 w-6 text-gray-400" />
+              </div>
+            )}
+
+            {/* Driver Info */}
+            <div className="ml-1">
               <div className="text-sm font-medium text-gray-900">
                 {row.user.name}
               </div>
-              <div className="text-sm text-gray-500">{row.user.email}</div>
+              <div className="text-xs text-gray-500">{row.user.email}</div>
             </div>
           </div>
         ),

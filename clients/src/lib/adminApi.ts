@@ -219,6 +219,8 @@ export interface Driver {
   completedBookings: number;
   totalRevenue: number;
   createdAt: string;
+  truckImage?: string;
+  truckImages?: string[];
 }
 
 export interface User {

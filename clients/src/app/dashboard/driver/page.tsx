@@ -184,19 +184,19 @@ export default function DriverDashboard() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                   <div className="text-center">
                     <p className="text-sm font-medium text-gray-600">Today</p>
-                    <p className="text-2xl font-bold text-gray-900">${earnings?.today?.toFixed(2) || 0}</p>
+                    <p className="text-2xl font-bold text-gray-900">৳{earnings?.today?.toFixed(2) || 0}</p>
                   </div>
                   <div className="text-center">
                     <p className="text-sm font-medium text-gray-600">This Week</p>
-                    <p className="text-2xl font-bold text-gray-900">${earnings?.thisWeek?.toFixed(2) || 0}</p>
+                    <p className="text-2xl font-bold text-gray-900">৳{earnings?.thisWeek?.toFixed(2) || 0}</p>
                   </div>
                   <div className="text-center">
                     <p className="text-sm font-medium text-gray-600">This Month</p>
-                    <p className="text-2xl font-bold text-gray-900">${earnings?.thisMonth?.toFixed(2) || 0}</p>
+                    <p className="text-2xl font-bold text-gray-900">৳{earnings?.thisMonth?.toFixed(2) || 0}</p>
                   </div>
                   <div className="text-center">
                     <p className="text-sm font-medium text-gray-600">Total Earnings</p>
-                    <p className="text-2xl font-bold text-gray-900">${earnings?.totalEarnings?.toFixed(2) || 0}</p>
+                    <p className="text-2xl font-bold text-gray-900">৳{earnings?.totalEarnings?.toFixed(2) || 0}</p>
                   </div>
                 </div>
               </div>

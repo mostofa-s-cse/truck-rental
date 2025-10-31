@@ -7,7 +7,7 @@ import { useAppDispatch, useAppSelector } from '@/hooks/redux';
 import { registerUser, clearError } from '@/store/slices/authSlice';
 import Button from '@/components/ui/Button';
 import PublicRoute from '@/components/auth/PublicRoute';
-import { Truck, Eye, EyeOff } from 'lucide-react';
+import { Truck, Eye, EyeOff, CheckCircle } from 'lucide-react';
 import { RegisterData } from '@/types';
 
 export default function RegisterPage() {
@@ -23,6 +23,7 @@ export default function RegisterPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [registrationSuccess, setRegistrationSuccess] = useState(false);
 
   const dispatch = useAppDispatch();
   const router = useRouter();
@@ -65,17 +66,8 @@ export default function RegisterPage() {
       const result = await dispatch(registerUser(registerData as RegisterData));
       
       if (registerUser.fulfilled.match(result)) {
-        // Redirect to user's dashboard based on role
-        const user = result.payload.user;
-        let dashboardPath = '/dashboard';
-        if (user.role === 'ADMIN') {
-          dashboardPath = '/dashboard/admin';
-        } else if (user.role === 'DRIVER') {
-          dashboardPath = '/dashboard/driver';
-        } else if (user.role === 'USER') {
-          dashboardPath = '/dashboard/user';
-        }
-        router.push(dashboardPath);
+        // Show email verification message instead of redirecting
+        setRegistrationSuccess(true);
       } else {
         const errorMessage = result.payload as string || 'Registration failed';
         setError(errorMessage);
@@ -108,6 +100,35 @@ export default function RegisterPage() {
               </Link>
             </p>
           </div>
+
+          {/* Email Verification Success Message */}
+          {registrationSuccess ? (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-6">
+              <div className="flex items-center justify-center mb-4">
+                <CheckCircle className="h-12 w-12 text-green-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-green-900 text-center mb-2">
+                Registration Successful!
+              </h3>
+              <p className="text-sm text-green-800 text-center mb-4">
+                We've sent a verification email to <strong>{formData.email}</strong>. 
+                Please check your inbox and click the verification link to activate your account.
+              </p>
+              <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 mb-4">
+                <p className="text-xs text-yellow-800 text-center">
+                  ⚠️ You must verify your email before you can log in to your account.
+                </p>
+              </div>
+              <div className="text-center">
+                <Link
+                  href="/login"
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+                >
+                  Go to Login
+                </Link>
+              </div>
+            </div>
+          ) : (
           <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
             <div className="space-y-4">
               <div>
@@ -244,6 +265,7 @@ export default function RegisterPage() {
               </Button>
             </div>
           </form>
+          )}
         </div>
       </div>
     </PublicRoute>

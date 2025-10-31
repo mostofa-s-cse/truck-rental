@@ -62,9 +62,14 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     if (user?.role === 'ADMIN') {
       return [
         {
+          name: 'Home',
+          href: '/',
+          icon: HomeIcon
+        },
+        {
           name: 'Dashboard',
           href: '/dashboard/admin',
-          icon: HomeIcon
+          icon: ChartBarIcon
         },
         {
           name: 'User Management',
@@ -113,9 +118,14 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     if (user?.role === 'DRIVER') {
       return [
         {
+          name: 'Home',
+          href: '/',
+          icon: HomeIcon
+        },
+        {
           name: 'Dashboard',
           href: '/dashboard/driver',
-          icon: HomeIcon
+          icon: ChartBarIcon
         },
         {
           name: 'My Bookings',
@@ -143,9 +153,14 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     // Regular user menu items
     return [
       {
+        name: 'Home',
+        href: '/',
+        icon: HomeIcon
+      },
+      {
         name: 'Dashboard',
         href: '/dashboard/user',
-        icon: HomeIcon
+        icon: ChartBarIcon
       },
       {
         name: 'My Bookings',

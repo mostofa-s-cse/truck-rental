@@ -189,7 +189,7 @@ export default function DriverEarningsPage() {
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Today&apos;s Earnings</p>
-                  <p className="text-2xl font-bold text-gray-900">${earningsData.overview.today?.toFixed(2) || 0}</p>
+                  <p className="text-2xl font-bold text-gray-900">৳{earningsData.overview.today?.toFixed(2) || 0}</p>
                   <div className="flex items-center mt-1">
                     <TrendingUpIcon className="h-4 w-4 text-green-500 mr-1" />
                     <span className="text-sm text-green-600">+15% from yesterday</span>
@@ -205,7 +205,7 @@ export default function DriverEarningsPage() {
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">This Week</p>
-                  <p className="text-2xl font-bold text-gray-900">${earningsData.overview.thisWeek?.toFixed(2) || 0}</p>
+                  <p className="text-2xl font-bold text-gray-900">৳{earningsData.overview.thisWeek?.toFixed(2) || 0}</p>
                   <div className="flex items-center mt-1">
                     <TrendingUpIcon className="h-4 w-4 text-green-500 mr-1" />
                     <span className="text-sm text-green-600">+8% from last week</span>
@@ -221,7 +221,7 @@ export default function DriverEarningsPage() {
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">This Month</p>
-                  <p className="text-2xl font-bold text-gray-900">${earningsData.overview.thisMonth?.toFixed(2) || 0}</p>
+                  <p className="text-2xl font-bold text-gray-900">৳{earningsData.overview.thisMonth?.toFixed(2) || 0}</p>
                   <div className="flex items-center mt-1">
                     <TrendingUpIcon className="h-4 w-4 text-green-500 mr-1" />
                     <span className="text-sm text-green-600">+12% from last month</span>
@@ -238,7 +238,7 @@ export default function DriverEarningsPage() {
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Total Trips</p>
                   <p className="text-2xl font-bold text-gray-900">{totalTripsInRange}</p>
-                  <p className="text-sm text-gray-500">Avg: ${(
+                  <p className="text-sm text-gray-500">Avg: ৳{(
                     earningsData.overview.totalEarnings / Math.max(1, totalTripsInRange)
                   ).toFixed(2)}</p>
                 </div>
@@ -254,11 +254,11 @@ export default function DriverEarningsPage() {
                   <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div className="flex items-center space-x-4">
                       <span className="text-sm text-gray-600">{item.label}</span>
-                      <span className="text-sm font-medium text-gray-900">${item.earnings}</span>
+                      <span className="text-sm font-medium text-gray-900">৳{item.earnings}</span>
                     </div>
                     <div className="flex items-center space-x-2">
                       <span className="text-sm text-gray-600">{item.trips} trips</span>
-                      <span className="text-sm text-green-600">Avg: ${item.avgPerTrip}</span>
+                      <span className="text-sm text-green-600">Avg: ৳{item.avgPerTrip}</span>
                     </div>
                   </div>
                 ))}
@@ -283,7 +283,7 @@ export default function DriverEarningsPage() {
                           style={{ width: `${status.percentage}%` }}
                         ></div>
                       </div>
-                      <span className="text-sm text-gray-600">${status.earnings} ({status.percentage}%)</span>
+                      <span className="text-sm text-gray-600">৳{status.earnings} ({status.percentage}%)</span>
                     </div>
                   </div>
                 ))}
@@ -303,7 +303,7 @@ export default function DriverEarningsPage() {
                         <span className="text-sm font-medium text-gray-900">{method.method.replace('_', ' ')}</span>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-medium text-gray-900">${method.earnings}</p>
+                        <p className="text-sm font-medium text-gray-900">৳{method.earnings}</p>
                         <p className="text-sm text-gray-600">{method.trips} trips ({method.percentage}%)</p>
                       </div>
                     </div>
@@ -331,8 +331,8 @@ export default function DriverEarningsPage() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-medium text-gray-900">${day.earnings}</p>
-                      <p className="text-sm text-green-600">Avg: ${day.avgPerTrip}</p>
+                      <p className="text-sm font-medium text-gray-900">৳{day.earnings}</p>
+                      <p className="text-sm text-green-600">Avg: ৳{day.avgPerTrip}</p>
                     </div>
                   </div>
                 ))}
@@ -379,9 +379,9 @@ export default function DriverEarningsPage() {
                   <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <span className="text-sm text-gray-600">{week.week}</span>
                     <div className="flex items-center space-x-4">
-                      <span className="text-sm font-medium text-gray-900">${week.earnings}</span>
+                      <span className="text-sm font-medium text-gray-900">৳{week.earnings}</span>
                       <span className="text-sm text-gray-600">{week.trips} trips</span>
-                      <span className="text-sm text-green-600">Avg: ${week.avgPerTrip}</span>
+                      <span className="text-sm text-green-600">Avg: ৳{week.avgPerTrip}</span>
                     </div>
                   </div>
                 ))}
@@ -396,9 +396,9 @@ export default function DriverEarningsPage() {
                   <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <span className="text-sm text-gray-600">{month.month}</span>
                     <div className="flex items-center space-x-4">
-                      <span className="text-sm font-medium text-gray-900">${month.earnings}</span>
+                      <span className="text-sm font-medium text-gray-900">৳{month.earnings}</span>
                       <span className="text-sm text-gray-600">{month.trips} trips</span>
-                      <span className="text-sm text-green-600">Avg: ${month.avgPerTrip}</span>
+                      <span className="text-sm text-green-600">Avg: ৳{month.avgPerTrip}</span>
                     </div>
                   </div>
                 ))}

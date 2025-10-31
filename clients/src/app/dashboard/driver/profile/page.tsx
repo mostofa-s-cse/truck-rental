@@ -683,7 +683,7 @@ export default function DriverProfilePage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm text-gray-600">Total Earnings</span>
-                    <span className="text-sm font-medium text-green-600">${profile.stats.totalEarnings}</span>
+                    <span className="text-sm font-medium text-green-600">৳{profile.stats.totalEarnings}</span>
                   </div>
                 </div>
               </div>
