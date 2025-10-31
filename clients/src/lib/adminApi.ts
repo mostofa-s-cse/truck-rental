@@ -201,6 +201,7 @@ export interface Driver {
     name: string;
     email: string;
     phone?: string;
+    avatar?: string;
   };
   truckType: string;
   capacity: number;

@@ -246,16 +246,16 @@ function AdminAnalyticsContent() {
         sections: [
           PDFGenerator.createMetricsSection('Booking Analytics', {
             'Total Bookings': analyticsData?.bookingAnalytics.totalBookings || 0,
-            'Total Revenue': `$${analyticsData?.bookingAnalytics.totalRevenue || 0}`,
+            'Total Revenue': `৳${analyticsData?.bookingAnalytics.totalRevenue || 0}`,
             'Completed Bookings': analyticsData?.bookingAnalytics.completedBookings || 0,
-            'Average Fare': `$${analyticsData?.bookingAnalytics.averageFare || 0}`
+            'Average Fare': `৳${analyticsData?.bookingAnalytics.averageFare || 0}`
           }),
           PDFGenerator.createMetricsSection('Driver Analytics', {
             'Total Drivers': analyticsData?.driverAnalytics.totalDrivers || 0,
             'Verified Drivers': analyticsData?.driverAnalytics.verifiedDrivers || 0,
             'Active Drivers': analyticsData?.driverAnalytics.activeDrivers || 0,
             'Average Rating': analyticsData?.driverAnalytics.averageRating?.toFixed(1) || '0.0',
-            'Total Revenue': `$${analyticsData?.driverAnalytics.totalRevenue || 0}`
+            'Total Revenue': `৳${analyticsData?.driverAnalytics.totalRevenue || 0}`
           }),
           PDFGenerator.createTableSection('Top Drivers', 
             (analyticsData?.topDrivers || []).map((driver: { name: string; rating: number; trips: number; earnings: number }, index: number) => ({
@@ -263,13 +263,13 @@ function AdminAnalyticsContent() {
               'Name': driver.name,
               'Rating': driver.rating.toFixed(1),
               'Trips': driver.trips,
-              'Earnings': `$${driver.earnings}`
+              'Earnings': `৳${driver.earnings}`
             }))
           ),
           PDFGenerator.createTableSection('Revenue Data', 
             (analyticsData?.revenueData || []).map((stat: { month: string; revenue: number; bookings: number }) => ({
               'Month': stat.month,
-              'Revenue': `$${stat.revenue}`,
+              'Revenue': `৳${stat.revenue}`,
               'Bookings': stat.bookings
             }))
           )
@@ -291,10 +291,7 @@ function AdminAnalyticsContent() {
 
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(amount);
+    return `৳${amount.toLocaleString()}`;
   };
 
   // Calculate paginated data

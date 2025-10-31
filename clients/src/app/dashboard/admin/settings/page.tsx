@@ -168,13 +168,13 @@ export default function AdminSettingsPage() {
       
       case 'string':
         if (setting.key.includes('email') && value) {
-          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+৳/;
           if (!emailRegex.test(value)) {
             return { isValid: false, error: 'Invalid email format' };
           }
         }
         if (setting.key.includes('phone') && value) {
-          const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
+          const phoneRegex = /^[\+]?[1-9][\d]{0,15}৳/;
           if (!phoneRegex.test(value.replace(/\s/g, ''))) {
             return { isValid: false, error: 'Invalid phone number format' };
           }

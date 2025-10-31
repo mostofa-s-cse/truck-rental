@@ -170,8 +170,8 @@ function BookingAnalyticsContent() {
             'Completed Bookings': analyticsData?.completedBookings || 0,
             'Pending Bookings': analyticsData?.pendingBookings || 0,
             'Cancelled Bookings': analyticsData?.cancelledBookings || 0,
-            'Total Revenue': `$${analyticsData?.totalRevenue || 0}`,
-            'Average Fare': `$${analyticsData?.averageFare || 0}`
+            'Total Revenue': `৳${analyticsData?.totalRevenue || 0}`,
+            'Average Fare': `৳${analyticsData?.averageFare || 0}`
           }),
           PDFGenerator.createTableSection('Status Distribution', 
             (analyticsData?.statusDistribution || []).map((status: { status: string; count: number; percentage: number }) => ({
@@ -185,8 +185,8 @@ function BookingAnalyticsContent() {
               'Rank': index + 1,
               'Route': route.route,
               'Bookings': route.bookings,
-              'Revenue': `$${route.revenue}`,
-              'Avg Fare': `$${route.avgFare}`
+              'Revenue': `৳${route.revenue}`,
+              'Avg Fare': `৳${route.avgFare}`
             }))
           ),
           PDFGenerator.createTableSection('Peak Hours', 
@@ -200,7 +200,7 @@ function BookingAnalyticsContent() {
             (analyticsData?.monthlyComparison || []).map((month: { month: string; bookings: number; revenue: number; growth: number }) => ({
               'Month': month.month,
               'Bookings': month.bookings,
-              'Revenue': `$${month.revenue}`,
+              'Revenue': `৳${month.revenue}`,
               'Growth': `${month.growth}%`
             }))
           )
@@ -241,10 +241,7 @@ function BookingAnalyticsContent() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(amount);
+    return `৳${amount.toLocaleString()}`;
   };
 
   // Calculate paginated booking trends data
@@ -419,8 +416,8 @@ function BookingAnalyticsContent() {
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-                  <p className="text-2xl font-bold text-gray-900">${analyticsData?.totalRevenue?.toLocaleString() || '0'}</p>
-                  <p className="text-sm text-gray-500">Avg: ${analyticsData?.averageFare || '0'}</p>
+                  <p className="text-2xl font-bold text-gray-900">৳{analyticsData?.totalRevenue?.toLocaleString() || '0'}</p>
+                  <p className="text-sm text-gray-500">Avg: ৳{analyticsData?.averageFare || '0'}</p>
                 </div>
               </div>
             </div>
@@ -480,9 +477,9 @@ function BookingAnalyticsContent() {
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-                  <p className="text-2xl font-bold text-gray-900">{formatCurrency(analyticsData?.totalRevenue || 0)}</p>
+                  <p className="text-2xl font-bold text-gray-900">৳{formatCurrency(analyticsData?.totalRevenue || 0)}</p>
                   <div className="flex items-center mt-1">
-                    <span className="text-sm text-gray-600">Avg: {formatCurrency(analyticsData?.averageFare || 0)} per booking</span>
+                    <span className="text-sm text-gray-600">Avg: ৳{formatCurrency(analyticsData?.averageFare || 0)} per booking</span>
                   </div>
                 </div>
               </div>
@@ -599,8 +596,8 @@ function BookingAnalyticsContent() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-medium text-gray-900">${route.revenue}</p>
-                      <p className="text-sm text-gray-600">Avg: ${route.avgFare}</p>
+                      <p className="text-sm font-medium text-gray-900">৳{route.revenue}</p>
+                      <p className="text-sm text-gray-600">Avg: ৳{route.avgFare}</p>
                     </div>
                   </div>
                 ))}

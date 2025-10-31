@@ -185,9 +185,17 @@ const UserDetails = ({ user }: { user: User }) => (
   <div className="space-y-6">
     {/* User Header */}
     <div className="flex items-center">
-      <div className="h-16 w-16 rounded-full bg-blue-100 flex items-center justify-center">
-        <UserCircleIcon className="h-8 w-8 text-blue-600" />
-      </div>
+      {user.avatar ? (
+        <img
+          src={user.avatar}
+          alt={user.name}
+          className="h-20 w-20 rounded-full object-cover border-4 border-blue-200 shadow-lg"
+        />
+      ) : (
+        <div className="h-20 w-20 rounded-full bg-blue-100 flex items-center justify-center border-4 border-blue-200 shadow-lg">
+          <UserCircleIcon className="h-10 w-10 text-blue-600" />
+        </div>
+      )}
       <div className="ml-4">
         <h3 className="text-lg font-medium text-gray-900">{user.name}</h3>
         <p className="text-sm text-gray-500">{user.email}</p>
@@ -234,7 +242,7 @@ const UserDetails = ({ user }: { user: User }) => (
         </div>
         <div className="flex justify-between">
           <span className="text-sm text-gray-600">Total Spent</span>
-          <span className="text-sm font-medium text-green-600">${(user.totalSpent || 0).toFixed(2)}</span>
+          <span className="text-sm font-medium text-green-600">৳{(user.totalSpent || 0).toFixed(2)}</span>
         </div>
         <div className="flex justify-between">
           <span className="text-sm text-gray-600">Account Status</span>
@@ -467,9 +475,17 @@ function AdminUsersContent() {
       header: 'Name',
       render: (value, row) => (
         <div className="flex items-center">
-          <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
-            <UserCircleIcon className="h-5 w-5 text-blue-600" />
-          </div>
+          {row.avatar ? (
+            <img
+              src={row.avatar}
+              alt={row.name}
+              className="h-10 w-10 rounded-full object-cover border-2 border-gray-200"
+            />
+          ) : (
+            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+              <UserCircleIcon className="h-6 w-6 text-blue-600" />
+            </div>
+          )}
           <div className="ml-3">
             <div className="text-sm font-medium text-gray-900">{row.name}</div>
             <div className="text-sm text-gray-500">{row.email}</div>
@@ -495,7 +511,7 @@ function AdminUsersContent() {
     {
       key: 'totalSpent',
       header: 'Total Spent',
-      render: (value) => <div className="text-sm font-medium text-green-600">${((value as number) || 0).toFixed(2)}</div>
+      render: (value) => <div className="text-sm font-medium text-green-600">৳{((value as number) || 0).toFixed(2)}</div>
     },
     {
       key: 'isActive',

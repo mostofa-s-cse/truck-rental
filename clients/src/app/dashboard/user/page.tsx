@@ -226,7 +226,7 @@ export default function UserDashboard({}: UserDashboardProps) {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Total Spent</p>
-                    <p className="text-3xl font-bold text-gray-900">${stats?.totalSpent?.toFixed(2) || '0.00'}</p>
+                    <p className="text-3xl font-bold text-gray-900">৳{stats?.totalSpent?.toFixed(2) || '0.00'}</p>
                     <p className="text-xs text-gray-500 mt-1">Total expenditure</p>
                   </div>
                   <div className="p-3 bg-green-100 rounded-full">
@@ -305,7 +305,7 @@ export default function UserDashboard({}: UserDashboardProps) {
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                               <div>
                                 <span className="text-gray-600">Fare:</span>
-                                <span className="font-medium text-gray-900 ml-2">${booking.fare}</span>
+                                <span className="font-medium text-gray-900 ml-2">৳{booking.fare}</span>
                               </div>
                               <div>
                                 <span className="text-gray-600">Date:</span>

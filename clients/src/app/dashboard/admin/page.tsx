@@ -56,10 +56,7 @@ export default function AdminDashboardPage() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(amount);
+    return `৳${amount.toLocaleString()}`;
   };
 
   if (loading) {

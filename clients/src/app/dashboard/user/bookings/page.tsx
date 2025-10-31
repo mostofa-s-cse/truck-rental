@@ -285,7 +285,7 @@ export default function UserBookingsPage() {
       render: (value) => (
         <div className="flex items-center">
           <CurrencyDollarIcon className="h-4 w-4 text-green-500 mr-1" />
-          <span className="text-sm font-medium text-gray-900">${value as number}</span>
+          <span className="text-sm font-medium text-gray-900">৳{value as number}</span>
         </div>
       )
     },
@@ -421,7 +421,7 @@ export default function UserBookingsPage() {
                       
                       <div className="flex items-center justify-between">
                         <div className="text-sm text-gray-600">
-                          Fare: ${booking.fare}
+                          Fare: ৳{booking.fare}
                         </div>
                         <Button
                           size="sm"
@@ -580,7 +580,7 @@ export default function UserBookingsPage() {
                     </div>
                     <div className="flex items-center">
                       <CurrencyDollarIcon className="h-4 w-4 text-gray-400 mr-2" />
-                      <span className="text-sm text-gray-600">Fare: ${selectedBooking.fare}</span>
+                        <span className="text-sm text-gray-600">Fare: ৳{selectedBooking.fare}</span>
                     </div>
                     {selectedBooking.distance && (
                       <div className="flex items-center">
@@ -651,7 +651,7 @@ export default function UserBookingsPage() {
                 <div className="text-sm text-gray-600">
                   <p><strong>Booking ID:</strong> #{selectedBooking.id.slice(-8).toUpperCase()}</p>
                   <p><strong>Route:</strong> {selectedBooking.source} → {selectedBooking.destination}</p>
-                  <p><strong>Fare:</strong> ${selectedBooking.fare}</p>
+                  <p><strong>Fare:</strong> ৳{selectedBooking.fare}</p>
                 </div>
               </div>
 

@@ -107,7 +107,7 @@ const BookingDetails = ({ booking }: { booking: Booking }) => (
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700">Fare</label>
-          <p className="text-sm font-medium text-gray-900">${booking.fare}</p>
+          <p className="text-sm font-medium text-gray-900">৳{booking.fare}</p>
         </div>
         {booking.pickupTime && (
           <div>
@@ -366,7 +366,7 @@ function AdminBookingsContent() {
       render: (value) => (
         <div className="flex items-center">
           <CurrencyDollarIcon className="h-4 w-4 text-green-500 mr-1" />
-          <span className="text-sm font-medium text-gray-900">${value as number}</span>
+          <span className="text-sm font-medium text-gray-900">৳{value as number}</span>
         </div>
       )
     },

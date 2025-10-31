@@ -355,7 +355,7 @@ export default function DriverEarningsPage() {
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-medium text-gray-900">${transaction.amount}</p>
+                        <p className="text-sm font-medium text-gray-900">৳{transaction.amount}</p>
                         <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                           transaction.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
                         }`}>

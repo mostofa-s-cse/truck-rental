@@ -486,7 +486,7 @@ export default function UserProfilePage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm text-gray-600">Total Spent</span>
-                    <span className="text-sm font-medium text-green-600">${profile.stats.totalSpent}</span>
+                    <span className="text-sm font-medium text-green-600">৳{profile.stats.totalSpent}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm text-gray-600">Average Rating</span>

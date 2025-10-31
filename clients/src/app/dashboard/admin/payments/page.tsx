@@ -72,7 +72,7 @@ const PaymentDetails = ({ payment }: { payment: Payment }) => (
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700">Amount</label>
-          <p className="text-sm font-medium text-gray-900">${payment.amount || 0}</p>
+          <p className="text-sm font-medium text-gray-900">৳{payment.amount || 0}</p>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700">Payment Method</label>
@@ -297,7 +297,7 @@ function AdminPaymentsContent() {
       render: (value) => (
         <div className="flex items-center">
           <CurrencyDollarIcon className="h-4 w-4 text-green-500 mr-1" />
-          <span className="text-sm font-medium text-gray-900">${value as number}</span>
+          <span className="text-sm font-medium text-gray-900">৳{value as number}</span>
         </div>
       )
     },
@@ -403,7 +403,7 @@ function AdminPaymentsContent() {
                   </div>
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-                    <p className="text-2xl font-bold text-gray-900">${totalRevenue.toFixed(2)}</p>
+                    <p className="text-2xl font-bold text-gray-900">৳{totalRevenue.toFixed(2)}</p>
                   </div>
                 </div>
               </div>

@@ -314,7 +314,7 @@ export default function UserPaymentsPage() {
                     <div className="ml-3">
                       <p className="text-sm font-medium text-gray-600">Total Spent</p>
                       <p className="text-2xl font-bold text-gray-900">
-                        ${payments.reduce((sum, p) => sum + (p.status === 'COMPLETED' ? p.amount : 0), 0).toFixed(2)}
+                      ৳{payments.reduce((sum, p) => sum + (p.status === 'COMPLETED' ? p.amount : 0), 0).toFixed(2)}
                       </p>
                     </div>
                   </div>
@@ -417,7 +417,7 @@ export default function UserPaymentsPage() {
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium text-gray-600">Amount:</span>
-                      <span className="text-sm font-bold text-gray-900">${selectedPayment.amount}</span>
+                      <span className="text-sm font-bold text-gray-900">৳{selectedPayment.amount}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium text-gray-600">Method:</span>

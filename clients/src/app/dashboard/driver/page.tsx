@@ -235,7 +235,7 @@ export default function DriverDashboard() {
                               {booking.status}
                             </span>
                           </div>
-                          <p className="text-sm text-gray-600">${booking.fare}</p>
+                          <p className="text-sm text-gray-600">৳{booking.fare}</p>
                           <p className="text-sm text-gray-500">{new Date(booking.date).toLocaleDateString()}</p>
                           {booking.pickupTime && (
                             <p className="text-sm text-gray-500">Pickup: {new Date(booking.pickupTime).toLocaleString()}</p>

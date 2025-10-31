@@ -1,16 +1,16 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
-import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import DashboardLayout from '@/components/ui/DashboardLayout';
-import ProtectedRoute from '@/components/auth/ProtectedRoute';
-import { useSweetAlert } from '@/hooks/useSweetAlert';
-import Button from '@/components/ui/Button';
-import Pagination from '@/components/ui/Pagination';
-import { downloadPDF, PDFGenerator } from '@/utils/pdfGenerator';
-import { adminApi, RevenueAnalytics } from '@/lib/adminApi';
-import { 
-  CurrencyDollarIcon, 
+import { useState, useEffect, useCallback, useMemo, Suspense } from "react";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import DashboardLayout from "@/components/ui/DashboardLayout";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import { useSweetAlert } from "@/hooks/useSweetAlert";
+import Button from "@/components/ui/Button";
+import Pagination from "@/components/ui/Pagination";
+import { downloadPDF, PDFGenerator } from "@/utils/pdfGenerator";
+import { adminApi, RevenueAnalytics } from "@/lib/adminApi";
+import {
+  CurrencyDollarIcon,
   ChartBarIcon,
   CreditCardIcon,
   BanknotesIcon,
@@ -18,11 +18,11 @@ import {
   CalendarIcon,
   DocumentArrowDownIcon,
   FunnelIcon,
-} from '@heroicons/react/24/outline';
-import { TrendingUpIcon } from 'lucide-react';
+} from "@heroicons/react/24/outline";
+import { TrendingUpIcon } from "lucide-react";
 
 interface FilterOptions {
-  timeRange: 'day' | 'week' | 'month' | 'year';
+  timeRange: "day" | "week" | "month" | "year";
   paymentMethod?: string;
   status?: string;
   startDate?: string;
@@ -39,19 +39,22 @@ function RevenueAnalyticsContent() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { successToast, errorToast } = useSweetAlert();
-  
+
   // State
   const [loading, setLoading] = useState(true);
-  const [analyticsData, setAnalyticsData] = useState<RevenueAnalytics | null>(null);
+  const [analyticsData, setAnalyticsData] = useState<RevenueAnalytics | null>(
+    null
+  );
   const [isClient, setIsClient] = useState(false);
-  const [pendingURLUpdate, setPendingURLUpdate] = useState<FilterOptions | null>(null);
+  const [pendingURLUpdate, setPendingURLUpdate] =
+    useState<FilterOptions | null>(null);
   const [generatingReport, setGeneratingReport] = useState(false);
 
   // Filter state
   const [filters, setFilters] = useState<FilterOptions>({
-    timeRange: 'month',
+    timeRange: "month",
     page: 1,
-    limit: 10
+    limit: 10,
   });
 
   // Pagination state
@@ -70,7 +73,7 @@ function RevenueAnalyticsContent() {
       Object.entries(pendingURLUpdate).forEach(([key, value]) => {
         if (value) params.set(key, value);
       });
-      const query = params.toString() ? `?${params.toString()}` : '';
+      const query = params.toString() ? `?${params.toString()}` : "";
       router.push(`${pathname}${query}`, { scroll: false });
       setPendingURLUpdate(null);
     }
@@ -79,15 +82,17 @@ function RevenueAnalyticsContent() {
   // Sync local state with URL params
   useEffect(() => {
     if (!isClient) return;
-    
-    const timeRange = (searchParams.get('timeRange') as 'day' | 'week' | 'month' | 'year') || 'month';
-    const paymentMethod = searchParams.get('paymentMethod') || undefined;
-    const status = searchParams.get('status') || undefined;
-    const startDate = searchParams.get('startDate') || undefined;
-    const endDate = searchParams.get('endDate') || undefined;
-    const minAmount = searchParams.get('minAmount') || undefined;
-    const maxAmount = searchParams.get('maxAmount') || undefined;
-    const route = searchParams.get('route') || undefined;
+
+    const timeRange =
+      (searchParams.get("timeRange") as "day" | "week" | "month" | "year") ||
+      "month";
+    const paymentMethod = searchParams.get("paymentMethod") || undefined;
+    const status = searchParams.get("status") || undefined;
+    const startDate = searchParams.get("startDate") || undefined;
+    const endDate = searchParams.get("endDate") || undefined;
+    const minAmount = searchParams.get("minAmount") || undefined;
+    const maxAmount = searchParams.get("maxAmount") || undefined;
+    const route = searchParams.get("route") || undefined;
 
     setFilters({
       timeRange,
@@ -97,7 +102,7 @@ function RevenueAnalyticsContent() {
       endDate,
       minAmount,
       maxAmount,
-      route
+      route,
     });
   }, [searchParams, isClient]);
 
@@ -108,43 +113,46 @@ function RevenueAnalyticsContent() {
   const fetchRevenueAnalytics = useCallback(async () => {
     try {
       setLoading(true);
-      
-      console.log('Fetching revenue analytics with filters:', filters);
-      console.log('Payment method filter:', filters.paymentMethod);
-      
+
+      console.log("Fetching revenue analytics with filters:", filters);
+      console.log("Payment method filter:", filters.paymentMethod);
+
       // Call the API with filters
       const data = await adminApi.getRevenueAnalytics(filters);
-      
+
       // Map the API response to include icons for payment methods
-      const revenueByMethodWithIcons = data.revenueByMethod.map((method: { method: string; revenue: number; percentage: number }) => {
-        let icon;
-        switch (method.method) {
-          case 'CASH':
-            icon = BanknotesIcon;
-            break;
-          case 'CARD':
-            icon = CreditCardIcon;
-            break;
-          case 'MOBILE_MONEY':
-            icon = DevicePhoneMobileIcon;
-            break;
-          default:
-            icon = CreditCardIcon;
+      const revenueByMethodWithIcons = data.revenueByMethod.map(
+        (method: { method: string; revenue: number; percentage: number }) => {
+          let icon;
+          switch (method.method) {
+            case "CASH":
+              icon = BanknotesIcon;
+              break;
+            case "CARD":
+              icon = CreditCardIcon;
+              break;
+            case "MOBILE_MONEY":
+              icon = DevicePhoneMobileIcon;
+              break;
+            default:
+              icon = CreditCardIcon;
+          }
+          return { ...method, icon };
         }
-        return { ...method, icon };
-      });
+      );
 
       const analyticsDataWithIcons = {
         ...data,
-        revenueByMethod: revenueByMethodWithIcons
+        revenueByMethod: revenueByMethodWithIcons,
       };
 
       setAnalyticsData(analyticsDataWithIcons);
     } catch (error: unknown) {
-      console.error('Error fetching revenue analytics:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error("Error fetching revenue analytics:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
       errorToast(`Failed to fetch revenue analytics: ${errorMessage}`);
-      
+
       // Set analytics data to null when API fails - no fallback data
       setAnalyticsData(null);
     } finally {
@@ -158,106 +166,154 @@ function RevenueAnalyticsContent() {
     fetchRevenueAnalytics();
   }, [filters, isClient, fetchRevenueAnalytics]);
 
-  const handleFilterChange = useCallback((key: keyof FilterOptions, value: string) => {
-    // Convert empty strings to undefined for proper filtering
-    const filterValue = value === '' ? undefined : value;
-    const newFilters = { ...filters, [key]: filterValue };
-    if (key === 'page' || key === 'limit') {
-      newFilters.page = 1; // Reset to first page when changing filters
-    }
-    setFilters(newFilters);
-    updateURL(newFilters);
-  }, [filters, updateURL]);
+  const handleFilterChange = useCallback(
+    (key: keyof FilterOptions, value: string) => {
+      // Convert empty strings to undefined for proper filtering
+      const filterValue = value === "" ? undefined : value;
+      const newFilters = { ...filters, [key]: filterValue };
+      if (key === "page" || key === "limit") {
+        newFilters.page = 1; // Reset to first page when changing filters
+      }
+      setFilters(newFilters);
+      updateURL(newFilters);
+    },
+    [filters, updateURL]
+  );
 
-  const handlePageChange = useCallback((page: number) => {
-    const newFilters = { ...filters, page };
-    setFilters(newFilters);
-    setCurrentPage(page);
-    updateURL(newFilters);
-  }, [filters, updateURL]);
+  const handlePageChange = useCallback(
+    (page: number) => {
+      const newFilters = { ...filters, page };
+      setFilters(newFilters);
+      setCurrentPage(page);
+      updateURL(newFilters);
+    },
+    [filters, updateURL]
+  );
 
-  const handleItemsPerPageChange = useCallback((limit: number) => {
-    const newFilters = { ...filters, limit, page: 1 };
-    setFilters(newFilters);
-    setItemsPerPage(limit);
-    setCurrentPage(1);
-    updateURL(newFilters);
-  }, [filters, updateURL]);
+  const handleItemsPerPageChange = useCallback(
+    (limit: number) => {
+      const newFilters = { ...filters, limit, page: 1 };
+      setFilters(newFilters);
+      setItemsPerPage(limit);
+      setCurrentPage(1);
+      updateURL(newFilters);
+    },
+    [filters, updateURL]
+  );
 
   const handleGenerateReport = useCallback(async () => {
     try {
       setGeneratingReport(true);
-      
+
       // Create PDF report data
       const reportData = {
-        title: 'Revenue Analytics Report',
-        subtitle: 'Comprehensive revenue insights and trends',
+        title: "Revenue Analytics Report",
+        subtitle: "Comprehensive revenue insights and trends",
         generatedAt: new Date().toISOString(),
         filters: filters as unknown as Record<string, unknown>,
         sections: [
-          PDFGenerator.createMetricsSection('Overview', {
-            'Total Revenue': `$${analyticsData?.totalRevenue || 0}`,
-            'Today\'s Revenue': `$${analyticsData?.todayRevenue || 0}`,
-            'Monthly Revenue': `$${analyticsData?.monthlyRevenue || 0}`,
-            'Yearly Revenue': `$${analyticsData?.yearlyRevenue || 0}`,
-            'Revenue Growth': `${analyticsData?.revenueGrowth || 0}%`,
-            'Average Order Value': `$${analyticsData?.averageOrderValue || 0}`
+          PDFGenerator.createMetricsSection("Overview", {
+            "Total Revenue": `৳${analyticsData?.totalRevenue || 0}`,
+            "Today's Revenue": `৳${analyticsData?.todayRevenue || 0}`,
+            "Monthly Revenue": `৳${analyticsData?.monthlyRevenue || 0}`,
+            "Yearly Revenue": `৳${analyticsData?.yearlyRevenue || 0}`,
+            "Revenue Growth": `${analyticsData?.revenueGrowth || 0}%`,
+            "Average Order Value": `৳${analyticsData?.averageOrderValue || 0}`,
           }),
-          PDFGenerator.createTableSection('Revenue by Payment Method', 
-            (analyticsData?.revenueByMethod || []).map((method: { method: string; revenue: number; percentage: number }) => ({
-              'Method': method.method,
-              'Revenue': `$${method.revenue}`,
-              'Percentage': `${method.percentage}%`
-            }))
+          PDFGenerator.createTableSection(
+            "Revenue by Payment Method",
+            (analyticsData?.revenueByMethod || []).map(
+              (method: {
+                method: string;
+                revenue: number;
+                percentage: number;
+              }) => ({
+                Method: method.method,
+                Revenue: `৳${method.revenue}`,
+                Percentage: `${method.percentage}%`,
+              })
+            )
           ),
-          PDFGenerator.createTableSection('Revenue by Month', 
-            (analyticsData?.revenueByMonth || []).map((month: { month: string; revenue: number; growth: number }) => ({
-              'Month': month.month,
-              'Revenue': `$${month.revenue}`,
-              'Growth': `${month.growth}%`
-            }))
+          PDFGenerator.createTableSection(
+            "Revenue by Month",
+            (analyticsData?.revenueByMonth || []).map(
+              (month: { month: string; revenue: number; growth: number }) => ({
+                Month: month.month,
+                Revenue: `৳${month.revenue}`,
+                Growth: `${month.growth}%`,
+              })
+            )
           ),
-          PDFGenerator.createTableSection('Revenue by Day of Week', 
-            (analyticsData?.revenueByDay || []).map((day: { day: string; revenue: number; bookings: number }) => ({
-              'Day': day.day,
-              'Revenue': `$${day.revenue}`,
-              'Bookings': day.bookings
-            }))
+          PDFGenerator.createTableSection(
+            "Revenue by Day of Week",
+            (analyticsData?.revenueByDay || []).map(
+              (day: { day: string; revenue: number; bookings: number }) => ({
+                Day: day.day,
+                Revenue: `৳${day.revenue}`,
+                Bookings: day.bookings,
+              })
+            )
           ),
-          PDFGenerator.createTableSection('Top Revenue Routes', 
-            (analyticsData?.topRevenueRoutes || []).map((route: { route: string; revenue: number; bookings: number; avgFare: number }, index: number) => ({
-              'Rank': index + 1,
-              'Route': route.route,
-              'Revenue': `$${route.revenue}`,
-              'Bookings': route.bookings,
-              'Avg Fare': `$${route.avgFare}`
-            }))
+          PDFGenerator.createTableSection(
+            "Top Revenue Routes",
+            (analyticsData?.topRevenueRoutes || []).map(
+              (
+                route: {
+                  route: string;
+                  revenue: number;
+                  bookings: number;
+                  avgFare: number;
+                },
+                index: number
+              ) => ({
+                Rank: index + 1,
+                Route: route.route,
+                Revenue: `৳${route.revenue}`,
+                Bookings: route.bookings,
+                "Avg Fare": `৳${route.avgFare}`,
+              })
+            )
           ),
-          PDFGenerator.createTableSection('Revenue by Status', 
-            (analyticsData?.revenueByStatus || []).map((status: { status: string; revenue: number; percentage: number }) => ({
-              'Status': status.status,
-              'Revenue': `$${status.revenue}`,
-              'Percentage': `${status.percentage}%`
-            }))
+          PDFGenerator.createTableSection(
+            "Revenue by Status",
+            (analyticsData?.revenueByStatus || []).map(
+              (status: {
+                status: string;
+                revenue: number;
+                percentage: number;
+              }) => ({
+                Status: status.status,
+                Revenue: `৳${status.revenue}`,
+                Percentage: `${status.percentage}%`,
+              })
+            )
           ),
-          PDFGenerator.createTableSection('Payment Method Distribution', 
-            (analyticsData?.paymentMethodDistribution || []).map((method: { method: string; count: number; revenue: number; percentage: number }) => ({
-              'Method': method.method,
-              'Transactions': method.count,
-              'Revenue': `$${method.revenue}`,
-              'Percentage': `${method.percentage}%`
-            }))
-          )
-        ]
+          PDFGenerator.createTableSection(
+            "Payment Method Distribution",
+            (analyticsData?.paymentMethodDistribution || []).map(
+              (method: {
+                method: string;
+                count: number;
+                revenue: number;
+                percentage: number;
+              }) => ({
+                Method: method.method,
+                Transactions: method.count,
+                Revenue: `৳${method.revenue}`,
+                Percentage: `${method.percentage}%`,
+              })
+            )
+          ),
+        ],
       };
 
       // Generate and download PDF
-      await downloadPDF(reportData, 'revenue-analytics-report');
-      
-      successToast('PDF report generated and downloaded successfully');
+      await downloadPDF(reportData, "revenue-analytics-report");
+
+      successToast("PDF report generated and downloaded successfully");
     } catch (error) {
-      console.error('Error generating PDF report:', error);
-      errorToast('Failed to generate PDF report');
+      console.error("Error generating PDF report:", error);
+      errorToast("Failed to generate PDF report");
     } finally {
       setGeneratingReport(false);
     }
@@ -265,32 +321,40 @@ function RevenueAnalyticsContent() {
 
   const getMethodColor = (method: string) => {
     switch (method) {
-      case 'CASH': return 'text-green-600 bg-green-100';
-      case 'CARD': return 'text-blue-600 bg-blue-100';
-      case 'MOBILE_MONEY': return 'text-purple-600 bg-purple-100';
-      default: return 'text-gray-600 bg-gray-100';
+      case "CASH":
+        return "text-green-600 bg-green-100";
+      case "CARD":
+        return "text-blue-600 bg-blue-100";
+      case "MOBILE_MONEY":
+        return "text-purple-600 bg-purple-100";
+      default:
+        return "text-gray-600 bg-gray-100";
     }
   };
 
   // Calculate paginated revenue trends data
   const paginatedRevenueTrends = useMemo(() => {
     if (!analyticsData) return { trends: [], totalPages: 0 };
-    
+
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
-    const trends = analyticsData.revenueTrends?.slice(startIndex, endIndex) || [];
-    const totalPages = Math.ceil((analyticsData.revenueTrends?.length || 0) / itemsPerPage);
-    
+    const trends =
+      analyticsData.revenueTrends?.slice(startIndex, endIndex) || [];
+    const totalPages = Math.ceil(
+      (analyticsData.revenueTrends?.length || 0) / itemsPerPage
+    );
+
     return { trends, totalPages };
   }, [analyticsData, currentPage, itemsPerPage]);
-
-
 
   // Don't render until client is ready to prevent hydration issues
   if (!isClient) {
     return (
       <ProtectedRoute requiredRole="ADMIN">
-        <DashboardLayout title="Revenue Analytics" subtitle="Comprehensive revenue insights">
+        <DashboardLayout
+          title="Revenue Analytics"
+          subtitle="Comprehensive revenue insights"
+        >
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
@@ -305,7 +369,10 @@ function RevenueAnalyticsContent() {
   if (loading) {
     return (
       <ProtectedRoute requiredRole="ADMIN">
-        <DashboardLayout title="Revenue Analytics" subtitle="Comprehensive revenue insights">
+        <DashboardLayout
+          title="Revenue Analytics"
+          subtitle="Comprehensive revenue insights"
+        >
           <div className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
           </div>
@@ -317,7 +384,10 @@ function RevenueAnalyticsContent() {
   if (!analyticsData) {
     return (
       <ProtectedRoute requiredRole="ADMIN">
-        <DashboardLayout title="Revenue Analytics" subtitle="Comprehensive revenue insights">
+        <DashboardLayout
+          title="Revenue Analytics"
+          subtitle="Comprehensive revenue insights"
+        >
           <div className="text-center py-12">
             <p className="text-gray-500">No revenue analytics data available</p>
           </div>
@@ -328,13 +398,20 @@ function RevenueAnalyticsContent() {
 
   return (
     <ProtectedRoute requiredRole="ADMIN">
-      <DashboardLayout title="Revenue Analytics" subtitle="Comprehensive revenue insights">
+      <DashboardLayout
+        title="Revenue Analytics"
+        subtitle="Comprehensive revenue insights"
+      >
         <div className="space-y-6">
           {/* Header with Report Generation */}
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">Revenue Analytics</h2>
-              <p className="text-sm text-gray-500 mt-2">Comprehensive revenue insights and trends</p>
+              <h2 className="text-2xl font-bold text-gray-900">
+                Revenue Analytics
+              </h2>
+              <p className="text-sm text-gray-500 mt-2">
+                Comprehensive revenue insights and trends
+              </p>
             </div>
             <Button
               onClick={handleGenerateReport}
@@ -342,7 +419,9 @@ function RevenueAnalyticsContent() {
               className="flex items-center space-x-2"
             >
               <DocumentArrowDownIcon className="h-5 w-5" />
-              <span>{generatingReport ? 'Generating...' : 'Generate Report'}</span>
+              <span>
+                {generatingReport ? "Generating..." : "Generate Report"}
+              </span>
             </Button>
           </div>
 
@@ -356,10 +435,14 @@ function RevenueAnalyticsContent() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Time Range</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Time Range
+                </label>
                 <select
                   value={filters.timeRange}
-                  onChange={(e) => handleFilterChange('timeRange', e.target.value)}
+                  onChange={(e) =>
+                    handleFilterChange("timeRange", e.target.value)
+                  }
                   className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="day">Last 24 Hours</option>
@@ -368,12 +451,16 @@ function RevenueAnalyticsContent() {
                   <option value="year">Last Year</option>
                 </select>
               </div>
-              
+
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Payment Method
+                </label>
                 <select
-                  value={filters.paymentMethod || ''}
-                  onChange={(e) => handleFilterChange('paymentMethod', e.target.value || '')}
+                  value={filters.paymentMethod || ""}
+                  onChange={(e) =>
+                    handleFilterChange("paymentMethod", e.target.value || "")
+                  }
                   className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">All Methods</option>
@@ -382,26 +469,34 @@ function RevenueAnalyticsContent() {
                   <option value="MOBILE_BANKING">Mobile Banking</option>
                 </select>
               </div>
-              
+
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Min Amount</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Min Amount
+                </label>
                 <input
                   type="number"
                   min="0"
-                  value={filters.minAmount || ''}
-                  onChange={(e) => handleFilterChange('minAmount', e.target.value)}
+                  value={filters.minAmount || ""}
+                  onChange={(e) =>
+                    handleFilterChange("minAmount", e.target.value)
+                  }
                   placeholder="0"
                   className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-              
+
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Max Amount</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Max Amount
+                </label>
                 <input
                   type="number"
                   min="0"
-                  value={filters.maxAmount || ''}
-                  onChange={(e) => handleFilterChange('maxAmount', e.target.value)}
+                  value={filters.maxAmount || ""}
+                  onChange={(e) =>
+                    handleFilterChange("maxAmount", e.target.value)
+                  }
                   placeholder="∞"
                   className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
@@ -417,11 +512,17 @@ function RevenueAnalyticsContent() {
                   <CurrencyDollarIcon className="h-6 w-6 text-green-600" />
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-                  <p className="text-2xl font-bold text-gray-900">${analyticsData?.totalRevenue?.toLocaleString() || '0'}</p>
+                  <p className="text-sm font-medium text-gray-600">
+                    Total Revenue
+                  </p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    ৳{analyticsData?.totalRevenue?.toLocaleString() || "0"}
+                  </p>
                   <div className="flex items-center mt-1">
                     <TrendingUpIcon className="h-4 w-4 text-green-500 mr-1" />
-                    <span className="text-sm text-green-600">+{analyticsData?.revenueGrowth || 0}% growth</span>
+                    <span className="text-sm text-green-600">
+                      +{analyticsData?.revenueGrowth || 0}% growth
+                    </span>
                   </div>
                 </div>
               </div>
@@ -433,8 +534,12 @@ function RevenueAnalyticsContent() {
                   <CalendarIcon className="h-6 w-6 text-blue-600" />
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Today&apos;s Revenue</p>
-                  <p className="text-2xl font-bold text-gray-900">${analyticsData?.todayRevenue || 0}</p>
+                  <p className="text-sm font-medium text-gray-600">
+                    Today&apos;s Revenue
+                  </p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    ৳{analyticsData?.todayRevenue || 0}
+                  </p>
                   <p className="text-sm text-gray-500">Daily average</p>
                 </div>
               </div>
@@ -446,8 +551,12 @@ function RevenueAnalyticsContent() {
                   <ChartBarIcon className="h-6 w-6 text-purple-600" />
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Monthly Revenue</p>
-                  <p className="text-2xl font-bold text-gray-900">${analyticsData?.monthlyRevenue?.toLocaleString() || '0'}</p>
+                  <p className="text-sm font-medium text-gray-600">
+                    Monthly Revenue
+                  </p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    ৳{analyticsData?.monthlyRevenue?.toLocaleString() || "0"}
+                  </p>
                   <p className="text-sm text-gray-500">This month</p>
                 </div>
               </div>
@@ -459,8 +568,12 @@ function RevenueAnalyticsContent() {
                   <CreditCardIcon className="h-6 w-6 text-yellow-600" />
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Avg Order Value</p>
-                  <p className="text-2xl font-bold text-gray-900">${analyticsData?.averageOrderValue || 0}</p>
+                  <p className="text-sm font-medium text-gray-600">
+                    Avg Order Value
+                  </p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    ৳{analyticsData?.averageOrderValue || 0}
+                  </p>
                   <p className="text-sm text-gray-500">Per booking</p>
                 </div>
               </div>
@@ -469,21 +582,36 @@ function RevenueAnalyticsContent() {
 
           {/* Revenue by Payment Method */}
           <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Revenue by Payment Method</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-4">
+              Revenue by Payment Method
+            </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {(analyticsData?.revenueByMethod || []).map((method, index) => {
                 const Icon = method.icon;
                 return (
-                  <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div
+                    key={index}
+                    className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+                  >
                     <div className="flex items-center">
-                      <Icon className={`h-8 w-8 mr-3 ${getMethodColor(method.method)}`} />
+                      <Icon
+                        className={`h-8 w-8 mr-3 ${getMethodColor(
+                          method.method
+                        )}`}
+                      />
                       <div>
-                        <p className="text-sm font-medium text-gray-900">{method.method.replace('_', ' ')}</p>
-                        <p className="text-sm text-gray-600">{method.percentage}%</p>
+                        <p className="text-sm font-medium text-gray-900">
+                          {method.method.replace("_", " ")}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          {method.percentage}%
+                        </p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-lg font-bold text-gray-900">${method.revenue.toLocaleString()}</p>
+                      <p className="text-lg font-bold text-gray-900">
+                        ৳{method.revenue.toLocaleString()}
+                      </p>
                     </div>
                   </div>
                 );
@@ -496,27 +624,47 @@ function RevenueAnalyticsContent() {
             {/* Revenue Trends */}
             <div className="bg-white rounded-lg shadow">
               <div className="px-6 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-medium text-gray-900">Revenue Trends (Last 7 Days)</h3>
+                <h3 className="text-lg font-medium text-gray-900">
+                  Revenue Trends (Last 7 Days)
+                </h3>
               </div>
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Revenue</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bookings</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg Fare</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Date
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Revenue
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Bookings
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Avg Fare
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {(paginatedRevenueTrends.trends || []).map((trend, index) => (
-                      <tr key={index}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{trend.date}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">${trend.revenue}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{trend.bookings}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${trend.avgFare}</td>
-                      </tr>
-                    ))}
+                    {(paginatedRevenueTrends.trends || []).map(
+                      (trend, index) => (
+                        <tr key={index}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {trend.date}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
+                            ৳{trend.revenue}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {trend.bookings}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                            ৳{trend.avgFare}
+                          </td>
+                        </tr>
+                      )
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -535,17 +683,72 @@ function RevenueAnalyticsContent() {
               )}
             </div>
 
-            {/* Monthly Revenue */}
+            {/* Monthly Revenue with Bar Chart */}
             <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Monthly Revenue</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-4">
+                Monthly Revenue
+              </h3>
+
+              {/* Bar Chart Visualization */}
+              <div className="mb-6">
+                <div className="space-y-4">
+                  {(() => {
+                    const maxRevenue = Math.max(
+                      ...(analyticsData?.revenueByMonth || []).map(
+                        (m) => m.revenue
+                      ),
+                      1
+                    );
+                    return (analyticsData?.revenueByMonth || []).map(
+                      (month, index) => (
+                        <div key={index}>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-medium text-gray-600">
+                              {month.month}
+                            </span>
+                            <span className="text-xs font-bold text-gray-900">
+                              ${month.revenue.toLocaleString()}
+                            </span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-8 overflow-hidden">
+                            <div
+                              className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-end pr-2 transition-all duration-500"
+                              style={{
+                                width: `${(month.revenue / maxRevenue) * 100}%`,
+                              }}
+                            >
+                              <span className="text-xs font-medium text-white">
+                                {month.growth >= 0 ? "+" : ""}
+                                {month.growth}%
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    );
+                  })()}
+                </div>
+              </div>
+
+              {/* List View */}
               <div className="space-y-3">
                 {(analyticsData?.revenueByMonth || []).map((month, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div
+                    key={index}
+                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                  >
                     <span className="text-sm text-gray-600">{month.month}</span>
                     <div className="flex items-center space-x-4">
-                      <span className="text-sm font-medium text-gray-900">${month.revenue.toLocaleString()}</span>
-                      <span className={`text-sm ${month.growth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {month.growth >= 0 ? '+' : ''}{month.growth}%
+                      <span className="text-sm font-medium text-gray-900">
+                        ${month.revenue.toLocaleString()}
+                      </span>
+                      <span
+                        className={`text-sm ${
+                          month.growth >= 0 ? "text-green-600" : "text-red-600"
+                        }`}
+                      >
+                        {month.growth >= 0 ? "+" : ""}
+                        {month.growth}%
                       </span>
                     </div>
                   </div>
@@ -556,16 +759,67 @@ function RevenueAnalyticsContent() {
 
           {/* Revenue by Day and Top Revenue Routes */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Revenue by Day */}
+            {/* Revenue by Day with Bar Chart */}
             <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Revenue by Day of Week</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-4">
+                Revenue by Day of Week
+              </h3>
+
+              {/* Bar Chart Visualization */}
+              <div className="mb-6">
+                <div className="space-y-4">
+                  {(() => {
+                    const maxRevenue = Math.max(
+                      ...(analyticsData?.revenueByDay || []).map(
+                        (d) => d.revenue
+                      ),
+                      1
+                    );
+                    return (analyticsData?.revenueByDay || []).map(
+                      (day, index) => (
+                        <div key={index}>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-medium text-gray-600">
+                              {day.day}
+                            </span>
+                            <span className="text-xs font-bold text-gray-900">
+                              ${day.revenue.toLocaleString()}
+                            </span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-8 overflow-hidden">
+                            <div
+                              className="h-full bg-gradient-to-r from-green-500 to-green-600 rounded-full flex items-center justify-end pr-2 transition-all duration-500"
+                              style={{
+                                width: `${(day.revenue / maxRevenue) * 100}%`,
+                              }}
+                            >
+                              <span className="text-xs font-medium text-white">
+                                {day.bookings} bookings
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    );
+                  })()}
+                </div>
+              </div>
+
+              {/* List View */}
               <div className="space-y-3">
                 {(analyticsData?.revenueByDay || []).map((day, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div
+                    key={index}
+                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                  >
                     <span className="text-sm text-gray-600">{day.day}</span>
                     <div className="flex items-center space-x-4">
-                      <span className="text-sm font-medium text-gray-900">${day.revenue.toLocaleString()}</span>
-                      <span className="text-sm text-gray-600">{day.bookings} bookings</span>
+                      <span className="text-sm font-medium text-gray-900">
+                        ${day.revenue.toLocaleString()}
+                      </span>
+                      <span className="text-sm text-gray-600">
+                        {day.bookings} bookings
+                      </span>
                     </div>
                   </div>
                 ))}
@@ -574,22 +828,37 @@ function RevenueAnalyticsContent() {
 
             {/* Top Revenue Routes */}
             <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Top Revenue Routes</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-4">
+                Top Revenue Routes
+              </h3>
               <div className="space-y-4">
                 {(analyticsData?.topRevenueRoutes || []).map((route, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div
+                    key={index}
+                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                  >
                     <div className="flex items-center">
                       <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                        <span className="text-sm font-medium text-blue-600">{index + 1}</span>
+                        <span className="text-sm font-medium text-blue-600">
+                          {index + 1}
+                        </span>
                       </div>
                       <div className="ml-3">
-                        <p className="text-sm font-medium text-gray-900">{route.route}</p>
-                        <p className="text-sm text-gray-600">{route.bookings} bookings</p>
+                        <p className="text-sm font-medium text-gray-900">
+                          {route.route}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          {route.bookings} bookings
+                        </p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-medium text-gray-900">${route.revenue.toLocaleString()}</p>
-                      <p className="text-sm text-gray-600">Avg: ${route.avgFare}</p>
+                      <p className="text-sm font-medium text-gray-900">
+                      ৳{route.revenue.toLocaleString()}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        Avg: ৳{route.avgFare}
+                      </p>
                     </div>
                   </div>
                 ))}
@@ -601,21 +870,31 @@ function RevenueAnalyticsContent() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Revenue by Status */}
             <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Revenue by Booking Status</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-4">
+                Revenue by Booking Status
+              </h3>
               <div className="space-y-4">
                 {(analyticsData?.revenueByStatus || []).map((status, index) => (
-                  <div key={index} className="flex items-center justify-between">
+                  <div
+                    key={index}
+                    className="flex items-center justify-between"
+                  >
                     <div className="flex items-center">
-                      <span className="text-sm font-medium text-gray-900">{status.status.replace('_', ' ')}</span>
+                      <span className="text-sm font-medium text-gray-900">
+                        {status.status.replace("_", " ")}
+                      </span>
                     </div>
                     <div className="flex items-center space-x-3">
                       <div className="w-24 bg-gray-200 rounded-full h-2">
-                        <div 
+                        <div
                           className={`h-2 rounded-full ${status.color}`}
                           style={{ width: `${status.percentage}%` }}
                         ></div>
                       </div>
-                      <span className="text-sm text-gray-600">${status.revenue.toLocaleString()} ({status.percentage}%)</span>
+                      <span className="text-sm text-gray-600">
+                        ${status.revenue.toLocaleString()} ({status.percentage}
+                        %)
+                      </span>
                     </div>
                   </div>
                 ))}
@@ -624,20 +903,35 @@ function RevenueAnalyticsContent() {
 
             {/* Payment Method Distribution */}
             <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Payment Method Distribution</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-4">
+                Payment Method Distribution
+              </h3>
               <div className="space-y-4">
-                {(analyticsData?.paymentMethodDistribution || []).map((method, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center">
-                      <span className="text-sm font-medium text-gray-900">{method.method}</span>
+                {(analyticsData?.paymentMethodDistribution || []).map(
+                  (method, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                    >
+                      <div className="flex items-center">
+                        <span className="text-sm font-medium text-gray-900">
+                          {method.method}
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <span className="text-sm text-gray-600">
+                          {method.count} transactions
+                        </span>
+                        <span className="text-sm font-medium text-gray-900">
+                          ${method.revenue.toLocaleString()}
+                        </span>
+                        <span className="text-sm text-gray-500">
+                          ({method.percentage}%)
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center space-x-3">
-                      <span className="text-sm text-gray-600">{method.count} transactions</span>
-                      <span className="text-sm font-medium text-gray-900">${method.revenue.toLocaleString()}</span>
-                      <span className="text-sm text-gray-500">({method.percentage}%)</span>
-                    </div>
-                  </div>
-                ))}
+                  )
+                )}
               </div>
             </div>
           </div>
@@ -651,7 +945,10 @@ function RevenueAnalyticsContent() {
 function RevenueAnalyticsLoading() {
   return (
     <ProtectedRoute requiredRole="ADMIN">
-      <DashboardLayout title="Revenue Analytics" subtitle="Comprehensive revenue analytics and insights">
+      <DashboardLayout
+        title="Revenue Analytics"
+        subtitle="Comprehensive revenue analytics and insights"
+      >
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>

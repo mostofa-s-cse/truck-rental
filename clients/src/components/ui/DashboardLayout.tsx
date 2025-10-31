@@ -15,8 +15,7 @@ import {
   StarIcon,
   ArrowRightEndOnRectangleIcon,
   ChartBarIcon,
-  CurrencyDollarIcon,
-  ArrowTopRightOnSquareIcon
+  CurrencyDollarIcon
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
@@ -295,7 +294,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           
           <div className="flex-1 px-4 flex justify-between">
             <div className="flex-1 flex items-center">
-              <Link href="/" className="text-sm font-semibold text-blue-500 flex items-center">Visit Site <ArrowTopRightOnSquareIcon className="h-4 w-4 ml-1" /></Link>
             </div>
             
             <div className="ml-4 flex items-center md:ml-6 space-x-4">

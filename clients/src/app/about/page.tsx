@@ -58,7 +58,7 @@ export default function AboutPage() {
   const milestones = [
     { year: '2020', title: 'Company Founded', description: 'Started with a vision to revolutionize truck rental' },
     { year: '2021', title: 'First 1000 Users', description: 'Reached our first major milestone of 1000 registered users' },
-    { year: '2022', title: 'Series A Funding', description: 'Secured $5M in funding to expand operations' },
+    { year: '2022', title: 'Series A Funding', description: 'Secured ৳50,00,000 in funding to expand operations' },
     { year: '2023', title: '50 Cities Coverage', description: 'Expanded to serve 50 cities across the country' },
     { year: '2024', title: '10,000+ Happy Customers', description: 'Achieved 10,000+ satisfied customers milestone' }
   ];

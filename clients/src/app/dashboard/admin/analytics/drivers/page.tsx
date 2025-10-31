@@ -216,7 +216,7 @@ function DriverAnalyticsContent() {
             'Verified Drivers': analyticsData?.verifiedDrivers || 0,
             'Active Drivers': analyticsData?.activeDrivers || 0,
             'Average Rating': analyticsData?.averageRating?.toFixed(1) || '0.0',
-            'Total Revenue': `$${analyticsData?.totalRevenue || 0}`
+            'Total Revenue': `৳${analyticsData?.totalRevenue || 0}`
           }),
           PDFGenerator.createTableSection('Top Performing Drivers', 
             (analyticsData?.driverStats?.slice(0, 10) || []).map((driver: { name: string; email: string; averageRating: number; totalBookings: number; completedBookings: number; totalRevenue: number; isVerified: boolean; isAvailable: boolean }, index: number) => ({
@@ -226,7 +226,7 @@ function DriverAnalyticsContent() {
               'Rating': driver.averageRating?.toFixed(1) || '0.0',
               'Total Bookings': driver.totalBookings || 0,
               'Completed': driver.completedBookings || 0,
-              'Revenue': `$${driver.totalRevenue || 0}`,
+              'Revenue': `৳${driver.totalRevenue || 0}`,
               'Verified': driver.isVerified ? 'Yes' : 'No',
               'Available': driver.isAvailable ? 'Yes' : 'No'
             }))
@@ -237,7 +237,7 @@ function DriverAnalyticsContent() {
               .slice(0, 10) || []).map((driver: { name: string; totalRevenue: number; totalBookings: number }, index: number) => ({
               'Rank': index + 1,
               'Name': driver.name,
-              'Revenue': `$${driver.totalRevenue || 0}`,
+              'Revenue': `৳${driver.totalRevenue || 0}`,
               'Bookings': driver.totalBookings || 0
             }))
           ),
@@ -283,10 +283,7 @@ function DriverAnalyticsContent() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(amount);
+    return `৳${amount.toLocaleString()}`;
   };
 
   // Calculate paginated driver data
@@ -471,7 +468,7 @@ function DriverAnalyticsContent() {
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-                  <p className="text-2xl font-bold text-gray-900">${analyticsData.totalRevenue.toFixed(2)}</p>
+                  <p className="text-2xl font-bold text-gray-900">৳{analyticsData.totalRevenue.toFixed(2)}</p>
                 </div>
               </div>
             </div>
@@ -570,12 +567,12 @@ function DriverAnalyticsContent() {
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Total Revenue</span>
-                  <span className="text-sm font-medium text-green-600">${analyticsData.totalRevenue.toFixed(2)}</span>
+                  <span className="text-sm font-medium text-green-600">৳{analyticsData.totalRevenue.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Average per Driver</span>
                   <span className="text-sm font-medium text-gray-900">
-                    ${analyticsData.totalDrivers > 0 ? (analyticsData.totalRevenue / analyticsData.totalDrivers).toFixed(2) : '0.00'}
+                  ৳{analyticsData.totalDrivers > 0 ? (analyticsData.totalRevenue / analyticsData.totalDrivers).toFixed(2) : '0.00'}
                   </span>
                 </div>
               </div>

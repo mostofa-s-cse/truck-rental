@@ -506,7 +506,7 @@ export default function DriverReviewsPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Fare</label>
-                    <p className="text-sm font-medium text-gray-900">${selectedReview.booking.fare}</p>
+                    <p className="text-sm font-medium text-gray-900">৳{selectedReview.booking.fare}</p>
                   </div>
                 </div>
               </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { X, Truck, MapPin, DollarSign, Loader2, CheckCircle, AlertCircle, CreditCard, Shield } from 'lucide-react';
+import { X, Truck, MapPin, Loader2, CheckCircle, AlertCircle, CreditCard, Shield } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import { useSweetAlert } from '@/hooks/useSweetAlert';
 import { apiClient } from '@/lib/api';
@@ -650,12 +650,12 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-gray-600">Estimated Fare</p>
-                      <p className="text-2xl font-bold text-blue-600">৳{calculatedFare.toLocaleString()}</p>
+                      <p className="text-2xl font-bold text-blue-600">${calculatedFare.toLocaleString()}</p>
                       {bookingData.distance > 0 && (
                         <p className="text-sm text-gray-500">Distance: {bookingData.distance.toFixed(1)} km</p>
                       )}
                     </div>
-                    <DollarSign className="w-8 h-8 text-blue-600" />
+                    <span className="text-4xl font-bold text-blue-600">৳</span>
                   </div>
                 </div>
               )}
