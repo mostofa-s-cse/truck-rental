@@ -17,6 +17,7 @@ import trackingRoutes from './tracking';
 import searchRoutes from './search';
 import dashboardRoutes from './dashboard';
 import notificationRoutes from './notifications';
+import contactRoutes from './contact';
 
 const router = Router();
 
@@ -39,6 +40,7 @@ router.use('/tracking', trackingRoutes);
 router.use('/search', searchRoutes);
 router.use('/dashboard', dashboardRoutes);
 router.use('/notifications', notificationRoutes);
+router.use('/contact', contactRoutes);
 
 // Health check for v1
 router.get('/health', (req, res) => {
