@@ -1,29 +1,59 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import { Truck, MapPin, Star, Search, Phone, Loader2, Filter, X, TrendingUp, LogIn, CheckCircle } from 'lucide-react';
-import Button from '@/components/ui/Button';
-import BookingModal from '@/components/BookingModal';
-import { apiClient } from '@/lib/api';
-import { userApi } from '@/lib/dashboardApi';
-import { Booking, Driver, SearchFilters } from '@/types';
-import { useAuth } from '@/hooks/useAuth';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { useState, useEffect, useCallback } from "react";
+import {
+  Truck,
+  MapPin,
+  Star,
+  Search,
+  Phone,
+  Loader2,
+  Filter,
+  X,
+  TrendingUp,
+  LogIn,
+  CheckCircle,
+} from "lucide-react";
+import Button from "@/components/ui/Button";
+import BookingModal from "@/components/BookingModal";
+import { apiClient } from "@/lib/api";
+import { userApi } from "@/lib/dashboardApi";
+import { Booking, Driver, SearchFilters } from "@/types";
+import { useAuth } from "@/hooks/useAuth";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function SearchPage() {
   const { user, token } = useAuth();
   const router = useRouter();
-  
+
   // Check if user is authenticated
   const isAuthenticated = !!token && !!user;
-  
-  const [searchQuery, setSearchQuery] = useState('');
+
+  // Helper function to get proper image URL
+  const getImageUrl = (imagePath: string | undefined | null): string => {
+    if (!imagePath) return "";
+
+    // If it's already a full URL (http/https), return as is
+    if (imagePath.startsWith("http://") || imagePath.startsWith("https://")) {
+      return imagePath;
+    }
+
+    // For local uploads, ensure the path starts with /
+    // Next.js rewrites will proxy to the backend
+    const normalizedPath = imagePath.startsWith("/")
+      ? imagePath
+      : `/${imagePath}`;
+
+    return normalizedPath;
+  };
+
+  const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Data states
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [totalResults, setTotalResults] = useState(0);
@@ -32,18 +62,20 @@ export default function SearchPage() {
   const [itemsPerPage] = useState(10);
 
   // totalResults is set from API responses (or initial load length)
-  
+
   // Filter states
-  const [selectedTruckType, setSelectedTruckType] = useState<SearchFilters['truckType']>();
-  const [selectedQuality, setSelectedQuality] = useState<SearchFilters['quality']>();
-  const [minCapacity, setMinCapacity] = useState('');
-  const [maxCapacity, setMaxCapacity] = useState('');
-  const [minRating, setMinRating] = useState('');
-  const [maxRating, setMaxRating] = useState('');
-  const [minTrips, setMinTrips] = useState('');
-  const [maxTrips, setMaxTrips] = useState('');
-  const [availabilityFilter, setAvailabilityFilter] = useState('');
-  const [verificationFilter, setVerificationFilter] = useState('');
+  const [selectedTruckType, setSelectedTruckType] =
+    useState<SearchFilters["truckType"]>();
+  const [selectedQuality, setSelectedQuality] =
+    useState<SearchFilters["quality"]>();
+  const [minCapacity, setMinCapacity] = useState("");
+  const [maxCapacity, setMaxCapacity] = useState("");
+  const [minRating, setMinRating] = useState("");
+  const [maxRating, setMaxRating] = useState("");
+  const [minTrips, setMinTrips] = useState("");
+  const [maxTrips, setMaxTrips] = useState("");
+  const [availabilityFilter, setAvailabilityFilter] = useState("");
+  const [verificationFilter, setVerificationFilter] = useState("");
 
   // Booking modal state
   const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
@@ -64,76 +96,91 @@ export default function SearchPage() {
   // Fetch user's existing bookings
   const fetchUserBookings = useCallback(async () => {
     if (!isAuthenticated) return;
-    
+
     try {
       const response = await userApi.getUserBookings(1, 100); // Get up to 100 bookings
       setUserBookings(response.bookings as unknown as Booking[]);
     } catch (error) {
-      console.error('Failed to fetch user bookings:', error);
+      console.error("Failed to fetch user bookings:", error);
     }
   }, [isAuthenticated]);
 
   // Check if user has already booked a specific driver
-  const hasBookedDriver = useCallback((driverId: string): boolean => {
-    return userBookings.some(booking => 
-      booking.driverId === driverId && 
-      ['PENDING', 'CONFIRMED', 'IN_PROGRESS'].includes(booking.status)
-    );
-  }, [userBookings]);
+  const hasBookedDriver = useCallback(
+    (driverId: string): boolean => {
+      return userBookings.some(
+        (booking) =>
+          booking.driverId === driverId &&
+          ["PENDING", "CONFIRMED", "IN_PROGRESS"].includes(booking.status)
+      );
+    },
+    [userBookings]
+  );
 
   // Get existing booking for a driver
 
-
-  const mergeUniqueById = useCallback((existing: Driver[], incoming: Driver[]): Driver[] => {
-    const seen = new Set(existing.map((d) => d.id));
-    const result = [...existing];
-    for (const d of incoming) {
-      if (!seen.has(d.id)) {
-        result.push(d);
-        seen.add(d.id);
+  const mergeUniqueById = useCallback(
+    (existing: Driver[], incoming: Driver[]): Driver[] => {
+      const seen = new Set(existing.map((d) => d.id));
+      const result = [...existing];
+      for (const d of incoming) {
+        if (!seen.has(d.id)) {
+          result.push(d);
+          seen.add(d.id);
+        }
       }
-    }
-    return result;
-  }, []);
+      return result;
+    },
+    []
+  );
 
-  const hasActiveFilters = selectedTruckType || selectedQuality || minCapacity || maxCapacity || 
-                          minRating || maxRating || minTrips || maxTrips || availabilityFilter || verificationFilter;
+  const hasActiveFilters =
+    selectedTruckType ||
+    selectedQuality ||
+    minCapacity ||
+    maxCapacity ||
+    minRating ||
+    maxRating ||
+    minTrips ||
+    maxTrips ||
+    availabilityFilter ||
+    verificationFilter;
 
   const buildSearchFilters = useCallback((): SearchFilters => {
     const filters: SearchFilters = {};
-    
+
     // Parse search query for location and truck type
     if (searchQuery) {
       const query = searchQuery.toLowerCase().trim();
-      
+
       // Check if query contains truck type (check longer phrases first)
-      const truckTypes = ['mini truck', 'pickup', 'lorry', 'truck'];
+      const truckTypes = ["mini truck", "pickup", "lorry", "truck"];
       let foundTruckType: string | undefined;
-      
+
       // Check for "mini truck" first (longer phrase)
-      if (query.includes('mini truck')) {
-        foundTruckType = 'mini truck';
+      if (query.includes("mini truck")) {
+        foundTruckType = "mini truck";
       } else {
         // Check other truck types
-        foundTruckType = truckTypes.find(type => query.includes(type));
+        foundTruckType = truckTypes.find((type) => query.includes(type));
       }
-      
+
       if (foundTruckType) {
         // Map display names to API values
-        const truckTypeMap: Record<string, SearchFilters['truckType']> = {
-          'mini truck': 'MINI_TRUCK',
-          'pickup': 'PICKUP',
-          'lorry': 'LORRY',
-          'truck': 'TRUCK'
+        const truckTypeMap: Record<string, SearchFilters["truckType"]> = {
+          "mini truck": "MINI_TRUCK",
+          pickup: "PICKUP",
+          lorry: "LORRY",
+          truck: "TRUCK",
         };
         filters.truckType = truckTypeMap[foundTruckType];
-        
+
         // Extract location by removing truck type from query
-        let locationQuery = query.replace(foundTruckType, '').trim();
-        
+        let locationQuery = query.replace(foundTruckType, "").trim();
+
         // Clean up any extra spaces or punctuation
-        locationQuery = locationQuery.replace(/\s+/g, ' ').trim();
-        
+        locationQuery = locationQuery.replace(/\s+/g, " ").trim();
+
         if (locationQuery) {
           filters.location = locationQuery;
         }
@@ -142,78 +189,90 @@ export default function SearchPage() {
         filters.location = searchQuery;
       }
     }
-    
+
     // Apply other filters (these override search query filters if set)
     if (selectedTruckType) filters.truckType = selectedTruckType;
     if (selectedQuality) filters.quality = selectedQuality;
     if (minCapacity) filters.capacity = parseFloat(minCapacity);
     if (minRating) filters.rating = parseFloat(minRating);
-    
+
     // Only apply availability filter if explicitly selected by user
     // This ensures we show ALL drivers by default, including busy ones
-    if (availabilityFilter === 'available') {
+    if (availabilityFilter === "available") {
       filters.availability = true;
-    } else if (availabilityFilter === 'busy') {
+    } else if (availabilityFilter === "busy") {
       filters.availability = false;
     }
     // If availabilityFilter is empty (default), don't filter by availability
-    
-    if (verificationFilter === 'verified') filters.verified = true;
-    if (verificationFilter === 'unverified') filters.verified = false;
-    
+
+    if (verificationFilter === "verified") filters.verified = true;
+    if (verificationFilter === "unverified") filters.verified = false;
+
     return filters;
-  }, [searchQuery, selectedTruckType, selectedQuality, minCapacity, minRating, availabilityFilter, verificationFilter]);
+  }, [
+    searchQuery,
+    selectedTruckType,
+    selectedQuality,
+    minCapacity,
+    minRating,
+    availabilityFilter,
+    verificationFilter,
+  ]);
 
   // Apply additional frontend filters that aren't supported by the API
-  const applyFrontendFilters = useCallback((drivers: Driver[]): Driver[] => {
-    return drivers.filter(driver => {
-      // Max capacity filter
-      if (maxCapacity && driver.capacity > parseFloat(maxCapacity)) {
-        return false;
-      }
-      
-      // Max rating filter
-      if (maxRating && driver.rating > parseFloat(maxRating)) {
-        return false;
-      }
-      
-      // Min trips filter
-      if (minTrips && driver.totalTrips < parseInt(minTrips)) {
-        return false;
-      }
-      
-      // Max trips filter
-      if (maxTrips && driver.totalTrips > parseInt(maxTrips)) {
-        return false;
-      }
-      
-      return true;
-    });
-  }, [maxCapacity, maxRating, minTrips, maxTrips]);
+  const applyFrontendFilters = useCallback(
+    (drivers: Driver[]): Driver[] => {
+      return drivers.filter((driver) => {
+        // Max capacity filter
+        if (maxCapacity && driver.capacity > parseFloat(maxCapacity)) {
+          return false;
+        }
+
+        // Max rating filter
+        if (maxRating && driver.rating > parseFloat(maxRating)) {
+          return false;
+        }
+
+        // Min trips filter
+        if (minTrips && driver.totalTrips < parseInt(minTrips)) {
+          return false;
+        }
+
+        // Max trips filter
+        if (maxTrips && driver.totalTrips > parseInt(maxTrips)) {
+          return false;
+        }
+
+        return true;
+      });
+    },
+    [maxCapacity, maxRating, minTrips, maxTrips]
+  );
 
   const loadInitialData = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
-      console.log('Loading initial data...');
-      
+      console.log("Loading initial data...");
+
       const response = await apiClient.getPopularTrucks(itemsPerPage);
-      console.log('Initial data response:', response);
-      
+      console.log("Initial data response:", response);
+
       if (response.success && response.data) {
         const initialDrivers = response.data as Driver[];
         const uniqueDrivers = dedupeById(initialDrivers);
-        console.log('Setting initial drivers:', uniqueDrivers.length);
+        console.log("Setting initial drivers:", uniqueDrivers.length);
         setDrivers(uniqueDrivers);
         setTotalResults(uniqueDrivers.length);
         setHasMore(uniqueDrivers.length >= itemsPerPage);
       } else {
-        console.error('Failed to load initial data:', response.message);
-        setError(response.message || 'Failed to load trucks');
+        console.error("Failed to load initial data:", response.message);
+        setError(response.message || "Failed to load trucks");
       }
     } catch (error) {
-      console.error('Error loading initial data:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error("Error loading initial data:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
       setError(`Failed to load trucks: ${errorMessage}`);
     } finally {
       setIsLoading(false);
@@ -224,33 +283,44 @@ export default function SearchPage() {
     try {
       setIsLoading(true);
       setError(null);
-      console.log('Searching with filters:', buildSearchFilters());
-      
+      console.log("Searching with filters:", buildSearchFilters());
+
       const filters = buildSearchFilters();
       const response = await apiClient.searchTrucks(filters, 1, itemsPerPage);
-      console.log('Search response:', response);
-      
+      console.log("Search response:", response);
+
       if (response.success && response.data) {
         // The API returns SearchResult with drivers array
-        const searchData = response.data as { drivers: Driver[]; total: number; totalPages?: number };
+        const searchData = response.data as {
+          drivers: Driver[];
+          total: number;
+          totalPages?: number;
+        };
         const drivers = searchData.drivers || [];
 
         // Apply additional frontend filters that aren't supported by the API
         const filteredDrivers = applyFrontendFilters(drivers);
         const uniqueFiltered = dedupeById(filteredDrivers);
 
-        console.log('Setting search results:', uniqueFiltered.length);
+        console.log("Setting search results:", uniqueFiltered.length);
         setDrivers(uniqueFiltered);
-        setTotalResults(typeof searchData.total === 'number' ? searchData.total : uniqueFiltered.length);
-        setHasMore(uniqueFiltered.length < (searchData.total ?? uniqueFiltered.length));
+        setTotalResults(
+          typeof searchData.total === "number"
+            ? searchData.total
+            : uniqueFiltered.length
+        );
+        setHasMore(
+          uniqueFiltered.length < (searchData.total ?? uniqueFiltered.length)
+        );
         setCurrentPage(1);
       } else {
-        console.error('Search failed:', response.message);
-        setError(response.message || 'Search failed');
+        console.error("Search failed:", response.message);
+        setError(response.message || "Search failed");
       }
     } catch (error) {
-      console.error('Error during search:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error("Error during search:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
       setError(`Search failed: ${errorMessage}`);
     } finally {
       setIsLoading(false);
@@ -266,11 +336,11 @@ export default function SearchPage() {
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (searchQuery.trim()) {
-        console.log('Auto-searching for:', searchQuery);
+        console.log("Auto-searching for:", searchQuery);
         handleSearch();
       } else if (!hasActiveFilters) {
         // If search is empty and no active filters, load initial data
-        console.log('Search empty, loading initial data');
+        console.log("Search empty, loading initial data");
         loadInitialData();
       }
     }, 500); // 500ms debounce
@@ -286,7 +356,22 @@ export default function SearchPage() {
       // If no active filters and no search query, load initial data
       loadInitialData();
     }
-  }, [selectedTruckType, selectedQuality, minCapacity, maxCapacity, minRating, maxRating, minTrips, maxTrips, availabilityFilter, verificationFilter, handleSearch, loadInitialData, searchQuery, hasActiveFilters]);
+  }, [
+    selectedTruckType,
+    selectedQuality,
+    minCapacity,
+    maxCapacity,
+    minRating,
+    maxRating,
+    minTrips,
+    maxTrips,
+    availabilityFilter,
+    verificationFilter,
+    handleSearch,
+    loadInitialData,
+    searchQuery,
+    hasActiveFilters,
+  ]);
 
   // Fetch user bookings when authenticated
   useEffect(() => {
@@ -299,21 +384,29 @@ export default function SearchPage() {
     try {
       setIsLoadingMore(true);
       const nextPage = currentPage + 1;
-      
+
       const filters = buildSearchFilters();
-      const response = await apiClient.searchTrucks(filters, nextPage, itemsPerPage);
-      
+      const response = await apiClient.searchTrucks(
+        filters,
+        nextPage,
+        itemsPerPage
+      );
+
       if (response.success && response.data) {
         // The searchTrucks API returns SearchResult with drivers array
-        const searchData = response.data as { drivers: Driver[]; total: number; totalPages?: number };
+        const searchData = response.data as {
+          drivers: Driver[];
+          total: number;
+          totalPages?: number;
+        };
         let newDrivers = searchData.drivers || [];
 
         // Apply additional frontend filters
         newDrivers = applyFrontendFilters(newDrivers);
 
-        setDrivers(prev => {
+        setDrivers((prev) => {
           const merged = mergeUniqueById(prev, dedupeById(newDrivers));
-          if (typeof searchData.total === 'number') {
+          if (typeof searchData.total === "number") {
             setTotalResults(searchData.total);
             setHasMore(merged.length < searchData.total);
           } else {
@@ -323,11 +416,11 @@ export default function SearchPage() {
         });
         setCurrentPage(nextPage);
       } else {
-        setError(response.message || 'Failed to load more trucks');
+        setError(response.message || "Failed to load more trucks");
       }
     } catch (error) {
-      console.error('Load more error:', error);
-      setError('Failed to load more trucks. Please try again.');
+      console.error("Load more error:", error);
+      setError("Failed to load more trucks. Please try again.");
     } finally {
       setIsLoadingMore(false);
     }
@@ -336,15 +429,15 @@ export default function SearchPage() {
   const clearAllFilters = () => {
     setSelectedTruckType(undefined);
     setSelectedQuality(undefined);
-    setMinCapacity('');
-    setMaxCapacity('');
-    setMinRating('');
-    setMaxRating('');
-    setMinTrips('');
-    setMaxTrips('');
-    setAvailabilityFilter('');
-    setVerificationFilter('');
-    setSearchQuery('');
+    setMinCapacity("");
+    setMaxCapacity("");
+    setMinRating("");
+    setMaxRating("");
+    setMinTrips("");
+    setMaxTrips("");
+    setAvailabilityFilter("");
+    setVerificationFilter("");
+    setSearchQuery("");
     setCurrentPage(1);
     setError(null);
     loadInitialData();
@@ -357,7 +450,7 @@ export default function SearchPage() {
 
   const handleLoginRedirect = () => {
     // Redirect to login page
-    router.push('/login');
+    router.push("/login");
   };
 
   const handleBookingComplete = () => {
@@ -369,7 +462,11 @@ export default function SearchPage() {
     return Array.from({ length: 5 }, (_, i) => (
       <Star
         key={i}
-        className={`w-4 h-4 ${i < Math.floor(rating) ? 'text-yellow-400 fill-current' : 'text-gray-300'}`}
+        className={`w-4 h-4 ${
+          i < Math.floor(rating)
+            ? "text-yellow-400 fill-current"
+            : "text-gray-300"
+        }`}
       />
     ));
   };
@@ -384,9 +481,10 @@ export default function SearchPage() {
               Find Your Perfect Truck
             </h1>
             <p className="text-lg sm:text-xl md:text-2xl mb-6 sm:mb-8 text-blue-100 px-4">
-              Connect with verified drivers across Bangladesh - Available and Busy
+              Connect with verified drivers across Bangladesh - Available and
+              Busy
             </p>
-            
+
             {/* Hero Search Bar */}
             <div className="max-w-3xl mx-auto px-4">
               <div className="relative">
@@ -422,15 +520,24 @@ export default function SearchPage() {
                 </button>
               </div>
 
-              <div className={`${showFilters ? 'block' : 'hidden'} lg:block space-y-4 sm:space-y-6`}>
+              <div
+                className={`${
+                  showFilters ? "block" : "hidden"
+                } lg:block space-y-4 sm:space-y-6`}
+              >
                 {/* Truck Type */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Truck Type
                   </label>
                   <select
-                    value={selectedTruckType || ''}
-                    onChange={(e) => setSelectedTruckType(e.target.value as SearchFilters['truckType'] || undefined)}
+                    value={selectedTruckType || ""}
+                    onChange={(e) =>
+                      setSelectedTruckType(
+                        (e.target.value as SearchFilters["truckType"]) ||
+                          undefined
+                      )
+                    }
                     className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white text-sm sm:text-base"
                   >
                     <option value="">All Types</option>
@@ -447,8 +554,13 @@ export default function SearchPage() {
                     Quality
                   </label>
                   <select
-                    value={selectedQuality || ''}
-                    onChange={(e) => setSelectedQuality(e.target.value as SearchFilters['quality'] || undefined)}
+                    value={selectedQuality || ""}
+                    onChange={(e) =>
+                      setSelectedQuality(
+                        (e.target.value as SearchFilters["quality"]) ||
+                          undefined
+                      )
+                    }
                     className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
                   >
                     <option value="">All Qualities</option>
@@ -595,7 +707,9 @@ export default function SearchPage() {
               </div>
               <div className="flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
-                <span className="text-xs sm:text-sm text-green-600 font-medium">Live Updates</span>
+                <span className="text-xs sm:text-sm text-green-600 font-medium">
+                  Live Updates
+                </span>
               </div>
             </div>
 
@@ -611,7 +725,9 @@ export default function SearchPage() {
               <div className="flex items-center justify-center py-8 sm:py-12">
                 <div className="text-center">
                   <Loader2 className="w-6 h-6 sm:w-8 sm:h-8 animate-spin text-blue-600 mx-auto mb-3 sm:mb-4" />
-                  <p className="text-sm sm:text-base text-gray-600">Searching for trucks...</p>
+                  <p className="text-sm sm:text-base text-gray-600">
+                    Searching for trucks...
+                  </p>
                 </div>
               </div>
             )}
@@ -620,35 +736,61 @@ export default function SearchPage() {
             {!isLoading && (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4 sm:gap-6">
                 {drivers.map((driver) => (
-                  <div key={driver.id} className="bg-white rounded-lg shadow-sm border hover:shadow-lg transition-all duration-300 overflow-hidden">
+                  <div
+                    key={driver.id}
+                    className="bg-white rounded-lg shadow-sm border hover:shadow-lg transition-all duration-300 overflow-hidden"
+                  >
                     {/* Driver Header */}
                     <div className="p-4 sm:p-6 border-b border-gray-100">
                       <div className="flex items-center gap-3 sm:gap-4">
-                        <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
-                          <Truck className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
-                        </div>
-                        <div className="flex-1 min-w-0">
+                        {driver.user.avatar ? (
+                          <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full overflow-hidden flex-shrink-0 border-2 border-blue-500 bg-gray-100">
+                            <img
+                              src={getImageUrl(driver.user.avatar)}
+                              alt={driver.user.name}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                // Show fallback on error
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = "none";
+                                const parent = target.parentElement;
+                                if (parent) {
+                                  parent.innerHTML = `<div class="w-full h-full bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center"><span class="text-white text-lg sm:text-2xl font-bold">${driver.user.name
+                                    .charAt(0)
+                                    .toUpperCase()}</span></div>`;
+                                }
+                              }}
+                            />
+                          </div>
+                        ) : (
+                          <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+                            <span className="text-white text-lg sm:text-2xl font-bold">
+                              {driver.user.name.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                        )}
+                        <div className="min-w-0">
                           <h3 className="text-base sm:text-lg font-semibold text-gray-900 truncate">
                             {driver.user.name}
                           </h3>
-                          <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600">
-                            <MapPin className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-                            <span className="truncate">{driver.location}</span>
-                          </div>
                         </div>
-                        <div className="text-right flex-shrink-0">
-                          <div className="flex items-center gap-1 mb-1">
-                            {renderStars(driver.rating)}
-                            <span className="ml-1 text-xs sm:text-sm text-gray-600">
-                              {driver.rating.toFixed(1)}
-                            </span>
-                          </div>
-                          {driver.isVerified && (
-                            <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
-                              Verified
-                            </span>
-                          )}
+                      </div>
+                      <div className="flex items-center gap-2 mt-2 text-xs sm:text-sm text-gray-600">
+                        <MapPin className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                        <span className="truncate">{driver.location}</span>
+                      </div>
+                      <div className="mt-2 flex items-center gap-2">
+                        <div className="flex items-center gap-1">
+                          {renderStars(driver.rating)}
+                          <span className="ml-1 text-xs sm:text-sm text-gray-600">
+                            {driver.rating.toFixed(1)}
+                          </span>
                         </div>
+                        {driver.isVerified && (
+                          <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
+                            Verified
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -656,20 +798,36 @@ export default function SearchPage() {
                     <div className="p-4 sm:p-6">
                       <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4">
                         <div>
-                          <span className="text-xs sm:text-sm text-gray-500">Truck Type</span>
-                          <p className="font-medium text-gray-900 text-sm sm:text-base">{driver.truckType.replace('_', ' ')}</p>
+                          <span className="text-xs sm:text-sm text-gray-500">
+                            Truck Type
+                          </span>
+                          <p className="font-medium text-gray-900 text-sm sm:text-base">
+                            {driver.truckType.replace("_", " ")}
+                          </p>
                         </div>
                         <div>
-                          <span className="text-xs sm:text-sm text-gray-500">Capacity</span>
-                          <p className="font-medium text-gray-900 text-sm sm:text-base">{driver.capacity} tons</p>
+                          <span className="text-xs sm:text-sm text-gray-500">
+                            Capacity
+                          </span>
+                          <p className="font-medium text-gray-900 text-sm sm:text-base">
+                            {driver.capacity} tons
+                          </p>
                         </div>
                         <div>
-                          <span className="text-xs sm:text-sm text-gray-500">Quality</span>
-                          <p className="font-medium text-gray-900 text-sm sm:text-base">{driver.quality}</p>
+                          <span className="text-xs sm:text-sm text-gray-500">
+                            Quality
+                          </span>
+                          <p className="font-medium text-gray-900 text-sm sm:text-base">
+                            {driver.quality}
+                          </p>
                         </div>
                         <div>
-                          <span className="text-xs sm:text-sm text-gray-500">Trips</span>
-                          <p className="font-medium text-gray-900 text-sm sm:text-base">{driver.totalTrips}</p>
+                          <span className="text-xs sm:text-sm text-gray-500">
+                            Trips
+                          </span>
+                          <p className="font-medium text-gray-900 text-sm sm:text-base">
+                            {driver.totalTrips}
+                          </p>
                         </div>
                       </div>
 
@@ -693,36 +851,49 @@ export default function SearchPage() {
 
                       {/* Action Buttons */}
                       <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-                      {isAuthenticated && hasBookedDriver(driver.id) ? (
-                          <Button 
-                          className="flex-1 text-sm sm:text-base py-2 sm:py-2.5 bg-gray-500 cursor-not-allowed">
+                        {isAuthenticated && hasBookedDriver(driver.id) ? (
+                          <Button className="flex-1 text-sm sm:text-base py-2 sm:py-2.5 bg-gray-500 cursor-not-allowed">
                             <div className="flex items-center gap-2 text-white">
                               <CheckCircle className="w-4 h-4" />
-                              <span className="text-xs font-medium">Already Booked</span>
+                              <span className="text-xs font-medium">
+                                Already Booked
+                              </span>
                             </div>
                           </Button>
-                        ) : <Button 
-                        onClick={isAuthenticated ? () => handleBookNow(driver) : handleLoginRedirect}
-                        className={`flex-1 text-sm sm:text-base py-2 sm:py-2.5 ${
-                          driver.isAvailable 
-                            ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                            : 'bg-gray-500 text-white hover:bg-gray-600 cursor-not-allowed'
-                        }`}
-                        disabled={!driver.isAvailable}
-                      >
-                        {isAuthenticated ? (
-                          driver.isAvailable ? 'Book Now' : 'Currently Busy'
                         ) : (
-                          <>
-                            <LogIn className="w-4 h-4 mr-2" />
-                            <span className='text-sm'>Login to Book</span>
-                          </>
+                          <Button
+                            onClick={
+                              isAuthenticated
+                                ? () => handleBookNow(driver)
+                                : handleLoginRedirect
+                            }
+                            className={`flex-1 text-sm sm:text-base py-2 sm:py-2.5 ${
+                              driver.isAvailable
+                                ? "bg-blue-600 text-white hover:bg-blue-700"
+                                : "bg-gray-500 text-white hover:bg-gray-600 cursor-not-allowed"
+                            }`}
+                            disabled={!driver.isAvailable}
+                          >
+                            {isAuthenticated ? (
+                              driver.isAvailable ? (
+                                "Book Now"
+                              ) : (
+                                "Currently Busy"
+                              )
+                            ) : (
+                              <>
+                                <LogIn className="w-4 h-4 mr-2" />
+                                <span className="text-sm">Login to Book</span>
+                              </>
+                            )}
+                          </Button>
                         )}
-                      </Button>}
 
-                        
                         <div className="flex gap-2 sm:gap-3">
-                          <Link href={`tel:${driver.user.phone}`} className="text-gray-800 border border-gray-300 rounded-md px-3 py-2 flex-1 sm:flex-none flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 sm:py-2.5">
+                          <Link
+                            href={`tel:${driver.user.phone}`}
+                            className="text-gray-800 border border-gray-300 rounded-md px-3 py-2 flex-1 sm:flex-none flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 sm:py-2.5"
+                          >
                             <Phone className="w-3 h-3 sm:w-4 sm:h-4" />
                             <span className="hidden sm:inline">Call</span>
                           </Link>
@@ -742,7 +913,9 @@ export default function SearchPage() {
             {!isLoading && drivers.length === 0 && (
               <div className="text-center py-8 sm:py-12">
                 <Truck className="w-12 h-12 sm:w-16 sm:h-16 text-gray-400 mx-auto mb-3 sm:mb-4" />
-                <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">No trucks found</h3>
+                <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">
+                  No trucks found
+                </h3>
                 <p className="text-sm sm:text-base text-gray-600">
                   Try adjusting your search criteria
                 </p>
@@ -791,4 +964,4 @@ export default function SearchPage() {
       />
     </div>
   );
-}  
+}

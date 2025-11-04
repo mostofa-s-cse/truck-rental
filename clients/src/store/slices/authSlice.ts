@@ -69,13 +69,16 @@ export const registerUser = createAsyncThunk(
       const response = await apiClient.register(userData);
       
       if (response.success && response.data) {
-        const authData = response.data as { user: User; token: string };
-        const { user, token } = authData;
+        const authData = response.data as { user: User; token: string; requiresEmailVerification?: boolean };
+        const { user, token, requiresEmailVerification } = authData;
         
-        // Store auth data using utility function
-        setAuthData(user, token);
+        // Don't auto-login if email verification is required
+        if (!requiresEmailVerification) {
+          // Store auth data using utility function
+          setAuthData(user, token);
+        }
         
-        return { user, token };
+        return { user, token, requiresEmailVerification };
       } else {
         return rejectWithValue(response.message || 'Registration failed');
       }
@@ -165,8 +168,11 @@ const authSlice = createSlice({
       })
       .addCase(registerUser.fulfilled, (state, action) => {
         state.loading = false;
-        state.user = action.payload.user;
-        state.token = action.payload.token;
+        // Only set user/token if email verification is not required
+        if (!action.payload.requiresEmailVerification) {
+          state.user = action.payload.user;
+          state.token = action.payload.token;
+        }
         state.error = null;
       })
       .addCase(registerUser.rejected, (state, action) => {

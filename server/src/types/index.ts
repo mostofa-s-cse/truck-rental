@@ -50,6 +50,8 @@ export interface CreateDriverRequest {
   location: string;
   latitude?: number;
   longitude?: number;
+  truckImage?: string;
+  truckImages?: string[];
 }
 
 export interface CreateBookingRequest {

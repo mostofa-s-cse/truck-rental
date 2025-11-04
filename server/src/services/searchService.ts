@@ -216,8 +216,8 @@ export class SearchService {
 
       const popularTrucks = await prisma.driver.findMany({
         where: {
-          isVerified: true,
-          isAvailable: true
+          isVerified: true
+          // Removed isAvailable filter to show both available and busy drivers
         },
         include: {
           user: {
@@ -236,6 +236,7 @@ export class SearchService {
           }
         },
         orderBy: [
+          { isAvailable: 'desc' }, // Show available drivers first
           { rating: 'desc' },
           { totalTrips: 'desc' }
         ],

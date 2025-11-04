@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { PrismaClient, UserRole } from '@prisma/client';
 import { CreateUserRequest, LoginRequest, JWTPayload } from '../types';
 import { logDatabase } from '../utils/logger';
@@ -26,6 +27,10 @@ export class AuthService {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    // Generate email verification token
+    const emailVerifyToken = crypto.randomBytes(32).toString('hex');
+    const emailVerifyExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
     // Create user
     const user = await prisma.user.create({
       data: {
@@ -33,7 +38,10 @@ export class AuthService {
         password: hashedPassword,
         name,
         phone,
-        role
+        role,
+        emailVerifyToken,
+        emailVerifyExpiry,
+        isEmailVerified: false
       },
       select: {
         id: true,
@@ -42,11 +50,20 @@ export class AuthService {
         phone: true,
         role: true,
         avatar: true,
+        isEmailVerified: true,
         createdAt: true
       }
     });
 
-    // Generate JWT token
+    // TODO: Send verification email
+    // In production, send email with verification link:
+    // const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${emailVerifyToken}`;
+    // await EmailService.sendVerificationEmail(user.email, user.name, verificationUrl);
+    
+    console.log(`Email verification token for ${user.email}: ${emailVerifyToken}`);
+    console.log(`Verification URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email?token=${emailVerifyToken}`);
+
+    // Generate JWT token (but user must verify email before logging in)
     const token = this.generateToken(user.id, user.email, user.role);
 
     // Send welcome notification
@@ -57,7 +74,7 @@ export class AuthService {
       // Don't fail the registration if welcome notification fails
     }
 
-    return { user, token };
+    return { user, token, requiresEmailVerification: true };
   }
 
   static async login(loginData: LoginRequest) {
@@ -80,6 +97,11 @@ export class AuthService {
       throw new Error('Invalid credentials');
     }
 
+    // Check if email is verified
+    if (!user.isEmailVerified) {
+      throw new Error('Please verify your email before logging in. Check your inbox for the verification link.');
+    }
+
     // Check if user is active
     if (!user.isActive) {
       throw new Error('Account is deactivated');
@@ -88,7 +110,7 @@ export class AuthService {
     // Generate JWT token
     const token = this.generateToken(user.id, user.email, user.role);
 
-    const { password: _, ...userWithoutPassword } = user;
+    const { password: _, emailVerifyToken: __, emailVerifyExpiry: ___, ...userWithoutPassword } = user;
 
     return { user: userWithoutPassword, token };
   }
@@ -140,5 +162,69 @@ export class AuthService {
     });
 
     return { message: 'Password changed successfully' };
+  }
+
+  static async verifyEmail(token: string) {
+    logDatabase('update', 'users', { operation: 'verify_email' });
+
+    // Find user with the verification token
+    const user = await prisma.user.findFirst({
+      where: {
+        emailVerifyToken: token,
+        emailVerifyExpiry: {
+          gte: new Date() // Token not expired
+        }
+      }
+    });
+
+    if (!user) {
+      throw new Error('Invalid or expired verification token');
+    }
+
+    // Update user - mark as verified
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        isEmailVerified: true,
+        emailVerifyToken: null,
+        emailVerifyExpiry: null
+      }
+    });
+
+    return { message: 'Email verified successfully. You can now log in.' };
+  }
+
+  static async resendVerificationEmail(email: string) {
+    logDatabase('select', 'users', { email, operation: 'resend_verification' });
+
+    const user = await prisma.user.findUnique({
+      where: { email }
+    });
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    if (user.isEmailVerified) {
+      throw new Error('Email is already verified');
+    }
+
+    // Generate new verification token
+    const emailVerifyToken = crypto.randomBytes(32).toString('hex');
+    const emailVerifyExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        emailVerifyToken,
+        emailVerifyExpiry
+      }
+    });
+
+    // TODO: Send verification email
+    console.log(`New verification token for ${user.email}: ${emailVerifyToken}`);
+    console.log(`Verification URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email?token=${emailVerifyToken}`);
+
+    return { message: 'Verification email sent successfully' };
   }
 } 

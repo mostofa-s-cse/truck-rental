@@ -1,13 +1,22 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import { X, Truck, MapPin, Loader2, CheckCircle, AlertCircle, CreditCard, Shield } from 'lucide-react';
-import Button from '@/components/ui/Button';
-import { useSweetAlert } from '@/hooks/useSweetAlert';
-import { apiClient } from '@/lib/api';
-import { Driver } from '@/types';
-import { useAppSelector } from '@/hooks/redux';
-import DynamicMap from '@/components/ui/DynamicMap';
+import { useState, useEffect, useCallback } from "react";
+import {
+  X,
+  Truck,
+  MapPin,
+  Loader2,
+  CheckCircle,
+  AlertCircle,
+  CreditCard,
+  Shield,
+} from "lucide-react";
+import Button from "@/components/ui/Button";
+import { useSweetAlert } from "@/hooks/useSweetAlert";
+import { apiClient } from "@/lib/api";
+import { Driver } from "@/types";
+import { useAppSelector } from "@/hooks/redux";
+import DynamicMap from "@/components/ui/DynamicMap";
 
 interface BookingModalProps {
   driver: Driver | null;
@@ -56,48 +65,76 @@ interface ServerArea {
   address: string;
 }
 
-export default function BookingModal({ driver, isOpen, onClose, onBookingComplete }: BookingModalProps) {
+export default function BookingModal({
+  driver,
+  isOpen,
+  onClose,
+  onBookingComplete,
+}: BookingModalProps) {
   const { errorToast, successToast, question } = useSweetAlert();
   const { user } = useAppSelector((state) => state.auth);
-  
+
   // Debug: Log user data
-  console.log('BookingModal - Redux user data:', user);
-  
+  console.log("BookingModal - Redux user data:", user);
+
+  // Helper function to get proper image URL
+  const getImageUrl = (imagePath: string | undefined | null): string => {
+    if (!imagePath) return "";
+
+    // If it's already a full URL (http/https), return as is
+    if (imagePath.startsWith("http://") || imagePath.startsWith("https://")) {
+      return imagePath;
+    }
+
+    // For local uploads, ensure the path starts with /
+    // Next.js rewrites will proxy to the backend
+    const normalizedPath = imagePath.startsWith("/")
+      ? imagePath
+      : `/${imagePath}`;
+
+    return normalizedPath;
+  };
+
   // Form states
   const [bookingData, setBookingData] = useState<BookingFormData>({
-    source: '',
-    destination: '',
-    pickupTime: '',
+    source: "",
+    destination: "",
+    pickupTime: "",
     fare: 0,
-    distance: 0
+    distance: 0,
   });
-  
+
   const [paymentData, setPaymentData] = useState<PaymentFormData>({
-    customerName: '',
-    customerEmail: '',
-    customerPhone: '',
-    customerAddress: '',
-    customerCity: '',
-    customerPostCode: '',
-    customerCountry: 'Bangladesh',
-    shippingMethod: 'Truck'
+    customerName: "",
+    customerEmail: "",
+    customerPhone: "",
+    customerAddress: "",
+    customerCity: "",
+    customerPostCode: "",
+    customerCountry: "Bangladesh",
+    shippingMethod: "Truck",
   });
 
   // UI states
-  const [step, setStep] = useState<'booking' | 'payment' | 'processing' | 'success' | 'error'>('booking');
+  const [step, setStep] = useState<
+    "booking" | "payment" | "processing" | "success" | "error"
+  >("booking");
   const [isLoading, setIsLoading] = useState(false);
   const [calculatedFare, setCalculatedFare] = useState(0);
   const [bookingId, setBookingId] = useState<string | null>(null);
   const [paymentError, setPaymentError] = useState<string | null>(null);
-  
+
   // Selected area coordinates
-  const [selectedSourceArea, setSelectedSourceArea] = useState<AreaData | null>(null);
-  const [selectedDestinationArea, setSelectedDestinationArea] = useState<AreaData | null>(null);
-  
+  const [selectedSourceArea, setSelectedSourceArea] = useState<AreaData | null>(
+    null
+  );
+  const [selectedDestinationArea, setSelectedDestinationArea] =
+    useState<AreaData | null>(null);
+
   const [areaOptions, setAreaOptions] = useState<AreaData[]>([]);
-  const [sourceQuery, setSourceQuery] = useState<string>('');
-  const [destinationQuery, setDestinationQuery] = useState<string>('');
-  
+  const [sourceQuery, setSourceQuery] = useState<string>("");
+  const [destinationQuery, setDestinationQuery] = useState<string>("");
+
   // Route details for map preview
   const [routeDetails, setRouteDetails] = useState<{
     distance: number;
@@ -109,39 +146,39 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
   // Pre-fill user info from Redux
   useEffect(() => {
     if (user) {
-      console.log('Setting payment data with user:', user);
-      setPaymentData(prev => ({
+      console.log("Setting payment data with user:", user);
+      setPaymentData((prev) => ({
         ...prev,
-        customerName: user.name || '',
-        customerEmail: user.email || '',
-        customerPhone: user.phone || '',
-        shippingMethod: 'Truck'
+        customerName: user.name || "",
+        customerEmail: user.email || "",
+        customerPhone: user.phone || "",
+        shippingMethod: "Truck",
       }));
     } else {
-      console.log('No user data available from Redux');
+      console.log("No user data available from Redux");
     }
   }, [user]);
 
   // Reset form when modal opens/closes
   useEffect(() => {
     if (isOpen) {
-      setStep('booking');
+      setStep("booking");
       setBookingData({
-        source: '',
-        destination: '',
-        pickupTime: '',
+        source: "",
+        destination: "",
+        pickupTime: "",
         fare: 0,
-        distance: 0
+        distance: 0,
       });
       setPaymentData({
-        customerName: '',
-        customerEmail: '',
-        customerPhone: '',
-        customerAddress: '',
-        customerCity: '',
-        customerPostCode: '',
-        customerCountry: 'Bangladesh',
-        shippingMethod: 'Truck'
+        customerName: "",
+        customerEmail: "",
+        customerPhone: "",
+        customerAddress: "",
+        customerCity: "",
+        customerPostCode: "",
+        customerCountry: "Bangladesh",
+        shippingMethod: "Truck",
       });
       setCalculatedFare(0);
       setBookingId(null);
@@ -191,21 +228,26 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
         {
           latitude: selectedSourceArea.latitude,
           longitude: selectedSourceArea.longitude,
-          address: bookingData.source
+          address: bookingData.source,
         },
         {
           latitude: selectedDestinationArea.latitude,
           longitude: selectedDestinationArea.longitude,
-          address: bookingData.destination
+          address: bookingData.destination,
         }
       );
       if (response.success && response.data) {
         setRouteDetails(response.data);
       }
     } catch (error) {
-      console.error('Error fetching route details:', error);
+      console.error("Error fetching route details:", error);
     }
-  }, [selectedSourceArea, selectedDestinationArea, bookingData.source, bookingData.destination]);
+  }, [
+    selectedSourceArea,
+    selectedDestinationArea,
+    bookingData.source,
+    bookingData.destination,
+  ]);
 
   const calculateFare = useCallback(async () => {
     try {
@@ -213,48 +255,55 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
       if (!selectedSourceArea || !selectedDestinationArea) {
         return; // Don't calculate if areas aren't selected
       }
-      
+
       // Fetch route details for map display
       await fetchRouteDetails();
-      
+
       const response = await apiClient.calculateFare({
         source: {
           latitude: selectedSourceArea.latitude,
           longitude: selectedSourceArea.longitude,
-          address: bookingData.source
+          address: bookingData.source,
         },
         destination: {
           latitude: selectedDestinationArea.latitude,
           longitude: selectedDestinationArea.longitude,
-          address: bookingData.destination
+          address: bookingData.destination,
         },
-        truckType: driver!.truckType
+        truckType: driver!.truckType,
       });
 
       if (response.success && response.data) {
         const fareData = response.data;
         setCalculatedFare(fareData.totalFare);
-        setBookingData(prev => ({
+        setBookingData((prev) => ({
           ...prev,
           fare: fareData.totalFare,
           distance: fareData.distance,
           sourceLat: selectedSourceArea.latitude,
           sourceLng: selectedSourceArea.longitude,
           destLat: selectedDestinationArea.latitude,
-          destLng: selectedDestinationArea.longitude
+          destLng: selectedDestinationArea.longitude,
         }));
       }
     } catch (error) {
-      console.error('Error calculating fare:', error);
+      console.error("Error calculating fare:", error);
       // Set a default fare if calculation fails
       setCalculatedFare(500); // Default 500 BDT
-      setBookingData(prev => ({
+      setBookingData((prev) => ({
         ...prev,
         fare: 500,
-        distance: 10 // Default 10 km
+        distance: 10, // Default 10 km
       }));
     }
-  }, [selectedSourceArea, selectedDestinationArea, bookingData.source, bookingData.destination, driver, fetchRouteDetails]);
+  }, [
+    selectedSourceArea,
+    selectedDestinationArea,
+    bookingData.source,
+    bookingData.destination,
+    driver,
+    fetchRouteDetails,
+  ]);
 
   // Calculate fare when selected areas change
   useEffect(() => {
@@ -267,45 +316,49 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
     if (!driver) return;
 
     // Debug: Check authentication status
-    console.log('Booking submit - Authentication check:', {
+    console.log("Booking submit - Authentication check:", {
       isAuthenticated: !!user,
       user: user,
-      token: localStorage.getItem('token'),
-      tokenLength: localStorage.getItem('token')?.length
+      token: localStorage.getItem("token"),
+      tokenLength: localStorage.getItem("token")?.length,
     });
 
     // Check if user is authenticated
-    if (!user || !localStorage.getItem('token')) {
-      errorToast('Please login to create a booking');
+    if (!user || !localStorage.getItem("token")) {
+      errorToast("Please login to create a booking");
       return;
     }
 
     // Validate booking data
-    if (!bookingData.source || !bookingData.destination || !bookingData.pickupTime) {
-      errorToast('Please fill in all required fields');
+    if (
+      !bookingData.source ||
+      !bookingData.destination ||
+      !bookingData.pickupTime
+    ) {
+      errorToast("Please fill in all required fields");
       return;
     }
 
     if (calculatedFare <= 0) {
-      errorToast('Please enter valid source and destination to calculate fare');
+      errorToast("Please enter valid source and destination to calculate fare");
       return;
     }
 
     // Auto-populate shipping information based on booking details
     const sourceCity = extractCityFromLocation(bookingData.source);
     const destCity = extractCityFromLocation(bookingData.destination);
-    
-    setPaymentData(prev => ({
+
+    setPaymentData((prev) => ({
       ...prev,
-      customerCity: sourceCity || destCity || '',
+      customerCity: sourceCity || destCity || "",
       customerAddress: `${bookingData.source} to ${bookingData.destination}`,
-      customerPostCode: '1000', // Default postal code for Bangladesh
-      customerCountry: 'Bangladesh'
+      customerPostCode: "1000", // Default postal code for Bangladesh
+      customerCountry: "Bangladesh",
     }));
 
     // Debug: Log the current state
-    console.log('Booking submit - User data:', user);
-    console.log('Booking submit - Payment data:', paymentData);
+    console.log("Booking submit - User data:", user);
+    console.log("Booking submit - Payment data:", paymentData);
 
     setIsLoading(true);
     try {
@@ -318,25 +371,27 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
         destLat: bookingData.destLat,
         destLng: bookingData.destLng,
         distance: bookingData.distance,
-        fare: calculatedFare
+        fare: calculatedFare,
       });
 
       if (response.success && response.data) {
         const bookingData = response.data as { id: string };
-        console.log('Booking created successfully:', {
+        console.log("Booking created successfully:", {
           bookingId: bookingData.id,
-          response: response
+          response: response,
         });
         setBookingId(bookingData.id);
-        setStep('payment');
-        successToast('Booking created successfully! Please proceed with payment.');
+        setStep("payment");
+        successToast(
+          "Booking created successfully! Please proceed with payment."
+        );
       } else {
-        console.error('Booking creation failed:', response);
-        errorToast(response.message || 'Failed to create booking');
+        console.error("Booking creation failed:", response);
+        errorToast(response.message || "Failed to create booking");
       }
     } catch (error) {
-      console.error('Error creating booking:', error);
-      errorToast('Failed to create booking. Please try again.');
+      console.error("Error creating booking:", error);
+      errorToast("Failed to create booking. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -346,35 +401,47 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
 
   // Helper function to extract city from location string
   const extractCityFromLocation = (location: string): string => {
-    if (!location) return '';
-    
+    if (!location) return "";
+
     // Common cities in Bangladesh
     const cities = [
-      'Dhaka', 'Chittagong', 'Sylhet', 'Rajshahi', 'Khulna', 
-      'Barisal', 'Rangpur', 'Mymensingh', 'Comilla', 'Narayanganj',
-      'Gazipur', 'Tangail', 'Bogra', 'Kushtia', 'Jessore'
+      "Dhaka",
+      "Chittagong",
+      "Sylhet",
+      "Rajshahi",
+      "Khulna",
+      "Barisal",
+      "Rangpur",
+      "Mymensingh",
+      "Comilla",
+      "Narayanganj",
+      "Gazipur",
+      "Tangail",
+      "Bogra",
+      "Kushtia",
+      "Jessore",
     ];
-    
+
     for (const city of cities) {
       if (location.toLowerCase().includes(city.toLowerCase())) {
         return city;
       }
     }
-    
+
     // If no city found, try to extract from the location string
-    const parts = location.split(',').map(part => part.trim());
-    return parts[0] || '';
+    const parts = location.split(",").map((part) => part.trim());
+    return parts[0] || "";
   };
 
   const handlePaymentSubmit = async () => {
     if (!bookingId) return;
 
     // Debug: Check booking ID and authentication
-    console.log('Payment submit - Debug info:', {
+    console.log("Payment submit - Debug info:", {
       bookingId: bookingId,
       isAuthenticated: !!user,
       user: user,
-      token: localStorage.getItem('token')
+      token: localStorage.getItem("token"),
     });
 
     // Get the actual values (from Redux user or paymentData)
@@ -384,12 +451,12 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
 
     // Validate payment data
     if (!customerName || !customerEmail || !customerPhone) {
-      errorToast('Please fill in all required payment information');
+      errorToast("Please fill in all required payment information");
       return;
     }
 
     setIsLoading(true);
-    setStep('processing');
+    setStep("processing");
     setPaymentError(null);
 
     try {
@@ -403,46 +470,52 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
           address: paymentData.customerAddress,
           city: paymentData.customerCity,
           postCode: paymentData.customerPostCode,
-          country: paymentData.customerCountry
-        }
+          country: paymentData.customerCountry,
+        },
       };
 
-      console.log('Initiating SSLCommerz payment with:', paymentRequest);
-      const response = await apiClient.initiateSSLCommerzPayment(paymentRequest);
-      console.log('SSLCommerz payment response:', response);
+      console.log("Initiating SSLCommerz payment with:", paymentRequest);
+      const response = await apiClient.initiateSSLCommerzPayment(
+        paymentRequest
+      );
+      console.log("SSLCommerz payment response:", response);
 
       if (response.success && response.data && response.data.gatewayUrl) {
         // Show success message before redirect
-        successToast('Redirecting to secure payment gateway...');
-        
+        successToast("Redirecting to secure payment gateway...");
+
         // Small delay to show the message
         setTimeout(() => {
           // Redirect to SSLCommerz payment gateway
           window.location.href = response.data!.gatewayUrl;
         }, 1000);
       } else {
-        console.error('SSLCommerz payment initiation failed:', response);
-        throw new Error(response.message || 'Failed to initiate payment');
+        console.error("SSLCommerz payment initiation failed:", response);
+        throw new Error(response.message || "Failed to initiate payment");
       }
     } catch (error) {
-      console.error('Error initiating SSLCommerz payment:', error);
-      
+      console.error("Error initiating SSLCommerz payment:", error);
+
       // Handle specific error cases
       if (error instanceof Error) {
-        if (error.message.includes('Booking not found')) {
-          errorToast('Booking not found. Please create a new booking.');
-          setStep('booking');
+        if (error.message.includes("Booking not found")) {
+          errorToast("Booking not found. Please create a new booking.");
+          setStep("booking");
           setBookingId(null);
-        } else if (error.message.includes('SSLCommerz')) {
-          setPaymentError('Payment gateway is currently unavailable. Please try again later.');
-          setStep('error');
+        } else if (error.message.includes("SSLCommerz")) {
+          setPaymentError(
+            "Payment gateway is currently unavailable. Please try again later."
+          );
+          setStep("error");
         } else {
-          setPaymentError(error.message || 'Failed to process payment. Please try again.');
-          setStep('error');
+          setPaymentError(
+            error.message || "Failed to process payment. Please try again."
+          );
+          setStep("error");
         }
       } else {
-        setPaymentError('An unexpected error occurred. Please try again.');
-        setStep('error');
+        setPaymentError("An unexpected error occurred. Please try again.");
+        setStep("error");
       }
     } finally {
       setIsLoading(false);
@@ -450,25 +523,28 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
   };
 
   const handleClose = async () => {
-    if (step === 'processing') {
+    if (step === "processing") {
       return; // Don't allow closing during payment processing
     }
 
-    if (step === 'booking' && (bookingData.source || bookingData.destination || calculatedFare > 0)) {
+    if (
+      step === "booking" &&
+      (bookingData.source || bookingData.destination || calculatedFare > 0)
+    ) {
       // Use SweetAlert confirmation
       const result = await question(
-        'Are you sure you want to cancel this booking? All entered data will be lost.',
-        'Cancel Booking'
+        "Are you sure you want to cancel this booking? All entered data will be lost.",
+        "Cancel Booking"
       );
-      
+
       if (result.isConfirmed) {
         // Reset all form data and calculated fare
         setBookingData({
-          source: '',
-          destination: '',
-          pickupTime: '',
+          source: "",
+          destination: "",
+          pickupTime: "",
           fare: 0,
-          distance: 0
+          distance: 0,
         });
         setCalculatedFare(0);
         setBookingId(null);
@@ -489,13 +565,13 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
           <h2 className="text-xl font-semibold text-gray-900">
-            {step === 'booking' && 'Book Truck'}
-            {step === 'payment' && 'Payment Information'}
-            {step === 'processing' && 'Processing Payment'}
-            {step === 'success' && 'Booking Successful'}
-            {step === 'error' && 'Payment Error'}
+            {step === "booking" && "Book Truck"}
+            {step === "payment" && "Payment Information"}
+            {step === "processing" && "Processing Payment"}
+            {step === "success" && "Booking Successful"}
+            {step === "error" && "Payment Error"}
           </h2>
-          {step !== 'processing' && (
+          {step !== "processing" && (
             <button
               onClick={handleClose}
               className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -507,6 +583,61 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
 
         {/* Content */}
         <div className="p-6">
+          {/* Main Truck Image */}
+          {driver.truckImage && (
+            <div className="mb-4">
+              <div className="relative h-40 sm:h-48 rounded-lg overflow-hidden bg-gray-100">
+                <img
+                  src={getImageUrl(driver.truckImage)}
+                  alt={`${driver.user.name}'s truck`}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    // Hide container on error
+                    const container = (e.target as HTMLImageElement).closest(
+                      ".mb-4"
+                    ) as HTMLElement;
+                    if (container) container.style.display = "none";
+                  }}
+                />
+                <div className="absolute top-2 left-2 bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
+                  Main Truck
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Additional Truck Images Gallery */}
+          {driver.truckImages &&
+            Array.isArray(driver.truckImages) &&
+            driver.truckImages.length > 0 && (
+              <div className="mb-4">
+                <p className="text-xs font-semibold text-gray-700 mb-2 flex items-center">
+                  <Truck className="w-3 h-3 mr-1" />
+                  More Views:
+                </p>
+                <div className="flex gap-2 overflow-x-auto pb-2">
+                  {driver.truckImages.map((image, idx) => (
+                    <div
+                      key={idx}
+                      className="flex-shrink-0 w-20 h-16 sm:w-24 sm:h-20 rounded-lg overflow-hidden border-2 border-gray-200 hover:border-blue-500 transition-colors bg-gray-100"
+                    >
+                      <img
+                        src={getImageUrl(image)}
+                        alt={`Truck view ${idx + 1}`}
+                        className="w-full h-full object-cover hover:scale-110 transition-transform duration-300 cursor-pointer"
+                        onError={(e) => {
+                          // Hide this specific image on error
+                          const container = (
+                            e.target as HTMLImageElement
+                          ).closest(".flex-shrink-0") as HTMLElement;
+                          if (container) container.style.display = "none";
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           {/* Driver Info */}
           <div className="bg-gray-50 rounded-lg p-4 mb-6">
             <div className="flex items-center gap-4">
@@ -514,18 +645,24 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
                 <Truck className="w-6 h-6 text-blue-600" />
               </div>
               <div>
-                <h3 className="font-semibold text-gray-900">{driver.user.name}</h3>
-                <p className="text-sm text-gray-600">{driver.truckType.replace('_', ' ')} • {driver.capacity} tons</p>
+                <h3 className="font-semibold text-gray-900">
+                  {driver.user.name}
+                </h3>
+                <p className="text-sm text-gray-600">
+                  {driver.truckType.replace("_", " ")} • {driver.capacity} tons
+                </p>
                 <div className="flex items-center gap-2 mt-1">
                   <MapPin className="w-4 h-4 text-gray-400" />
-                  <span className="text-sm text-gray-600">{driver.location}</span>
+                  <span className="text-sm text-gray-600">
+                    {driver.location}
+                  </span>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Booking Form */}
-          {step === 'booking' && (
+          {step === "booking" && (
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Pickup Location */}
@@ -538,34 +675,48 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
                       type="text"
                       value={bookingData.source}
                       onChange={(e) => {
-                        setBookingData(prev => ({ ...prev, source: e.target.value }));
+                        setBookingData((prev) => ({
+                          ...prev,
+                          source: e.target.value,
+                        }));
                         setSourceQuery(e.target.value);
                       }}
                       placeholder="Type to search Dhaka locations..."
                       className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
-                       
-                        {areaOptions.length > 0 && sourceQuery && (
-                          <div className="absolute z-10 mt-1 max-h-48 w-full overflow-auto rounded-md border bg-white text-gray-700 shadow">
-                            {areaOptions
-                              .filter((opt) => opt.label.toLowerCase().includes(sourceQuery.toLowerCase()) || opt.area.toLowerCase().includes(sourceQuery.toLowerCase()))
-                              .slice(0, 50)
-                              .map((opt) => (
-                                <button
-                                  key={opt.value}
-                                  type="button"
-                                  onClick={() => {
-                                    setBookingData(prev => ({ ...prev, source: opt.area }));
-                                    setSelectedSourceArea(opt);
-                                    setSourceQuery('');
-                                  }}
-                                  className="block w-full px-3 py-2 text-left hover:bg-gray-50"
-                                >
-                                  {opt.label}
-                                </button>
-                              ))}
-                          </div>
-                        )}
+
+                    {areaOptions.length > 0 && sourceQuery && (
+                      <div className="absolute z-10 mt-1 max-h-48 w-full overflow-auto rounded-md border bg-white text-gray-700 shadow">
+                        {areaOptions
+                          .filter(
+                            (opt) =>
+                              opt.label
+                                .toLowerCase()
+                                .includes(sourceQuery.toLowerCase()) ||
+                              opt.area
+                                .toLowerCase()
+                                .includes(sourceQuery.toLowerCase())
+                          )
+                          .slice(0, 50)
+                          .map((opt) => (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              onClick={() => {
+                                setBookingData((prev) => ({
+                                  ...prev,
+                                  source: opt.area,
+                                }));
+                                setSelectedSourceArea(opt);
+                                setSourceQuery("");
+                              }}
+                              className="block w-full px-3 py-2 text-left hover:bg-gray-50"
+                            >
+                              {opt.label}
+                            </button>
+                          ))}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -579,34 +730,48 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
                       type="text"
                       value={bookingData.destination}
                       onChange={(e) => {
-                        setBookingData(prev => ({ ...prev, destination: e.target.value }));
+                        setBookingData((prev) => ({
+                          ...prev,
+                          destination: e.target.value,
+                        }));
                         setDestinationQuery(e.target.value);
                       }}
                       placeholder="Type to search Dhaka locations..."
                       className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
-                    
-                        {areaOptions.length > 0 && destinationQuery && (
-                          <div className="absolute z-10 mt-1 max-h-48 w-full overflow-auto rounded-md border bg-white text-gray-700 shadow">
-                            {areaOptions
-                              .filter((opt) => opt.label.toLowerCase().includes(destinationQuery.toLowerCase()) || opt.area.toLowerCase().includes(destinationQuery.toLowerCase()))
-                              .slice(0, 50)
-                              .map((opt) => (
-                                <button
-                                  key={opt.value}
-                                  type="button"
-                                  onClick={() => {
-                                    setBookingData(prev => ({ ...prev, destination: opt.area }));
-                                    setSelectedDestinationArea(opt);
-                                    setDestinationQuery('');
-                                  }}
-                                  className="block w-full px-3 py-2 text-left hover:bg-gray-50"
-                                >
-                                  {opt.label}
-                                </button>
-                              ))}
-                          </div>
-                        )}
+
+                    {areaOptions.length > 0 && destinationQuery && (
+                      <div className="absolute z-10 mt-1 max-h-48 w-full overflow-auto rounded-md border bg-white text-gray-700 shadow">
+                        {areaOptions
+                          .filter(
+                            (opt) =>
+                              opt.label
+                                .toLowerCase()
+                                .includes(destinationQuery.toLowerCase()) ||
+                              opt.area
+                                .toLowerCase()
+                                .includes(destinationQuery.toLowerCase())
+                          )
+                          .slice(0, 50)
+                          .map((opt) => (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              onClick={() => {
+                                setBookingData((prev) => ({
+                                  ...prev,
+                                  destination: opt.area,
+                                }));
+                                setSelectedDestinationArea(opt);
+                                setDestinationQuery("");
+                              }}
+                              className="block w-full px-3 py-2 text-left hover:bg-gray-50"
+                            >
+                              {opt.label}
+                            </button>
+                          ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -618,7 +783,12 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
                 <input
                   type="datetime-local"
                   value={bookingData.pickupTime}
-                  onChange={(e) => setBookingData(prev => ({ ...prev, pickupTime: e.target.value }))}
+                  onChange={(e) =>
+                    setBookingData((prev) => ({
+                      ...prev,
+                      pickupTime: e.target.value,
+                    }))
+                  }
                   className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -626,7 +796,9 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
               {/* Map Preview below selections */}
               {selectedSourceArea && selectedDestinationArea && (
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                  <h4 className="text-sm font-medium text-gray-700 mb-2">Route Preview</h4>
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">
+                    Route Preview
+                  </h4>
                   <DynamicMap
                     sourceLat={selectedSourceArea.latitude}
                     sourceLng={selectedSourceArea.longitude}
@@ -638,7 +810,10 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
                   {routeDetails && (
                     <div className="mt-2 text-sm text-gray-600">
                       <p>Distance: {routeDetails.distance.toFixed(1)} km</p>
-                      <p>Estimated Time: {Math.round(routeDetails.duration)} minutes</p>
+                      <p>
+                        Estimated Time: {Math.round(routeDetails.duration)}{" "}
+                        minutes
+                      </p>
                     </div>
                   )}
                 </div>
@@ -650,9 +825,13 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-gray-600">Estimated Fare</p>
-                      <p className="text-2xl font-bold text-blue-600">${calculatedFare.toLocaleString()}</p>
+                      <p className="text-2xl font-bold text-blue-600">
+                        ${calculatedFare.toLocaleString()}
+                      </p>
                       {bookingData.distance > 0 && (
-                        <p className="text-sm text-gray-500">Distance: {bookingData.distance.toFixed(1)} km</p>
+                        <p className="text-sm text-gray-500">
+                          Distance: {bookingData.distance.toFixed(1)} km
+                        </p>
                       )}
                     </div>
                     <span className="text-4xl font-bold text-blue-600">৳</span>
@@ -672,7 +851,7 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
                       Creating Booking...
                     </>
                   ) : (
-                    'Continue to Payment'
+                    "Continue to Payment"
                   )}
                 </Button>
                 <Button
@@ -687,17 +866,20 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
           )}
 
           {/* Payment Form */}
-          {step === 'payment' && (
+          {step === "payment" && (
             <div className="space-y-4">
               {/* Payment Security Notice */}
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                 <div className="flex items-start gap-3">
                   <Shield className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
                   <div>
-                    <h3 className="text-sm font-medium text-green-800 mb-1">Secure Payment</h3>
+                    <h3 className="text-sm font-medium text-green-800 mb-1">
+                      Secure Payment
+                    </h3>
                     <p className="text-sm text-green-700">
-                      Your payment will be processed securely through SSLCommerz, a trusted payment gateway in Bangladesh. 
-                      All your financial information is encrypted and protected.
+                      Your payment will be processed securely through
+                      SSLCommerz, a trusted payment gateway in Bangladesh. All
+                      your financial information is encrypted and protected.
                     </p>
                   </div>
                 </div>
@@ -706,7 +888,9 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
               {/* User Information - Read Only */}
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-medium text-gray-700">Customer Information</h3>
+                  <h3 className="text-sm font-medium text-gray-700">
+                    Customer Information
+                  </h3>
                   {user ? (
                     <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
                       Auto-filled from account
@@ -717,7 +901,7 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
                     </span>
                   )}
                 </div>
-                
+
                 {user ? (
                   <>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -727,7 +911,7 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
                         </label>
                         <input
                           type="text"
-                          value={user.name || ''}
+                          value={user.name || ""}
                           disabled
                           className="w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-100 cursor-not-allowed text-gray-700"
                         />
@@ -738,7 +922,7 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
                         </label>
                         <input
                           type="email"
-                          value={user.email || ''}
+                          value={user.email || ""}
                           disabled
                           className="w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-100 cursor-not-allowed text-gray-700"
                         />
@@ -751,7 +935,7 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
                       </label>
                       <input
                         type="tel"
-                        value={user.phone || ''}
+                        value={user.phone || ""}
                         disabled
                         className="w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-100 cursor-not-allowed text-gray-700"
                       />
@@ -759,7 +943,9 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
                   </>
                 ) : (
                   <div className="text-center py-4">
-                    <p className="text-sm text-gray-500 mb-3">User information not available</p>
+                    <p className="text-sm text-gray-500 mb-3">
+                      User information not available
+                    </p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-600 mb-1">
@@ -768,7 +954,12 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
                         <input
                           type="text"
                           value={paymentData.customerName}
-                          onChange={(e) => setPaymentData(prev => ({ ...prev, customerName: e.target.value }))}
+                          onChange={(e) =>
+                            setPaymentData((prev) => ({
+                              ...prev,
+                              customerName: e.target.value,
+                            }))
+                          }
                           placeholder="Enter your full name"
                           className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
@@ -780,7 +971,12 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
                         <input
                           type="email"
                           value={paymentData.customerEmail}
-                          onChange={(e) => setPaymentData(prev => ({ ...prev, customerEmail: e.target.value }))}
+                          onChange={(e) =>
+                            setPaymentData((prev) => ({
+                              ...prev,
+                              customerEmail: e.target.value,
+                            }))
+                          }
                           placeholder="Enter your email"
                           className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
@@ -794,7 +990,12 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
                       <input
                         type="tel"
                         value={paymentData.customerPhone}
-                        onChange={(e) => setPaymentData(prev => ({ ...prev, customerPhone: e.target.value }))}
+                        onChange={(e) =>
+                          setPaymentData((prev) => ({
+                            ...prev,
+                            customerPhone: e.target.value,
+                          }))
+                        }
                         placeholder="Enter your phone number"
                         className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
@@ -805,8 +1006,10 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
 
               {/* Shipping Information */}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h3 className="text-sm font-medium text-gray-700 mb-3">Shipping Information</h3>
-                
+                <h3 className="text-sm font-medium text-gray-700 mb-3">
+                  Shipping Information
+                </h3>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -816,11 +1019,18 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
                       type="text"
                       readOnly
                       value={paymentData.customerCity}
-                      onChange={(e) => setPaymentData(prev => ({ ...prev, customerCity: e.target.value }))}
+                      onChange={(e) =>
+                        setPaymentData((prev) => ({
+                          ...prev,
+                          customerCity: e.target.value,
+                        }))
+                      }
                       placeholder="Auto-filled from booking location"
                       className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-blue-50"
                     />
-                    <p className="text-xs text-blue-600 mt-1">Auto-detected from pickup/destination location</p>
+                    <p className="text-xs text-blue-600 mt-1">
+                      Auto-detected from pickup/destination location
+                    </p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -830,11 +1040,18 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
                       type="text"
                       readOnly
                       value={paymentData.customerPostCode}
-                      onChange={(e) => setPaymentData(prev => ({ ...prev, customerPostCode: e.target.value }))}
+                      onChange={(e) =>
+                        setPaymentData((prev) => ({
+                          ...prev,
+                          customerPostCode: e.target.value,
+                        }))
+                      }
                       placeholder="Default: 1000"
                       className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-blue-50"
                     />
-                    <p className="text-xs text-blue-600 mt-1">Default postal code for Bangladesh</p>
+                    <p className="text-xs text-blue-600 mt-1">
+                      Default postal code for Bangladesh
+                    </p>
                   </div>
                 </div>
 
@@ -846,11 +1063,19 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
                     type="text"
                     readOnly
                     value={paymentData.customerAddress}
-                    onChange={(e) => setPaymentData(prev => ({ ...prev, customerAddress: e.target.value }))}
+                    onChange={(e) =>
+                      setPaymentData((prev) => ({
+                        ...prev,
+                        customerAddress: e.target.value,
+                      }))
+                    }
                     placeholder="Auto-filled from booking route"
                     className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-blue-50"
                   />
-                  <p className="text-xs text-blue-600 mt-1">Auto-filled: {bookingData.source} to {bookingData.destination}</p>
+                  <p className="text-xs text-blue-600 mt-1">
+                    Auto-filled: {bookingData.source} to{" "}
+                    {bookingData.destination}
+                  </p>
                 </div>
 
                 <div className="mt-4">
@@ -870,8 +1095,12 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
               {/* Total Amount */}
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-lg font-medium text-gray-900">Total Amount:</span>
-                  <span className="text-2xl font-bold text-green-600">৳{calculatedFare.toLocaleString()}</span>
+                  <span className="text-lg font-medium text-gray-900">
+                    Total Amount:
+                  </span>
+                  <span className="text-2xl font-bold text-green-600">
+                    ৳{calculatedFare.toLocaleString()}
+                  </span>
                 </div>
               </div>
 
@@ -894,7 +1123,7 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
                   )}
                 </Button>
                 <Button
-                  onClick={() => setStep('booking')}
+                  onClick={() => setStep("booking")}
                   variant="outline"
                   disabled={isLoading}
                 >
@@ -905,26 +1134,38 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
           )}
 
           {/* Processing State */}
-          {step === 'processing' && (
+          {step === "processing" && (
             <div className="text-center py-8">
               <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Processing Payment</h3>
-              <p className="text-gray-600 mb-4">Please wait while we redirect you to the secure payment gateway...</p>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Processing Payment
+              </h3>
+              <p className="text-gray-600 mb-4">
+                Please wait while we redirect you to the secure payment
+                gateway...
+              </p>
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <div className="flex items-center gap-2 text-sm text-blue-700">
                   <Shield className="w-4 h-4" />
-                  <span>Your payment is being processed securely through SSLCommerz</span>
+                  <span>
+                    Your payment is being processed securely through SSLCommerz
+                  </span>
                 </div>
               </div>
             </div>
           )}
 
           {/* Success State */}
-          {step === 'success' && (
+          {step === "success" && (
             <div className="text-center py-8">
               <CheckCircle className="w-12 h-12 text-green-600 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Payment Successful!</h3>
-              <p className="text-gray-600 mb-6">Your booking has been confirmed and payment processed successfully.</p>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Payment Successful!
+              </h3>
+              <p className="text-gray-600 mb-6">
+                Your booking has been confirmed and payment processed
+                successfully.
+              </p>
               <Button
                 onClick={() => {
                   onBookingComplete();
@@ -938,26 +1179,23 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
           )}
 
           {/* Error State */}
-          {step === 'error' && (
+          {step === "error" && (
             <div className="text-center py-8">
               <AlertCircle className="w-12 h-12 text-red-600 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Payment Failed</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Payment Failed
+              </h3>
               {paymentError && (
                 <p className="text-gray-600 mb-4">{paymentError}</p>
               )}
-              <p className="text-gray-600 mb-6">There was an error processing your payment. Please try again.</p>
+              <p className="text-gray-600 mb-6">
+                There was an error processing your payment. Please try again.
+              </p>
               <div className="flex gap-3">
-                <Button
-                  onClick={() => setStep('payment')}
-                  className="flex-1"
-                >
+                <Button onClick={() => setStep("payment")} className="flex-1">
                   Try Again
                 </Button>
-                <Button
-                  onClick={onClose}
-                  variant="outline"
-                  className="flex-1"
-                >
+                <Button onClick={onClose} variant="outline" className="flex-1">
                   Cancel
                 </Button>
               </div>
@@ -969,4 +1207,4 @@ export default function BookingModal({ driver, isOpen, onClose, onBookingComplet
       {/* Map Selectors removed */}
     </div>
   );
-} 
+}

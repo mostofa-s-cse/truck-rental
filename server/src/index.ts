@@ -51,8 +51,10 @@ app.use(logRequest);
 // API Routes
 app.use('/api/v1', v1Routes);
 
-// Serve uploaded avatars statically
+// Serve uploaded files statically
 app.use('/uploads/avatars', express.static(path.join(process.cwd(), 'uploads', 'avatars')));
+app.use('/uploads/trucks', express.static(path.join(process.cwd(), 'uploads', 'trucks')));
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // Health check
 app.get('/health', (req, res) => {

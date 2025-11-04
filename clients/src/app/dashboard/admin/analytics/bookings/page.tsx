@@ -477,9 +477,9 @@ function BookingAnalyticsContent() {
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-                  <p className="text-2xl font-bold text-gray-900">৳{formatCurrency(analyticsData?.totalRevenue || 0)}</p>
+                  <p className="text-2xl font-bold text-gray-900">{formatCurrency(analyticsData?.totalRevenue || 0)}</p>
                   <div className="flex items-center mt-1">
-                    <span className="text-sm text-gray-600">Avg: ৳{formatCurrency(analyticsData?.averageFare || 0)} per booking</span>
+                    <span className="text-sm text-gray-600">Avg: {formatCurrency(analyticsData?.averageFare || 0)} per booking</span>
                   </div>
                 </div>
               </div>

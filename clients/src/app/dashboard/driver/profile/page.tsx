@@ -1,22 +1,22 @@
-'use client';
+"use client";
 
-import { useState, useCallback, useEffect } from 'react';
-import Image from 'next/image';
-import { useAppSelector, useAppDispatch } from '@/hooks/redux';
-import DashboardLayout from '@/components/ui/DashboardLayout';
-import ProtectedRoute from '@/components/auth/ProtectedRoute';
-import Button from '@/components/ui/Button';
-import Modal from '@/components/ui/Modal';
-import { useSweetAlert } from '@/hooks/useSweetAlert';
-import { 
-  UserCircleIcon, 
+import { useState, useCallback, useEffect } from "react";
+import Image from "next/image";
+import { useAppSelector, useAppDispatch } from "@/hooks/redux";
+import DashboardLayout from "@/components/ui/DashboardLayout";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import Button from "@/components/ui/Button";
+import Modal from "@/components/ui/Modal";
+import { useSweetAlert } from "@/hooks/useSweetAlert";
+import {
+  UserCircleIcon,
   PencilIcon,
   CameraIcon,
   StarIcon,
-} from '@heroicons/react/24/outline';
-import { KeyIcon } from 'lucide-react';
-import { driverApi } from '@/lib/dashboardApi';
-import { updateUser } from '@/store/slices/authSlice';
+} from "@heroicons/react/24/outline";
+import { KeyIcon } from "lucide-react";
+import { driverApi } from "@/lib/dashboardApi";
+import { updateUser } from "@/store/slices/authSlice";
 
 interface DriverProfile {
   id: string;
@@ -36,6 +36,8 @@ interface DriverProfile {
     license: string;
     registration: string;
     location: string;
+    truckImage?: string;
+    truckImages?: string[];
   };
   preferences: {
     emailNotifications: boolean;
@@ -61,7 +63,7 @@ export default function DriverProfilePage() {
   const { user } = useAppSelector((state) => state.auth);
   const dispatch = useAppDispatch();
   const { successToast, errorToast } = useSweetAlert();
-  
+
   // State
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -69,35 +71,37 @@ export default function DriverProfilePage() {
   const [editMode, setEditMode] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
-  
+
   // Form data
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    address: '',
-    city: '',
-    country: '',
-    bio: ''
+    name: "",
+    email: "",
+    phone: "",
+    address: "",
+    city: "",
+    country: "",
+    bio: "",
   });
-  
+
   // Vehicle form data
   const [vehicleForm, setVehicleForm] = useState({
-    truckType: '',
+    truckType: "",
     capacity: 0,
-    quality: '',
-    license: '',
-    registration: '',
-    location: ''
+    quality: "",
+    license: "",
+    registration: "",
+    location: "",
+    truckImage: "",
+    truckImages: [] as string[],
   });
-  
+
   // Password change form
   const [passwordForm, setPasswordForm] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: ''
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
   });
-  
+
   // Preferences
   // const [preferences, setPreferences] = useState({
   //   emailNotifications: true,
@@ -110,66 +114,93 @@ export default function DriverProfilePage() {
   const fetchProfileData = useCallback(async () => {
     try {
       setLoading(true);
-      
-      // Mock profile data (replace with real API call)
+
+      // Fetch actual driver profile from API
+      const driverProfile = await driverApi.getDriverProfile();
+
+      // Transform API response to match DriverProfile interface
       const mockProfile: DriverProfile = {
-        id: user?.id || '1',
-        name: user?.name || 'Driver User',
-        email: user?.email || 'driver@example.com',
-        phone: '+1 (555) 123-4567',
-        role: 'DRIVER',
-        avatar: user?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'Driver User')}&background=random`,
-        address: '123 Driver Street',
-        city: 'Driver City',
-        country: 'United States',
-        bio: 'Professional truck driver with 5+ years of experience in safe and timely deliveries.',
+        id: user?.id || "1",
+        name: user?.name || "Driver User",
+        email: user?.email || "driver@example.com",
+        phone: user?.phone || "+1 (555) 123-4567",
+        role: "DRIVER",
+        avatar:
+          user?.avatar ||
+          `https://ui-avatars.com/api/?name=${encodeURIComponent(
+            user?.name || "Driver User"
+          )}&background=random`,
+        address: "123 Driver Street",
+        city: "Driver City",
+        country: "United States",
+        bio: "Professional truck driver with 5+ years of experience in safe and timely deliveries.",
         vehicle: {
-          truckType: 'MINI_TRUCK',
-          capacity: 1.5,
-          quality: 'GOOD',
-          license: 'DL123456789',
-          registration: 'TRK789012345',
-          location: 'Downtown Area'
+          truckType: driverProfile.truckType || "MINI_TRUCK",
+          capacity: driverProfile.capacity || 1.5,
+          quality: driverProfile.quality || "GOOD",
+          license: driverProfile.license || "DL123456789",
+          registration: driverProfile.registration || "TRK789012345",
+          location: driverProfile.location || "Downtown Area",
+          truckImage: driverProfile.truckImage || undefined,
+          truckImages: Array.isArray(driverProfile.truckImages)
+            ? driverProfile.truckImages
+            : [],
         },
         preferences: {
           emailNotifications: true,
           smsNotifications: false,
           pushNotifications: true,
-          language: 'en',
-          timezone: 'UTC'
+          language: "en",
+          timezone: "UTC",
         },
         security: {
           lastLogin: new Date().toISOString(),
           loginHistory: [
-            { date: '2024-01-15T10:30:00Z', ip: '192.168.1.100', device: 'Chrome on Windows' },
-            { date: '2024-01-14T15:45:00Z', ip: '192.168.1.100', device: 'Chrome on Windows' },
-            { date: '2024-01-13T09:20:00Z', ip: '192.168.1.100', device: 'Chrome on Windows' }
+            {
+              date: "2024-01-15T10:30:00Z",
+              ip: "192.168.1.100",
+              device: "Chrome on Windows",
+            },
+            {
+              date: "2024-01-14T15:45:00Z",
+              ip: "192.168.1.100",
+              device: "Chrome on Windows",
+            },
+            {
+              date: "2024-01-13T09:20:00Z",
+              ip: "192.168.1.100",
+              device: "Chrome on Windows",
+            },
           ],
-          twoFactorEnabled: false
+          twoFactorEnabled: false,
         },
         stats: {
           totalTrips: 156,
           averageRating: 4.8,
           completionRate: 98.5,
-          totalEarnings: 8500
-        }
+          totalEarnings: 8500,
+        },
       };
 
       setProfile(mockProfile);
       setFormData({
         name: mockProfile.name,
         email: mockProfile.email,
-        phone: mockProfile.phone || '',
-        address: mockProfile.address || '',
-        city: mockProfile.city || '',
-        country: mockProfile.country || '',
-        bio: mockProfile.bio || ''
+        phone: mockProfile.phone || "",
+        address: mockProfile.address || "",
+        city: mockProfile.city || "",
+        country: mockProfile.country || "",
+        bio: mockProfile.bio || "",
       });
-      setVehicleForm(mockProfile.vehicle);
+      setVehicleForm({
+        ...mockProfile.vehicle,
+        truckImage: mockProfile.vehicle.truckImage || "",
+        truckImages: mockProfile.vehicle.truckImages || [],
+      });
       // setPreferences(mockProfile.preferences);
     } catch (error) {
-      console.error('Error fetching profile data:', error);
-      errorToast('Failed to fetch profile data');
+      console.error("Error fetching profile data:", error);
+      errorToast("Failed to fetch profile data");
     } finally {
       setLoading(false);
     }
@@ -182,16 +213,16 @@ export default function DriverProfilePage() {
   const handleSaveProfile = async () => {
     try {
       setSaving(true);
-      
+
       // Validate form data
       if (!formData.name || !formData.email) {
-        errorToast('Name and email are required');
+        errorToast("Name and email are required");
         return;
       }
 
       // Mock API call (replace with real API call)
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
       // Update profile state
       if (profile) {
         setProfile({
@@ -202,15 +233,15 @@ export default function DriverProfilePage() {
           address: formData.address,
           city: formData.city,
           country: formData.country,
-          bio: formData.bio
+          bio: formData.bio,
         });
       }
-      
+
       setEditMode(false);
-      successToast('Profile updated successfully');
+      successToast("Profile updated successfully");
     } catch (error) {
-      console.error('Error updating profile:', error);
-      errorToast('Failed to update profile');
+      console.error("Error updating profile:", error);
+      errorToast("Failed to update profile");
     } finally {
       setSaving(false);
     }
@@ -219,28 +250,33 @@ export default function DriverProfilePage() {
   const handleSaveVehicle = async () => {
     try {
       setSaving(true);
-      
+
       // Validate vehicle form data
-      if (!vehicleForm.truckType || !vehicleForm.license || !vehicleForm.registration || !vehicleForm.location) {
-        errorToast('All vehicle fields are required');
+      if (
+        !vehicleForm.truckType ||
+        !vehicleForm.license ||
+        !vehicleForm.registration ||
+        !vehicleForm.location
+      ) {
+        errorToast("All vehicle fields are required");
         return;
       }
 
       // Mock API call (replace with real API call)
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
       // Update profile state
       if (profile) {
         setProfile({
           ...profile,
-          vehicle: vehicleForm
+          vehicle: vehicleForm,
         });
       }
-      
-      successToast('Vehicle information updated successfully');
+
+      successToast("Vehicle information updated successfully");
     } catch (error) {
-      console.error('Error updating vehicle:', error);
-      errorToast('Failed to update vehicle information');
+      console.error("Error updating vehicle:", error);
+      errorToast("Failed to update vehicle information");
     } finally {
       setSaving(false);
     }
@@ -249,36 +285,40 @@ export default function DriverProfilePage() {
   const handleChangePassword = async () => {
     try {
       setSaving(true);
-      
+
       // Validate password form
-      if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
-        errorToast('All password fields are required');
+      if (
+        !passwordForm.currentPassword ||
+        !passwordForm.newPassword ||
+        !passwordForm.confirmPassword
+      ) {
+        errorToast("All password fields are required");
         return;
       }
 
       if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-        errorToast('New passwords do not match');
+        errorToast("New passwords do not match");
         return;
       }
 
       if (passwordForm.newPassword.length < 8) {
-        errorToast('New password must be at least 8 characters long');
+        errorToast("New password must be at least 8 characters long");
         return;
       }
 
       // Mock API call (replace with real API call)
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
       setShowPasswordModal(false);
       setPasswordForm({
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: ''
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
       });
-      successToast('Password changed successfully');
+      successToast("Password changed successfully");
     } catch (error) {
-      console.error('Error changing password:', error);
-      errorToast('Failed to change password');
+      console.error("Error changing password:", error);
+      errorToast("Failed to change password");
     } finally {
       setSaving(false);
     }
@@ -287,17 +327,17 @@ export default function DriverProfilePage() {
   // const handleSavePreferences = async () => {
   //   try {
   //     setSaving(true);
-      
+
   //     // Mock API call (replace with real API call)
   //     await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
   //     if (profile) {
   //       setProfile({
   //         ...profile,
   //         preferences
   //       });
   //     }
-      
+
   //     successToast('Preferences saved successfully');
   //   } catch (error) {
   //     console.error('Error saving preferences:', error);
@@ -307,7 +347,9 @@ export default function DriverProfilePage() {
   //   }
   // };
 
-  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -316,15 +358,15 @@ export default function DriverProfilePage() {
       const { avatarUrl } = await driverApi.uploadAvatar(file);
       if (profile) {
         // Use relative path for Next/Image to avoid unconfigured host errors
-        const nextSrc = avatarUrl.replace(/^https?:\/\/localhost:\d+/, '');
+        const nextSrc = avatarUrl.replace(/^https?:\/\/localhost:\d+/, "");
         setProfile({ ...profile, avatar: nextSrc });
         dispatch(updateUser({ avatar: nextSrc }));
       }
       setShowAvatarModal(false);
-      successToast('Avatar updated successfully');
+      successToast("Avatar updated successfully");
     } catch (error) {
-      console.error('Error uploading avatar:', error);
-      errorToast('Failed to upload avatar');
+      console.error("Error uploading avatar:", error);
+      errorToast("Failed to upload avatar");
     } finally {
       setSaving(false);
     }
@@ -337,7 +379,7 @@ export default function DriverProfilePage() {
           <StarIcon
             key={star}
             className={`h-4 w-4 ${
-              star <= rating ? 'text-yellow-400 fill-current' : 'text-gray-300'
+              star <= rating ? "text-yellow-400 fill-current" : "text-gray-300"
             }`}
           />
         ))}
@@ -349,7 +391,10 @@ export default function DriverProfilePage() {
   if (loading) {
     return (
       <ProtectedRoute requiredRole="DRIVER">
-        <DashboardLayout title="Driver Profile" subtitle="Manage your account and vehicle information">
+        <DashboardLayout
+          title="Driver Profile"
+          subtitle="Manage your account and vehicle information"
+        >
           <div className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
           </div>
@@ -361,7 +406,10 @@ export default function DriverProfilePage() {
   if (!profile) {
     return (
       <ProtectedRoute requiredRole="DRIVER">
-        <DashboardLayout title="Driver Profile" subtitle="Manage your account and vehicle information">
+        <DashboardLayout
+          title="Driver Profile"
+          subtitle="Manage your account and vehicle information"
+        >
           <div className="text-center py-12">
             <p className="text-gray-500">Profile data not available</p>
           </div>
@@ -372,7 +420,10 @@ export default function DriverProfilePage() {
 
   return (
     <ProtectedRoute requiredRole="DRIVER">
-      <DashboardLayout title="Driver Profile" subtitle="Manage your account and vehicle information">
+      <DashboardLayout
+        title="Driver Profile"
+        subtitle="Manage your account and vehicle information"
+      >
         <div className="space-y-6">
           {/* Profile Header */}
           <div className="bg-white rounded-lg shadow p-6">
@@ -380,8 +431,8 @@ export default function DriverProfilePage() {
               <div className="flex items-center space-x-4">
                 <div className="relative">
                   {profile.avatar ? (
-                    <Image 
-                      src={profile.avatar || ''} 
+                    <Image
+                      src={profile.avatar || ""}
                       alt={profile.name}
                       width={80}
                       height={80}
@@ -400,7 +451,9 @@ export default function DriverProfilePage() {
                   </button>
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900">{profile.name}</h2>
+                  <h2 className="text-2xl font-bold text-gray-900">
+                    {profile.name}
+                  </h2>
                   <p className="text-gray-600">{profile.role}</p>
                   <div className="flex items-center mt-1">
                     {renderStars(profile.stats.averageRating)}
@@ -417,18 +470,12 @@ export default function DriverProfilePage() {
                     >
                       Cancel
                     </Button>
-                    <Button
-                      onClick={handleSaveProfile}
-                      disabled={saving}
-                    >
-                      {saving ? 'Saving...' : 'Save Changes'}
+                    <Button onClick={handleSaveProfile} disabled={saving}>
+                      {saving ? "Saving..." : "Save Changes"}
                     </Button>
                   </>
                 ) : (
-                  <Button
-                    onClick={() => setEditMode(true)}
-                    variant="outline"
-                  >
+                  <Button onClick={() => setEditMode(true)} variant="outline">
                     <PencilIcon className="h-4 w-4 mr-2" />
                     Edit Profile
                   </Button>
@@ -442,15 +489,21 @@ export default function DriverProfilePage() {
             <div className="lg:col-span-2 space-y-6">
               {/* Basic Information */}
               <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Personal Information</h3>
+                <h3 className="text-lg font-medium text-gray-900 mb-4">
+                  Personal Information
+                </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Full Name
+                    </label>
                     {editMode ? (
                       <input
                         type="text"
                         value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        onChange={(e) =>
+                          setFormData({ ...formData, name: e.target.value })
+                        }
                         className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     ) : (
@@ -458,12 +511,16 @@ export default function DriverProfilePage() {
                     )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Email
+                    </label>
                     {editMode ? (
                       <input
                         type="email"
                         value={formData.email}
-                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        onChange={(e) =>
+                          setFormData({ ...formData, email: e.target.value })
+                        }
                         className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     ) : (
@@ -471,20 +528,28 @@ export default function DriverProfilePage() {
                     )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Phone
+                    </label>
                     {editMode ? (
                       <input
                         type="tel"
                         value={formData.phone}
-                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        onChange={(e) =>
+                          setFormData({ ...formData, phone: e.target.value })
+                        }
                         className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     ) : (
-                      <p className="text-gray-900">{profile.phone || 'Not provided'}</p>
+                      <p className="text-gray-900">
+                        {profile.phone || "Not provided"}
+                      </p>
                     )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Role
+                    </label>
                     <p className="text-gray-900">{profile.role}</p>
                   </div>
                 </div>
@@ -493,21 +558,30 @@ export default function DriverProfilePage() {
               {/* Vehicle Information */}
               <div className="bg-white rounded-lg shadow p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-medium text-gray-900">Vehicle Information</h3>
+                  <h3 className="text-lg font-medium text-gray-900">
+                    Vehicle Information
+                  </h3>
                   <Button
                     onClick={handleSaveVehicle}
                     disabled={saving}
                     size="sm"
                   >
-                    {saving ? 'Saving...' : 'Save Vehicle'}
+                    {saving ? "Saving..." : "Save Vehicle"}
                   </Button>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Truck Type</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Truck Type
+                    </label>
                     <select
                       value={vehicleForm.truckType}
-                      onChange={(e) => setVehicleForm({ ...vehicleForm, truckType: e.target.value })}
+                      onChange={(e) =>
+                        setVehicleForm({
+                          ...vehicleForm,
+                          truckType: e.target.value,
+                        })
+                      }
                       className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="MINI_TRUCK">Mini Truck</option>
@@ -517,20 +591,34 @@ export default function DriverProfilePage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Capacity (tons)</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Capacity (tons)
+                    </label>
                     <input
                       type="number"
                       step="0.1"
                       value={vehicleForm.capacity}
-                      onChange={(e) => setVehicleForm({ ...vehicleForm, capacity: parseFloat(e.target.value) })}
+                      onChange={(e) =>
+                        setVehicleForm({
+                          ...vehicleForm,
+                          capacity: parseFloat(e.target.value),
+                        })
+                      }
                       className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Quality</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Quality
+                    </label>
                     <select
                       value={vehicleForm.quality}
-                      onChange={(e) => setVehicleForm({ ...vehicleForm, quality: e.target.value })}
+                      onChange={(e) =>
+                        setVehicleForm({
+                          ...vehicleForm,
+                          quality: e.target.value,
+                        })
+                      }
                       className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="EXCELLENT">Excellent</option>
@@ -540,76 +628,341 @@ export default function DriverProfilePage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">License Number</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      License Number
+                    </label>
                     <input
                       type="text"
                       value={vehicleForm.license}
-                      onChange={(e) => setVehicleForm({ ...vehicleForm, license: e.target.value })}
+                      onChange={(e) =>
+                        setVehicleForm({
+                          ...vehicleForm,
+                          license: e.target.value,
+                        })
+                      }
                       className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Registration Number</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Registration Number
+                    </label>
                     <input
                       type="text"
                       value={vehicleForm.registration}
-                      onChange={(e) => setVehicleForm({ ...vehicleForm, registration: e.target.value })}
+                      onChange={(e) =>
+                        setVehicleForm({
+                          ...vehicleForm,
+                          registration: e.target.value,
+                        })
+                      }
                       className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Current Location</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Current Location
+                    </label>
                     <input
                       type="text"
                       value={vehicleForm.location}
-                      onChange={(e) => setVehicleForm({ ...vehicleForm, location: e.target.value })}
+                      onChange={(e) =>
+                        setVehicleForm({
+                          ...vehicleForm,
+                          location: e.target.value,
+                        })
+                      }
                       className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
+                </div>
+
+                {/* Truck Image Upload */}
+                <div className="mt-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    Truck Image *
+                  </label>
+                  <div className="flex items-center gap-4">
+                    {vehicleForm.truckImage ? (
+                      <div className="relative">
+                        <img
+                          src={vehicleForm.truckImage}
+                          alt="Truck"
+                          className="h-32 w-48 object-cover rounded-lg border-2 border-gray-300"
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setVehicleForm({ ...vehicleForm, truckImage: "" })
+                          }
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                        >
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M6 18L18 6M6 6l12 12"
+                            />
+                          </svg>
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors cursor-pointer">
+                        <CameraIcon className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                        <p className="text-sm text-gray-600 mb-2">
+                          Upload truck image (Required)
+                        </p>
+                        <label className="cursor-pointer">
+                          <span className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+                            Choose File
+                          </span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                try {
+                                  setSaving(true);
+                                  const { truckImageUrl, truckImage } =
+                                    await driverApi.uploadTruckImage(file);
+                                  const nextSrc = truckImageUrl.replace(
+                                    /^https?:\/\/localhost:\d+/,
+                                    ""
+                                  );
+                                  setVehicleForm({
+                                    ...vehicleForm,
+                                    truckImage: nextSrc,
+                                  });
+                                  if (profile) {
+                                    setProfile({
+                                      ...profile,
+                                      vehicle: {
+                                        ...profile.vehicle,
+                                        truckImage: nextSrc,
+                                      },
+                                    });
+                                  }
+                                  successToast(
+                                    "Truck image uploaded successfully"
+                                  );
+                                } catch (error) {
+                                  console.error(
+                                    "Error uploading truck image:",
+                                    error
+                                  );
+                                  errorToast("Failed to upload truck image");
+                                } finally {
+                                  setSaving(false);
+                                }
+                              }
+                            }}
+                          />
+                        </label>
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    * Required: Upload a clear image of your truck
+                  </p>
+                </div>
+
+                {/* Multiple Truck Images */}
+                <div className="mt-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    Additional Truck Images (Optional)
+                  </label>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {(vehicleForm.truckImages || []).map((image, index) => (
+                      <div key={index} className="relative">
+                        <img
+                          src={image}
+                          alt={`Truck ${index + 1}`}
+                          className="h-24 w-full object-cover rounded-lg border-2 border-gray-300"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newImages = [
+                              ...(vehicleForm.truckImages || []),
+                            ];
+                            newImages.splice(index, 1);
+                            setVehicleForm({
+                              ...vehicleForm,
+                              truckImages: newImages,
+                            });
+                          }}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                        >
+                          <svg
+                            className="w-3 h-3"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M6 18L18 6M6 6l12 12"
+                            />
+                          </svg>
+                        </button>
+                      </div>
+                    ))}
+                    {(vehicleForm.truckImages || []).length < 4 && (
+                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 flex items-center justify-center hover:border-blue-500 transition-colors cursor-pointer">
+                        <label className="cursor-pointer text-center">
+                          <CameraIcon className="h-8 w-8 text-gray-400 mx-auto mb-1" />
+                          <span className="text-xs text-blue-600">
+                            Add Image
+                          </span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            className="hidden"
+                            onChange={async (e) => {
+                              const files = Array.from(e.target.files || []);
+                              if (files.length > 0) {
+                                const remainingSlots =
+                                  4 - (vehicleForm.truckImages || []).length;
+                                const filesToUpload = files.slice(
+                                  0,
+                                  remainingSlots
+                                );
+
+                                if (filesToUpload.length < files.length) {
+                                  errorToast(
+                                    `Only ${remainingSlots} more image(s) can be added`
+                                  );
+                                }
+
+                                if (filesToUpload.length > 0) {
+                                  try {
+                                    setSaving(true);
+                                    const { truckImageUrls } =
+                                      await driverApi.uploadTruckImages(
+                                        filesToUpload
+                                      );
+                                    const nextUrls = truckImageUrls.map((url) =>
+                                      url.replace(
+                                        /^https?:\/\/localhost:\d+/,
+                                        ""
+                                      )
+                                    );
+                                    const updatedImages = [
+                                      ...(vehicleForm.truckImages || []),
+                                      ...nextUrls,
+                                    ];
+                                    setVehicleForm({
+                                      ...vehicleForm,
+                                      truckImages: updatedImages,
+                                    });
+                                    if (profile) {
+                                      setProfile({
+                                        ...profile,
+                                        vehicle: {
+                                          ...profile.vehicle,
+                                          truckImages: updatedImages,
+                                        },
+                                      });
+                                    }
+                                    successToast(
+                                      `${filesToUpload.length} truck image(s) uploaded successfully`
+                                    );
+                                  } catch (error) {
+                                    console.error(
+                                      "Error uploading truck images:",
+                                      error
+                                    );
+                                    errorToast("Failed to upload truck images");
+                                  } finally {
+                                    setSaving(false);
+                                  }
+                                }
+                              }
+                            }}
+                          />
+                        </label>
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Upload up to 4 additional images of your truck (different
+                    angles)
+                  </p>
                 </div>
               </div>
 
               {/* Address Information */}
               <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Address Information</h3>
+                <h3 className="text-lg font-medium text-gray-900 mb-4">
+                  Address Information
+                </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Address
+                    </label>
                     {editMode ? (
                       <input
                         type="text"
                         value={formData.address}
-                        onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                        onChange={(e) =>
+                          setFormData({ ...formData, address: e.target.value })
+                        }
                         className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     ) : (
-                      <p className="text-gray-900">{profile.address || 'Not provided'}</p>
+                      <p className="text-gray-900">
+                        {profile.address || "Not provided"}
+                      </p>
                     )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      City
+                    </label>
                     {editMode ? (
                       <input
                         type="text"
                         value={formData.city}
-                        onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                        onChange={(e) =>
+                          setFormData({ ...formData, city: e.target.value })
+                        }
                         className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     ) : (
-                      <p className="text-gray-900">{profile.city || 'Not provided'}</p>
+                      <p className="text-gray-900">
+                        {profile.city || "Not provided"}
+                      </p>
                     )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Country
+                    </label>
                     {editMode ? (
                       <input
                         type="text"
                         value={formData.country}
-                        onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                        onChange={(e) =>
+                          setFormData({ ...formData, country: e.target.value })
+                        }
                         className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     ) : (
-                      <p className="text-gray-900">{profile.country || 'Not provided'}</p>
+                      <p className="text-gray-900">
+                        {profile.country || "Not provided"}
+                      </p>
                     )}
                   </div>
                 </div>
@@ -621,13 +974,17 @@ export default function DriverProfilePage() {
                 {editMode ? (
                   <textarea
                     value={formData.bio}
-                    onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, bio: e.target.value })
+                    }
                     rows={4}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Tell us about yourself..."
                   />
                 ) : (
-                  <p className="text-gray-900">{profile.bio || 'No bio provided'}</p>
+                  <p className="text-gray-900">
+                    {profile.bio || "No bio provided"}
+                  </p>
                 )}
               </div>
             </div>
@@ -636,7 +993,9 @@ export default function DriverProfilePage() {
             <div className="space-y-6">
               {/* Quick Actions */}
               <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Actions</h3>
+                <h3 className="text-lg font-medium text-gray-900 mb-4">
+                  Quick Actions
+                </h3>
                 <div className="space-y-3">
                   <Button
                     onClick={() => setShowPasswordModal(true)}
@@ -665,42 +1024,70 @@ export default function DriverProfilePage() {
 
               {/* Driver Statistics */}
               <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Driver Statistics</h3>
+                <h3 className="text-lg font-medium text-gray-900 mb-4">
+                  Driver Statistics
+                </h3>
                 <div className="space-y-4">
                   <div className="flex justify-between">
                     <span className="text-sm text-gray-600">Total Trips</span>
-                    <span className="text-sm font-medium text-gray-900">{profile.stats.totalTrips}</span>
+                    <span className="text-sm font-medium text-gray-900">
+                      {profile.stats.totalTrips}
+                    </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Average Rating</span>
+                    <span className="text-sm text-gray-600">
+                      Average Rating
+                    </span>
                     <div className="flex items-center">
                       {renderStars(profile.stats.averageRating)}
                     </div>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Completion Rate</span>
-                    <span className="text-sm font-medium text-gray-900">{profile.stats.completionRate}%</span>
+                    <span className="text-sm text-gray-600">
+                      Completion Rate
+                    </span>
+                    <span className="text-sm font-medium text-gray-900">
+                      {profile.stats.completionRate}%
+                    </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Total Earnings</span>
-                    <span className="text-sm font-medium text-green-600">৳{profile.stats.totalEarnings}</span>
+                    <span className="text-sm text-gray-600">
+                      Total Earnings
+                    </span>
+                    <span className="text-sm font-medium text-green-600">
+                      ৳{profile.stats.totalEarnings}
+                    </span>
                   </div>
                 </div>
               </div>
 
               {/* Security Information */}
               <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Security</h3>
+                <h3 className="text-lg font-medium text-gray-900 mb-4">
+                  Security
+                </h3>
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Two-Factor Auth</span>
-                    <span className={`text-sm ${profile.security.twoFactorEnabled ? 'text-green-600' : 'text-red-600'}`}>
-                      {profile.security.twoFactorEnabled ? 'Enabled' : 'Disabled'}
+                    <span className="text-sm text-gray-600">
+                      Two-Factor Auth
+                    </span>
+                    <span
+                      className={`text-sm ${
+                        profile.security.twoFactorEnabled
+                          ? "text-green-600"
+                          : "text-red-600"
+                      }`}
+                    >
+                      {profile.security.twoFactorEnabled
+                        ? "Enabled"
+                        : "Disabled"}
                     </span>
                   </div>
                   <div>
                     <span className="text-sm text-gray-600">Last Login</span>
-                    <p className="text-sm text-gray-900">{new Date(profile.security.lastLogin).toLocaleString()}</p>
+                    <p className="text-sm text-gray-900">
+                      {new Date(profile.security.lastLogin).toLocaleString()}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -801,7 +1188,12 @@ export default function DriverProfilePage() {
               <input
                 type="password"
                 value={passwordForm.currentPassword}
-                onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                onChange={(e) =>
+                  setPasswordForm({
+                    ...passwordForm,
+                    currentPassword: e.target.value,
+                  })
+                }
                 className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Enter current password"
               />
@@ -813,7 +1205,12 @@ export default function DriverProfilePage() {
               <input
                 type="password"
                 value={passwordForm.newPassword}
-                onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                onChange={(e) =>
+                  setPasswordForm({
+                    ...passwordForm,
+                    newPassword: e.target.value,
+                  })
+                }
                 className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Enter new password"
               />
@@ -825,7 +1222,12 @@ export default function DriverProfilePage() {
               <input
                 type="password"
                 value={passwordForm.confirmPassword}
-                onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                onChange={(e) =>
+                  setPasswordForm({
+                    ...passwordForm,
+                    confirmPassword: e.target.value,
+                  })
+                }
                 className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Confirm new password"
               />
@@ -838,11 +1240,8 @@ export default function DriverProfilePage() {
               >
                 Cancel
               </Button>
-              <Button
-                onClick={handleChangePassword}
-                disabled={saving}
-              >
-                {saving ? 'Changing...' : 'Change Password'}
+              <Button onClick={handleChangePassword} disabled={saving}>
+                {saving ? "Changing..." : "Change Password"}
               </Button>
             </div>
           </div>
@@ -859,8 +1258,8 @@ export default function DriverProfilePage() {
             <div className="text-center">
               <div className="mx-auto w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center mb-4">
                 {profile.avatar ? (
-                  <Image 
-                    src={profile.avatar} 
+                  <Image
+                    src={profile.avatar}
                     alt="Current avatar"
                     width={96}
                     height={96}
@@ -899,4 +1298,4 @@ export default function DriverProfilePage() {
       </DashboardLayout>
     </ProtectedRoute>
   );
-} 
+}

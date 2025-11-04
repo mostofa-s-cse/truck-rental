@@ -1,7 +1,7 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import { ApiResponse, RegisterData, LoginData, CreateDriverData, CreateBookingData, SearchDriversParams, SearchFilters, SearchResult, Driver, Booking } from '@/types';
 
-const API_BASE_URL = process.env.SERVER_URL_API || 'http://localhost:4000/api/v1';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
 
 class ApiClient {
   private client: AxiosInstance;
@@ -58,6 +58,16 @@ class ApiClient {
 
   async changePassword(passwords: { oldPassword: string; newPassword: string }): Promise<ApiResponse> {
     const response = await this.client.post('/auth/change-password', passwords);
+    return response.data;
+  }
+
+  async verifyEmail(token: string): Promise<ApiResponse> {
+    const response = await this.client.post('/auth/verify-email', { token });
+    return response.data;
+  }
+
+  async resendVerificationEmail(email: string): Promise<ApiResponse> {
+    const response = await this.client.post('/auth/resend-verification', { email });
     return response.data;
   }
 

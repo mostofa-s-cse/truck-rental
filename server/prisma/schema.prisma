@@ -60,16 +60,19 @@ enum NotificationPriority {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
-  name      String
-  phone     String?
-  role      UserRole @default(USER)
-  avatar    String?
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                String   @id @default(cuid())
+  email             String   @unique
+  password          String
+  name              String
+  phone             String?
+  role              UserRole @default(USER)
+  avatar            String?
+  isActive          Boolean  @default(true)
+  isEmailVerified   Boolean  @default(false)
+  emailVerifyToken  String?
+  emailVerifyExpiry DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   // Relations
   driverProfile Driver?
@@ -100,6 +103,8 @@ model Driver {
   isVerified   Boolean      @default(false)
   rating       Float        @default(0)
   totalTrips   Int          @default(0)
+  truckImage   String?      // Main truck image URL
+  truckImages  Json?        // Array of additional truck image URLs
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 

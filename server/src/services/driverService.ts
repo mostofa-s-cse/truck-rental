@@ -224,6 +224,44 @@ export class DriverService {
     return { avatar: user.avatar };
   }
 
+  static async updateTruckImage(userId: string, truckImagePath: string) {
+    const driver = await prisma.driver.update({
+      where: { userId },
+      data: { truckImage: truckImagePath },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            avatar: true
+          }
+        }
+      }
+    });
+    return driver;
+  }
+
+  static async updateTruckImages(userId: string, truckImagePaths: string[]) {
+    const driver = await prisma.driver.update({
+      where: { userId },
+      data: { truckImages: truckImagePaths },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            avatar: true
+          }
+        }
+      }
+    });
+    return driver;
+  }
+
   static async verifyDriver(driverId: string, isVerified: boolean) {
     const driver = await prisma.driver.update({
       where: { id: driverId },

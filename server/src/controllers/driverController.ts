@@ -259,6 +259,84 @@ export class DriverController {
     }
   }
 
+  static async uploadTruckImage(req: Request, res: Response) {
+    try {
+      const userId = (req as any).user.userId;
+      const file = (req as any).file as Express.Multer.File | undefined;
+
+      if (!file) {
+        return res.status(400).json({ success: false, message: 'No file uploaded' });
+      }
+
+      logDatabase('upload', 'truck_image', { userId, fileName: file.filename, size: file.size });
+
+      const truckImagePath = `/uploads/trucks/${file.filename}`;
+      const result = await DriverService.updateTruckImage(userId, truckImagePath);
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+
+      const response: ApiResponse = {
+        success: true,
+        message: 'Truck image uploaded successfully',
+        data: {
+          ...result,
+          truckImageUrl: `${baseUrl}${truckImagePath}`
+        }
+      };
+
+      res.status(200).json(response);
+    } catch (error: any) {
+      const userId = (req as any).user?.userId || 'unknown';
+      logError(error, { operation: 'upload_truck_image', userId });
+      const response: ApiResponse = {
+        success: false,
+        message: error.message || 'Failed to upload truck image',
+        error: error.message
+      };
+      res.status(400).json(response);
+    }
+  }
+
+  static async uploadTruckImages(req: Request, res: Response) {
+    try {
+      const userId = (req as any).user.userId;
+      const files = (req as any).files as Express.Multer.File[] | undefined;
+
+      if (!files || files.length === 0) {
+        return res.status(400).json({ success: false, message: 'No files uploaded' });
+      }
+
+      if (files.length > 4) {
+        return res.status(400).json({ success: false, message: 'Maximum 4 images allowed' });
+      }
+
+      logDatabase('upload', 'truck_images', { userId, fileCount: files.length });
+
+      const truckImagePaths = files.map(file => `/uploads/trucks/${file.filename}`);
+      const result = await DriverService.updateTruckImages(userId, truckImagePaths);
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+
+      const response: ApiResponse = {
+        success: true,
+        message: 'Truck images uploaded successfully',
+        data: {
+          ...result,
+          truckImageUrls: truckImagePaths.map(path => `${baseUrl}${path}`)
+        }
+      };
+
+      res.status(200).json(response);
+    } catch (error: any) {
+      const userId = (req as any).user?.userId || 'unknown';
+      logError(error, { operation: 'upload_truck_images', userId });
+      const response: ApiResponse = {
+        success: false,
+        message: error.message || 'Failed to upload truck images',
+        error: error.message
+      };
+      res.status(400).json(response);
+    }
+  }
+
   static async verifyDriver(req: Request, res: Response) {
     try {
       const { driverId } = req.params;

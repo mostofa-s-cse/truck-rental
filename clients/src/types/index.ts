@@ -27,6 +27,8 @@ export interface Driver {
   isVerified: boolean;
   rating: number;
   totalTrips: number;
+  truckImage?: string;
+  truckImages?: string[];
   createdAt: string;
   updatedAt: string;
   user: User;
@@ -116,6 +118,8 @@ export interface CreateDriverData {
   location: string;
   latitude?: number;
   longitude?: number;
+  truckImage?: string;
+  truckImages?: string[];
 }
 
 export interface CreateBookingData {

@@ -19,6 +19,14 @@ const nextConfig: NextConfig = {
         source: '/uploads/avatars/:path*',
         destination: 'http://localhost:4000/uploads/avatars/:path*',
       },
+      {
+        source: '/uploads/trucks/:path*',
+        destination: 'http://localhost:4000/uploads/trucks/:path*',
+      },
+      {
+        source: '/uploads/:path*',
+        destination: 'http://localhost:4000/uploads/:path*',
+      },
     ];
   },
 };

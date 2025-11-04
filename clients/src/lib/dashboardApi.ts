@@ -240,6 +240,36 @@ export const driverApi = {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
     return response.data.data;
+  },
+
+  uploadTruckImage: async (file: File): Promise<{ truckImageUrl: string; truckImage?: string }> => {
+    const formData = new FormData();
+    formData.append('truckImage', file);
+    const response = await apiClient.getClient().post('/drivers/profile/truck-image', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data.data;
+  },
+
+  uploadTruckImages: async (files: File[]): Promise<{ truckImageUrls: string[]; truckImages?: string[] }> => {
+    const formData = new FormData();
+    files.forEach(file => {
+      formData.append('truckImages', file);
+    });
+    const response = await apiClient.getClient().post('/drivers/profile/truck-images', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data.data;
+  },
+
+  getDriverProfile: async (): Promise<any> => {
+    const response = await apiClient.getClient().get('/drivers/profile');
+    return response.data.data;
+  },
+
+  updateDriverProfile: async (data: any): Promise<any> => {
+    const response = await apiClient.getClient().put('/drivers/profile', data);
+    return response.data.data;
   }
 };
 

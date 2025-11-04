@@ -4,7 +4,6 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAppSelector, useAppDispatch } from '@/hooks/redux';
 import { useSweetAlert } from '@/hooks/useSweetAlert';
 import { 
-  HomeIcon, 
   TruckIcon, 
   CalendarIcon, 
   CogIcon,
@@ -62,11 +61,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     if (user?.role === 'ADMIN') {
       return [
         {
-          name: 'Home',
-          href: '/',
-          icon: HomeIcon
-        },
-        {
           name: 'Dashboard',
           href: '/dashboard/admin',
           icon: ChartBarIcon
@@ -118,11 +112,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     if (user?.role === 'DRIVER') {
       return [
         {
-          name: 'Home',
-          href: '/',
-          icon: HomeIcon
-        },
-        {
           name: 'Dashboard',
           href: '/dashboard/driver',
           icon: ChartBarIcon
@@ -152,11 +141,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
     // Regular user menu items
     return [
-      {
-        name: 'Home',
-        href: '/',
-        icon: HomeIcon
-      },
       {
         name: 'Dashboard',
         href: '/dashboard/user',

@@ -17,7 +17,8 @@ export async function seedUsers() {
       phone: '+880-1111-111111',
       role: UserRole.ADMIN,
       avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
-      isActive: true
+      isActive: true,
+      isEmailVerified: true
     },
     {
       email: 'admin2@truckbook.com',
@@ -26,7 +27,8 @@ export async function seedUsers() {
       phone: '+880-1111-111112',
       role: UserRole.ADMIN,
       avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
-      isActive: true
+      isActive: true,
+      isEmailVerified: true
     },
     {
       email: 'superadmin@truckbook.com',
@@ -35,7 +37,8 @@ export async function seedUsers() {
       phone: '+880-1111-111113',
       role: UserRole.ADMIN,
       avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face',
-      isActive: true
+      isActive: true,
+      isEmailVerified: true
     },
     
     // Driver users
@@ -46,7 +49,8 @@ export async function seedUsers() {
       phone: '+880-2222-222221',
       role: UserRole.DRIVER,
       avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face',
-      isActive: true
+      isActive: true,
+      isEmailVerified: true
     },
     {
       email: 'driver2@truckbook.com',
@@ -55,7 +59,8 @@ export async function seedUsers() {
       phone: '+880-2222-222222',
       role: UserRole.DRIVER,
       avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
-      isActive: true
+      isActive: true,
+      isEmailVerified: true
     },
     {
       email: 'driver3@truckbook.com',
@@ -64,7 +69,8 @@ export async function seedUsers() {
       phone: '+880-2222-222223',
       role: UserRole.DRIVER,
       avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
-      isActive: true
+      isActive: true,
+      isEmailVerified: true
     },
     {
       email: 'driver4@truckbook.com',
@@ -73,7 +79,8 @@ export async function seedUsers() {
       phone: '+880-2222-222224',
       role: UserRole.DRIVER,
       avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face',
-      isActive: true
+      isActive: true,
+      isEmailVerified: true
     },
     {
       email: 'driver5@truckbook.com',
@@ -82,7 +89,8 @@ export async function seedUsers() {
       phone: '+880-2222-222225',
       role: UserRole.DRIVER,
       avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
-      isActive: true
+      isActive: true,
+      isEmailVerified: true
     },
     {
       email: 'driver6@truckbook.com',
@@ -91,7 +99,8 @@ export async function seedUsers() {
       phone: '+880-2222-222226',
       role: UserRole.DRIVER,
       avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
-      isActive: true
+      isActive: true,
+      isEmailVerified: true
     },
     {
       email: 'driver7@truckbook.com',
@@ -100,7 +109,8 @@ export async function seedUsers() {
       phone: '+880-2222-222227',
       role: UserRole.DRIVER,
       avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face',
-      isActive: true
+      isActive: true,
+      isEmailVerified: true
     },
     {
       email: 'driver8@truckbook.com',
@@ -109,7 +119,8 @@ export async function seedUsers() {
       phone: '+880-2222-222228',
       role: UserRole.DRIVER,
       avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
-      isActive: true
+      isActive: true,
+      isEmailVerified: true
     },
     {
       email: 'driver9@truckbook.com',
@@ -118,7 +129,8 @@ export async function seedUsers() {
       phone: '+880-2222-222229',
       role: UserRole.DRIVER,
       avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
-      isActive: true
+      isActive: true,
+      isEmailVerified: true
     },
     {
       email: 'driver10@truckbook.com',
@@ -127,7 +139,8 @@ export async function seedUsers() {
       phone: '+880-2222-222230',
       role: UserRole.DRIVER,
       avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face',
-      isActive: true
+      isActive: true,
+      isEmailVerified: true
     },
     // Additional driver users
     {
@@ -137,7 +150,8 @@ export async function seedUsers() {
       phone: '+880-2222-222231',
       role: UserRole.DRIVER,
       avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
-      isActive: true
+      isActive: true,
+      isEmailVerified: true
     },
     {
       email: 'driver12@truckbook.com',
@@ -146,7 +160,8 @@ export async function seedUsers() {
       phone: '+880-2222-222232',
       role: UserRole.DRIVER,
       avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
-      isActive: true
+      isActive: true,
+      isEmailVerified: true
     },
     {
       email: 'driver13@truckbook.com',
@@ -155,7 +170,8 @@ export async function seedUsers() {
       phone: '+880-2222-222233',
       role: UserRole.DRIVER,
       avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face',
-      isActive: true
+      isActive: true,
+      isEmailVerified: true
     },
     {
       email: 'driver14@truckbook.com',
@@ -164,7 +180,8 @@ export async function seedUsers() {
       phone: '+880-2222-222234',
       role: UserRole.DRIVER,
       avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
-      isActive: true
+      isActive: true,
+      isEmailVerified: true
     },
     {
       email: 'driver15@truckbook.com',
@@ -173,7 +190,8 @@ export async function seedUsers() {
       phone: '+880-2222-222235',
       role: UserRole.DRIVER,
       avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
-      isActive: true
+      isActive: true,
+      isEmailVerified: true
     },
     {
       email: 'driver16@truckbook.com',
@@ -182,7 +200,8 @@ export async function seedUsers() {
       phone: '+880-2222-222236',
       role: UserRole.DRIVER,
       avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face',
-      isActive: true
+      isActive: true,
+      isEmailVerified: true
     },
     {
       email: 'driver17@truckbook.com',
@@ -191,7 +210,8 @@ export async function seedUsers() {
       phone: '+880-2222-222237',
       role: UserRole.DRIVER,
       avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
-      isActive: true
+      isActive: true,
+      isEmailVerified: true
     },
     {
       email: 'driver18@truckbook.com',
@@ -200,7 +220,8 @@ export async function seedUsers() {
       phone: '+880-2222-222238',
       role: UserRole.DRIVER,
       avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
-      isActive: true
+      isActive: true,
+      isEmailVerified: true
     },
     {
       email: 'driver19@truckbook.com',
@@ -209,7 +230,8 @@ export async function seedUsers() {
       phone: '+880-2222-222239',
       role: UserRole.DRIVER,
       avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face',
-      isActive: true
+      isActive: true,
+      isEmailVerified: true
     },
     {
       email: 'driver20@truckbook.com',
@@ -218,7 +240,8 @@ export async function seedUsers() {
       phone: '+880-2222-222240',
       role: UserRole.DRIVER,
       avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
-      isActive: true
+      isActive: true,
+      isEmailVerified: true
     },
     
     // Regular users
@@ -229,7 +252,8 @@ export async function seedUsers() {
       phone: '+880-3333-333331',
       role: UserRole.USER,
       avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
-      isActive: true
+      isActive: true,
+      isEmailVerified: true
     },
     {
       email: 'user2@example.com',
@@ -238,7 +262,8 @@ export async function seedUsers() {
       phone: '+880-3333-333332',
       role: UserRole.USER,
       avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
-      isActive: true
+      isActive: true,
+      isEmailVerified: true
     },
     {
       email: 'user3@example.com',
@@ -247,7 +272,8 @@ export async function seedUsers() {
       phone: '+880-3333-333333',
       role: UserRole.USER,
       avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face',
-      isActive: true
+      isActive: true,
+      isEmailVerified: true
     },
     {
       email: 'user4@example.com',
@@ -256,7 +282,8 @@ export async function seedUsers() {
       phone: '+880-3333-333334',
       role: UserRole.USER,
       avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
-      isActive: true
+      isActive: true,
+      isEmailVerified: true
     },
     {
       email: 'user5@example.com',
@@ -265,7 +292,8 @@ export async function seedUsers() {
       phone: '+880-3333-333335',
       role: UserRole.USER,
       avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
-      isActive: true
+      isActive: true,
+      isEmailVerified: true
     },
     {
       email: 'user6@example.com',
@@ -274,7 +302,8 @@ export async function seedUsers() {
       phone: '+880-3333-333336',
       role: UserRole.USER,
       avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
-      isActive: true
+      isActive: true,
+      isEmailVerified: true
     },
     {
       email: 'user7@example.com',
@@ -283,7 +312,8 @@ export async function seedUsers() {
       phone: '+880-3333-333337',
       role: UserRole.USER,
       avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
-      isActive: true
+      isActive: true,
+      isEmailVerified: true
     },
     {
       email: 'user8@example.com',
@@ -292,7 +322,8 @@ export async function seedUsers() {
       phone: '+880-3333-333338',
       role: UserRole.USER,
       avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face',
-      isActive: true
+      isActive: true,
+      isEmailVerified: true
     },
     {
       email: 'user9@example.com',
@@ -301,7 +332,8 @@ export async function seedUsers() {
       phone: '+880-3333-333339',
       role: UserRole.USER,
       avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face',
-      isActive: true
+      isActive: true,
+      isEmailVerified: true
     },
     {
       email: 'user10@example.com',
@@ -310,7 +342,8 @@ export async function seedUsers() {
       phone: '+880-3333-333340',
       role: UserRole.USER,
       avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
-      isActive: true
+      isActive: true,
+      isEmailVerified: true
     },
     {
       email: 'user11@example.com',
@@ -319,7 +352,8 @@ export async function seedUsers() {
       phone: '+880-3333-333341',
       role: UserRole.USER,
       avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face',
-      isActive: true
+      isActive: true,
+      isEmailVerified: true
     },
     {
       email: 'user12@example.com',
@@ -328,7 +362,8 @@ export async function seedUsers() {
       phone: '+880-3333-333342',
       role: UserRole.USER,
       avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
-      isActive: true
+      isActive: true,
+      isEmailVerified: true
     },
     {
       email: 'user13@example.com',
@@ -337,7 +372,8 @@ export async function seedUsers() {
       phone: '+880-3333-333343',
       role: UserRole.USER,
       avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
-      isActive: true
+      isActive: true,
+      isEmailVerified: true
     },
     {
       email: 'user14@example.com',
@@ -346,7 +382,8 @@ export async function seedUsers() {
       phone: '+880-3333-333344',
       role: UserRole.USER,
       avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face',
-      isActive: true
+      isActive: true,
+      isEmailVerified: true
     },
     {
       email: 'user15@example.com',
@@ -355,7 +392,8 @@ export async function seedUsers() {
       phone: '+880-3333-333345',
       role: UserRole.USER,
       avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
-      isActive: true
+      isActive: true,
+      isEmailVerified: true
     }
   ];
 
@@ -367,7 +405,8 @@ export async function seedUsers() {
         phone: user.phone,
         role: user.role,
         avatar: user.avatar,
-        isActive: user.isActive
+        isActive: user.isActive,
+        isEmailVerified: user.isEmailVerified
       },
       create: user
     });
