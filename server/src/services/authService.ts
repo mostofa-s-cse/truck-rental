@@ -5,6 +5,7 @@ import { PrismaClient, UserRole } from '@prisma/client';
 import { CreateUserRequest, LoginRequest, JWTPayload } from '../types';
 import { logDatabase } from '../utils/logger';
 import { NotificationIntegrationService } from './notificationIntegrationService';
+import { emailService } from './emailService';
 
 const prisma = new PrismaClient();
 
@@ -55,13 +56,15 @@ export class AuthService {
       }
     });
 
-    // TODO: Send verification email
-    // In production, send email with verification link:
-    // const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${emailVerifyToken}`;
-    // await EmailService.sendVerificationEmail(user.email, user.name, verificationUrl);
-    
-    console.log(`Email verification token for ${user.email}: ${emailVerifyToken}`);
-    console.log(`Verification URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email?token=${emailVerifyToken}`);
+    // Send verification email
+    try {
+      await emailService.sendVerificationEmail(user.email, user.name, emailVerifyToken);
+      console.log(`✅ Verification email sent to ${user.email}`);
+    } catch (error) {
+      console.error('Failed to send verification email:', error);
+      // Log for debugging but don't fail registration
+      console.log(`Verification URL (fallback): ${process.env.CLIENT_URL || 'http://localhost:3000'}/verify-email?token=${emailVerifyToken}`);
+    }
 
     // Generate JWT token (but user must verify email before logging in)
     const token = this.generateToken(user.id, user.email, user.role);
@@ -191,6 +194,15 @@ export class AuthService {
       }
     });
 
+    // Send welcome email after successful verification
+    try {
+      await emailService.sendWelcomeEmail(user.email, user.name);
+      console.log(`✅ Welcome email sent to ${user.email}`);
+    } catch (error) {
+      console.error('Failed to send welcome email:', error);
+      // Don't fail verification if welcome email fails
+    }
+
     return { message: 'Email verified successfully. You can now log in.' };
   }
 
@@ -221,9 +233,15 @@ export class AuthService {
       }
     });
 
-    // TODO: Send verification email
-    console.log(`New verification token for ${user.email}: ${emailVerifyToken}`);
-    console.log(`Verification URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email?token=${emailVerifyToken}`);
+    // Send verification email
+    try {
+      await emailService.sendVerificationEmail(user.email, user.name, emailVerifyToken);
+      console.log(`✅ Verification email resent to ${user.email}`);
+    } catch (error) {
+      console.error('Failed to resend verification email:', error);
+      // Log for debugging but don't fail the resend operation
+      console.log(`Verification URL (fallback): ${process.env.CLIENT_URL || 'http://localhost:3000'}/verify-email?token=${emailVerifyToken}`);
+    }
 
     return { message: 'Verification email sent successfully' };
   }
