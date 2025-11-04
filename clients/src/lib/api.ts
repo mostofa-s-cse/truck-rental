@@ -659,6 +659,18 @@ class ApiClient {
   getClient() {
     return this.client;
   }
+
+  // Contact endpoints
+  async createContactMessage(contactData: {
+    name: string;
+    email: string;
+    phone?: string;
+    subject?: string;
+    message: string;
+  }): Promise<ApiResponse> {
+    const response = await this.client.post('/contact', contactData);
+    return response.data;
+  }
 }
 
 export const apiClient = new ApiClient(); 

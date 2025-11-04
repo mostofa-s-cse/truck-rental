@@ -607,5 +607,43 @@ export const adminApi = {
 
     const response = await apiClient.getClient().get(`/dashboard/admin/analytics/bookings?${params.toString()}`);
     return response.data.data;
+  },
+
+  // Contact Messages
+  getContactMessages: async (page: number = 1, limit: number = 20, isRead?: boolean) => {
+    const params = new URLSearchParams();
+    params.append('page', page.toString());
+    params.append('limit', limit.toString());
+    if (isRead !== undefined) {
+      params.append('isRead', isRead.toString());
+    }
+
+    const response = await apiClient.getClient().get(`/contact?${params.toString()}`);
+    return response.data.data;
+  },
+
+  getContactMessageById: async (id: string) => {
+    const response = await apiClient.getClient().get(`/contact/${id}`);
+    return response.data.data;
+  },
+
+  markContactMessageAsRead: async (id: string) => {
+    const response = await apiClient.getClient().put(`/contact/${id}/read`);
+    return response.data.data;
+  },
+
+  markContactMessageAsUnread: async (id: string) => {
+    const response = await apiClient.getClient().put(`/contact/${id}/unread`);
+    return response.data.data;
+  },
+
+  deleteContactMessage: async (id: string) => {
+    const response = await apiClient.getClient().delete(`/contact/${id}`);
+    return response.data;
+  },
+
+  getContactMessageStats: async () => {
+    const response = await apiClient.getClient().get('/contact/stats');
+    return response.data.data;
   }
 }; 

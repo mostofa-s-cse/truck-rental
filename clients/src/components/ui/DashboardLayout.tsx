@@ -14,7 +14,8 @@ import {
   StarIcon,
   ArrowRightEndOnRectangleIcon,
   ChartBarIcon,
-  CurrencyDollarIcon
+  CurrencyDollarIcon,
+  EnvelopeIcon
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
@@ -89,6 +90,11 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           name: 'Review Management',
           href: '/dashboard/admin/reviews',
           icon: StarIcon
+        },
+        {
+          name: 'Contact Management',
+          href: '/dashboard/admin/contacts',
+          icon: EnvelopeIcon
         },
         {
           name: 'Analytics',
