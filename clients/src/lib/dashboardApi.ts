@@ -83,6 +83,7 @@ export interface Booking {
     name: string;
     email: string;
     phone?: string;
+    avatar?: string;
   } | string;
   driver?: string;
   driverId?: string; // Add driver ID for contact functionality
@@ -192,7 +193,7 @@ export const driverApi = {
   getRecentBookings: async (): Promise<Booking[]> => {
     const response = await apiClient.getClient().get('/bookings/driver/me');
     const data = response.data.data;
-    return (data.bookings || []).map((booking: (ServerBookingWithDriver & { user?: { name: string; email?: string; phone?: string } })) => ({
+    return (data.bookings || []).map((booking: (ServerBookingWithDriver & { user?: { name: string; email?: string; phone?: string; avatar?: string } })) => ({
       id: booking.id,
       source: booking.source,
       destination: booking.destination,
@@ -203,7 +204,12 @@ export const driverApi = {
       pickupTime: booking.pickupTime,
       completedAt: booking.completedAt,
       distance: booking.distance,
-      user: booking.user?.name || 'User',
+      user: booking.user ? {
+        name: booking.user.name || 'User',
+        email: booking.user.email || '',
+        phone: booking.user.phone || '',
+        avatar: booking.user.avatar || ''
+      } : 'User',
       rating: booking.review?.rating
     }));
   },

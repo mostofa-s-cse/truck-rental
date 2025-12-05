@@ -681,8 +681,9 @@ export default function BookingModal({
                         }));
                         setSourceQuery(e.target.value);
                       }}
+                      disabled={isLoading}
                       placeholder="Type to search Dhaka locations..."
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className={`w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${isLoading ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                     />
 
                     {areaOptions.length > 0 && sourceQuery && (
@@ -710,7 +711,8 @@ export default function BookingModal({
                                 setSelectedSourceArea(opt);
                                 setSourceQuery("");
                               }}
-                              className="block w-full px-3 py-2 text-left hover:bg-gray-50"
+                              disabled={isLoading}
+                              className={`block w-full px-3 py-2 text-left hover:bg-gray-50 ${isLoading ? 'cursor-not-allowed opacity-50' : ''}`}
                             >
                               {opt.label}
                             </button>
@@ -736,8 +738,9 @@ export default function BookingModal({
                         }));
                         setDestinationQuery(e.target.value);
                       }}
+                      disabled={isLoading}
                       placeholder="Type to search Dhaka locations..."
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className={`w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${isLoading ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                     />
 
                     {areaOptions.length > 0 && destinationQuery && (
@@ -765,7 +768,8 @@ export default function BookingModal({
                                 setSelectedDestinationArea(opt);
                                 setDestinationQuery("");
                               }}
-                              className="block w-full px-3 py-2 text-left hover:bg-gray-50"
+                              disabled={isLoading}
+                              className={`block w-full px-3 py-2 text-left hover:bg-gray-50 ${isLoading ? 'cursor-not-allowed opacity-50' : ''}`}
                             >
                               {opt.label}
                             </button>
@@ -789,7 +793,8 @@ export default function BookingModal({
                       pickupTime: e.target.value,
                     }))
                   }
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={isLoading}
+                  className={`w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${isLoading ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                 />
               </div>
 

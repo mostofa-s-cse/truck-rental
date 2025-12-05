@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Image from 'next/image';
 import DashboardLayout from '@/components/ui/DashboardLayout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import DataTable, { Column } from '@/components/ui/DataTable';
@@ -141,10 +142,33 @@ export default function DriverBookingsPage() {
       render: (value, row) => {
         const userName = typeof row.user === 'string' ? row.user : row.user?.name || 'Unknown';
         const userEmail = typeof row.user === 'string' ? '' : row.user?.email || '';
+        const userAvatar = typeof row.user === 'object' ? row.user?.avatar : null;
+        
+        // Normalize avatar URL
+        const normalizeAvatar = (src?: string) => {
+          if (!src) return undefined;
+          if (src.startsWith('http://localhost') || src.startsWith('http://127.0.0.1')) {
+            return src.replace(/^https?:\/\/(localhost|127\.0\.0\.1):\d+/, '');
+          }
+          if (src.startsWith('/')) return src;
+          return undefined;
+        };
+        
         return (
           <div className="flex items-center">
-            <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
-              <UserCircleIcon className="h-5 w-5 text-green-600" />
+            <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center overflow-hidden">
+              {userAvatar ? (
+                <Image
+                  src={normalizeAvatar(userAvatar) || userAvatar}
+                  alt={userName}
+                  width={32}
+                  height={32}
+                  unoptimized
+                  className="h-8 w-8 rounded-full object-cover"
+                />
+              ) : (
+                <UserCircleIcon className="h-5 w-5 text-green-600" />
+              )}
             </div>
             <div className="ml-3">
               <div className="text-sm font-medium text-gray-900">{userName}</div>
@@ -299,7 +323,26 @@ export default function DriverBookingsPage() {
               <div className="bg-gray-50 rounded-lg p-4">
                 <h4 className="text-sm font-medium text-gray-700 mb-3">Customer Information</h4>
                 <div className="flex items-center mb-3">
-                  <UserCircleIcon className="h-8 w-8 text-green-600 mr-3" />
+                  <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center overflow-hidden mr-3">
+                    {typeof selectedBooking.user === 'object' && selectedBooking.user?.avatar ? (
+                      <Image
+                        src={(() => {
+                          const avatar = selectedBooking.user.avatar;
+                          if (avatar?.startsWith('http://localhost') || avatar?.startsWith('http://127.0.0.1')) {
+                            return avatar.replace(/^https?:\/\/(localhost|127\.0\.0\.1):\d+/, '');
+                          }
+                          return avatar?.startsWith('/') ? avatar : undefined;
+                        })() || selectedBooking.user.avatar}
+                        alt={typeof selectedBooking.user === 'string' ? selectedBooking.user : selectedBooking.user?.name || 'Customer'}
+                        width={48}
+                        height={48}
+                        unoptimized
+                        className="h-12 w-12 rounded-full object-cover"
+                      />
+                    ) : (
+                      <UserCircleIcon className="h-8 w-8 text-green-600" />
+                    )}
+                  </div>
                   <div>
                     <p className="text-sm font-medium text-gray-900">
                       {typeof selectedBooking.user === 'string' ? selectedBooking.user : selectedBooking.user?.name || 'Unknown'}
