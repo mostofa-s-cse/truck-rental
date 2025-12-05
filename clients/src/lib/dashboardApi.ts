@@ -6,7 +6,8 @@ interface ServerBooking {
   source: string;
   destination: string;
   fare: number;
-  status: string;
+  status: 'PENDING' | 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+  paymentStatus?: 'PENDING_PAYMENT' | 'PAYMENT_REQUESTED' | 'PAID' | 'FAILED' | 'REFUNDED';
   createdAt: string;
   date?: string; // Add optional date property
   pickupTime?: string;
@@ -18,12 +19,22 @@ interface ServerBookingWithDriver extends ServerBooking {
     id: string;
     user?: {
       name: string;
+      email?: string;
+      phone?: string;
+      avatar?: string;
     };
   };
   review?: {
     rating?: number;
+    comment?: string;
   };
   distance?: number;
+  user?: {
+    name: string;
+    email?: string;
+    phone?: string;
+    avatar?: string;
+  };
 }
 
 interface ServerDriver {
@@ -36,11 +47,13 @@ interface ServerDriver {
     avatar?: string;
   };
   name?: string; // Add optional name property for direct access
-  truckType: string;
+  truckType: 'MINI_TRUCK' | 'PICKUP' | 'LORRY' | 'TRUCK';
   capacity: number;
   rating: number;
   isAvailable: boolean;
   location?: string;
+  truckImage?: string;
+  truckImages?: string[];
 }
 
 interface ServerUserDashboardData {
@@ -90,33 +103,109 @@ export interface Booking {
   source: string;
   destination: string;
   fare: number;
-  status: string;
+  status: 'PENDING' | 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+  paymentStatus?: 'PENDING_PAYMENT' | 'PAYMENT_REQUESTED' | 'PAID' | 'FAILED' | 'REFUNDED';
   date: string;
   createdAt?: string;
   pickupTime?: string;
   completedAt?: string;
   distance?: number;
-  rating?: number;
+  rating?: number | null;
   driverRating?: number;
 }
 
 export interface Driver {
   id: string;
   name: string;
-  truckType: string;
+  truckType: 'MINI_TRUCK' | 'PICKUP' | 'LORRY' | 'TRUCK';
   capacity: number;
   rating: number;
   distance: number;
   isAvailable: boolean;
   location: string;
+  truckImage?: string;
+  truckImages?: string[];
+  user?: {
+    id: string;
+    name: string;
+    email: string;
+    phone?: string;
+    avatar?: string;
+  };
 }
 
 export interface DriverVerification {
   id: string;
   name: string;
   email: string;
-  truckType: string;
+  truckType: 'MINI_TRUCK' | 'PICKUP' | 'LORRY' | 'TRUCK';
   submittedAt: string;
+}
+
+export interface PaymentHistory {
+  id: string;
+  amount: number;
+  paymentMethod: string;
+  status: 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED';
+  transactionId: string;
+  createdAt: string;
+  updatedAt: string;
+  booking: {
+    id: string;
+    source: string;
+    destination: string;
+    fare: number;
+    status: 'PENDING' | 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+    driver: {
+      user: {
+        name: string;
+      };
+      truckType: 'MINI_TRUCK' | 'PICKUP' | 'LORRY' | 'TRUCK';
+    };
+  };
+}
+
+export interface ContactDriverResponse {
+  driver: {
+    id: string;
+    name: string;
+    phone: string;
+    email: string;
+  };
+  message: string;
+  contactInfo: {
+    phone: string;
+    email: string;
+  };
+}
+
+export interface DriverProfile {
+  id: string;
+  userId: string;
+  truckType: 'MINI_TRUCK' | 'PICKUP' | 'LORRY' | 'TRUCK';
+  capacity: number;
+  rating: number;
+  isAvailable: boolean;
+  location?: string;
+  truckImage?: string;
+  truckImages?: string[];
+  isVerified: boolean;
+  createdAt: string;
+  updatedAt: string;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    phone?: string;
+    avatar?: string;
+  };
+}
+
+export interface UpdateDriverProfileData {
+  truckType?: 'MINI_TRUCK' | 'PICKUP' | 'LORRY' | 'TRUCK';
+  capacity?: number;
+  location?: string;
+  isAvailable?: boolean;
 }
 
 export interface Earnings {
@@ -199,6 +288,7 @@ export const driverApi = {
       destination: booking.destination,
       fare: booking.fare,
       status: booking.status,
+      paymentStatus: booking.paymentStatus,
       date: booking.pickupTime || booking.createdAt,
       createdAt: booking.createdAt,
       pickupTime: booking.pickupTime,
@@ -268,12 +358,12 @@ export const driverApi = {
     return response.data.data;
   },
 
-  getDriverProfile: async (): Promise<any> => {
+  getDriverProfile: async (): Promise<DriverProfile> => {
     const response = await apiClient.getClient().get('/drivers/profile');
     return response.data.data;
   },
 
-  updateDriverProfile: async (data: any): Promise<any> => {
+  updateDriverProfile: async (data: UpdateDriverProfileData): Promise<DriverProfile> => {
     const response = await apiClient.getClient().put('/drivers/profile', data);
     return response.data.data;
   }
@@ -301,6 +391,7 @@ export const userApi = {
       destination: booking.destination,
       fare: booking.fare,
       status: booking.status,
+      paymentStatus: booking.paymentStatus,
       date: booking.pickupTime || booking.createdAt, // Use pickupTime as date
       createdAt: booking.createdAt,
       pickupTime: booking.pickupTime,
@@ -308,7 +399,7 @@ export const userApi = {
       distance: booking.distance,
       driver: booking.driver?.user?.name || 'Driver Assigned',
       driverId: booking.driver?.id, // Add driver ID for contact functionality
-      rating: booking.review?.rating
+      rating: booking.review?.rating || null
     }));
   },
 
@@ -322,6 +413,7 @@ export const userApi = {
         destination: booking.destination,
         fare: booking.fare,
         status: booking.status,
+        paymentStatus: booking.paymentStatus,
         date: booking.pickupTime || booking.createdAt,
         createdAt: booking.createdAt,
         pickupTime: booking.pickupTime,
@@ -355,7 +447,7 @@ export const userApi = {
 
   searchDrivers: async (params: {
     location?: string;
-    truckType?: string;
+    truckType?: 'MINI_TRUCK' | 'PICKUP' | 'LORRY' | 'TRUCK';
     capacity?: string;
   }): Promise<Driver[]> => {
     const response = await apiClient.getClient().get('/dashboard/drivers/nearby', { params });
@@ -374,7 +466,7 @@ export const userApi = {
   calculateFare: async (params: {
     source: string;
     destination: string;
-    truckType: string;
+    truckType: 'MINI_TRUCK' | 'PICKUP' | 'LORRY' | 'TRUCK';
   }): Promise<{ fare: number; distance: number }> => {
     const response = await apiClient.getClient().post('/dashboard/fare/calculate', params);
     return response.data.data;
@@ -388,26 +480,50 @@ export const userApi = {
 
   // Submit rating for a booking
   submitRating: async (bookingId: string, rating: number, comment?: string): Promise<void> => {
-    await apiClient.getClient().post(`/reviews/booking/${bookingId}`, {
-      rating,
-      comment
-    });
+    try {
+      // Try the standard reviews endpoint first
+      const response = await apiClient.getClient().post(`/reviews/booking/${bookingId}`, {
+        bookingId,
+        rating,
+        comment: comment || ''
+      });
+      return response.data;
+    } catch (error: unknown) {
+      console.error('Error submitting rating:', error);
+      
+      // Try alternative endpoint if the first one fails
+      try {
+        const response = await apiClient.getClient().post(`/bookings/${bookingId}/review`, {
+          rating,
+          comment: comment || ''
+        });
+        return response.data;
+      } catch (secondError) {
+        console.error('Alternative endpoint also failed:', secondError);
+      }
+      
+      // Handle and re-throw with more specific error message
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { data?: { message?: string; error?: string }; status?: number } };
+        const errorMessage = axiosError.response?.data?.message || axiosError.response?.data?.error || 'Failed to submit rating';
+        const errorStatus = axiosError.response?.status;
+        
+        if (errorStatus === 400) {
+          throw new Error(errorMessage || 'Invalid rating data. Please check that the booking is completed and you haven\'t already rated this trip.');
+        } else if (errorStatus === 404) {
+          throw new Error('Booking not found or you don\'t have permission to rate this trip.');
+        } else if (errorStatus === 409) {
+          throw new Error('You have already rated this booking.');
+        }
+        
+        throw new Error(errorMessage);
+      }
+      throw new Error('Failed to submit rating. Please try again.');
+    }
   },
 
   // Contact driver
-  contactDriver: async (driverId: string, message?: string, bookingId?: string): Promise<{
-    driver: {
-      id: string;
-      name: string;
-      phone: string;
-      email: string;
-    };
-    message: string;
-    contactInfo: {
-      phone: string;
-      email: string;
-    };
-  }> => {
+  contactDriver: async (driverId: string, message?: string, bookingId?: string): Promise<ContactDriverResponse> => {
     const response = await apiClient.getClient().post(`/drivers/contact/${driverId}`, {
       message,
       bookingId
@@ -426,28 +542,7 @@ export const userApi = {
 
   // Get user payment history
   getUserPayments: async (page = 1, limit = 10): Promise<{ 
-    payments: Array<{
-      id: string;
-      amount: number;
-      paymentMethod: string;
-      status: string;
-      transactionId: string;
-      createdAt: string;
-      updatedAt: string;
-      booking: {
-        id: string;
-        source: string;
-        destination: string;
-        fare: number;
-        status: string;
-        driver: {
-          user: {
-            name: string;
-          };
-          truckType: string;
-        };
-      };
-    }>;
+    payments: PaymentHistory[];
     pagination: {
       page: number;
       limit: number;
@@ -462,30 +557,32 @@ export const userApi = {
   },
 
   // Get payment details by ID
-  getPaymentDetails: async (paymentId: string): Promise<{
-    id: string;
-    amount: number;
-    paymentMethod: string;
-    status: string;
-    transactionId: string;
-    createdAt: string;
-    updatedAt: string;
-    booking: {
-      id: string;
-      source: string;
-      destination: string;
-      fare: number;
-      status: string;
-      driver: {
-        user: {
-          name: string;
-        };
-        truckType: string;
-      };
-    };
-  }> => {
+  getPaymentDetails: async (paymentId: string): Promise<PaymentHistory> => {
     const response = await apiClient.getClient().get(`/payments/${paymentId}`);
     return response.data.data.payment;
+  },
+
+  // Pay for completed trip
+  payForCompletedTrip: async (bookingId: string, paymentData: {
+    customerInfo: {
+      name: string;
+      email: string;
+      phone: string;
+      address?: string;
+      city?: string;
+      postCode?: string;
+      country?: string;
+    };
+  }): Promise<{
+    success: boolean;
+    data?: {
+      gatewayUrl: string;
+      sessionId: string;
+    };
+    message: string;
+  }> => {
+    const response = await apiClient.getClient().post(`/bookings/${bookingId}/pay`, { customerInfo: paymentData.customerInfo });
+    return response.data;
   }
 };
 

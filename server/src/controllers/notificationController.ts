@@ -457,4 +457,64 @@ export class NotificationController {
       throw new Error('Failed to send system alert notifications');
     }
   }
+
+  /**
+   * Send payment request notification to customer after trip completion
+   */
+  static async notifyPaymentRequest(bookingId: string) {
+    try {
+      const booking = await prisma.booking.findUnique({
+        where: { id: bookingId },
+        include: {
+          user: true,
+          driver: {
+            include: {
+              user: true
+            }
+          }
+        }
+      });
+
+      if (!booking) {
+        throw new Error('Booking not found');
+      }
+
+      // Notify customer that payment is now required
+      await NotificationService.createUserNotification(
+        booking.userId,
+        'PAYMENT_REQUEST',
+        'Payment Required - Trip Completed',
+        `Your trip from ${booking.source} to ${booking.destination} has been completed successfully by ${booking.driver.user.name}. Please proceed with payment of ৳${booking.fare}.`,
+        booking.id,
+        'PAYMENT',
+        'HIGH'
+      );
+
+      // Notify driver that payment has been requested from customer
+      await NotificationService.createDriverNotification(
+        booking.driverId,
+        'PAYMENT_REQUESTED',
+        'Payment Requested from Customer',
+        `Payment of ৳${booking.fare} has been requested from ${booking.user.name} for the completed trip from ${booking.source} to ${booking.destination}.`,
+        booking.id,
+        'PAYMENT',
+        'MEDIUM'
+      );
+
+      // Notify admins about payment request
+      await NotificationService.createAdminNotification(
+        'PAYMENT_REQUEST',
+        'Payment Request Sent',
+        `Payment request of ৳${booking.fare} sent to ${booking.user.name} for completed trip from ${booking.source} to ${booking.destination}`,
+        booking.id,
+        'PAYMENT',
+        'LOW'
+      );
+
+      return { success: true, message: 'Payment request notifications sent successfully' };
+    } catch (error) {
+      console.error('Error sending payment request notifications:', error);
+      throw new Error('Failed to send payment request notifications');
+    }
+  }
 }

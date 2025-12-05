@@ -24,6 +24,14 @@ enum BookingStatus {
   CANCELLED
 }
 
+enum PaymentStatus {
+  PENDING_PAYMENT
+  PAYMENT_REQUESTED
+  PAID
+  FAILED
+  REFUNDED
+}
+
 enum TruckType {
   MINI_TRUCK
   PICKUP
@@ -47,6 +55,8 @@ enum NotificationType {
   TRIP_CANCELLED
   PAYMENT_RECEIVED
   PAYMENT_FAILED
+  PAYMENT_REQUEST
+  PAYMENT_REQUESTED
   DRIVER_ARRIVED
   SYSTEM_ALERT
   EMERGENCY_ALERT
@@ -131,6 +141,7 @@ model Booking {
   distance     Float?        // in km
   fare         Float
   status       BookingStatus @default(PENDING)
+  paymentStatus PaymentStatus @default(PENDING_PAYMENT)
   pickupTime   DateTime?
   completedAt  DateTime?
   cancelledAt  DateTime?     // When the booking was cancelled

@@ -1,4 +1,4 @@
-import { PrismaClient, BookingStatus, UserRole } from '@prisma/client';
+import { PrismaClient, BookingStatus, PaymentStatus, UserRole } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -572,10 +572,49 @@ export class DashboardService {
   }
 
   static async completeTrip(bookingId: string) {
-    return await prisma.booking.update({
+    const booking = await prisma.booking.update({
       where: { id: bookingId },
-      data: { status: BookingStatus.COMPLETED, completedAt: new Date() }
+      data: { 
+        status: BookingStatus.COMPLETED, 
+        completedAt: new Date(),
+        paymentStatus: PaymentStatus.PAYMENT_REQUESTED // Add payment status tracking
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true
+          }
+        },
+        driver: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true
+              }
+            }
+          }
+        }
+      }
     });
+
+    // Send payment notification to customer
+    try {
+      const { NotificationIntegrationService } = await import('../services/notificationIntegrationService');
+      await NotificationIntegrationService.onTripCompleted(booking.id);
+      
+      // Send payment request notification specifically
+      const { NotificationController } = await import('../controllers/notificationController');
+      await NotificationController.notifyPaymentRequest(booking.id);
+    } catch (error) {
+      console.error('Failed to send payment request notifications:', error);
+    }
+
+    return booking;
   }
 
   // User-specific methods

@@ -11,6 +11,7 @@
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
+    "db:reset": "npm run db:push && npm run seed:clear && npm run seed",
     "seed": "ts-node prisma/seeders/index.ts",
     "seed:clear": "ts-node prisma/seeders/index.ts --clear",
     "seed:skip-clear": "ts-node prisma/seeders/index.ts --skip-clear",

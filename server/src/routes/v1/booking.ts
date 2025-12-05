@@ -25,4 +25,7 @@ router.put('/:bookingId', auth, BookingController.updateBooking);
 // Cancel booking
 router.delete('/:bookingId', auth, BookingController.cancelBooking);
 
+// Pay for completed trip (User only)
+router.post('/:bookingId/pay', auth, authorize('USER'), BookingController.payForCompletedTrip);
+
 export default router; 

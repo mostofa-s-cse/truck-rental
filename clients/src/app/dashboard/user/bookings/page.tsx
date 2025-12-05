@@ -8,6 +8,7 @@ import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
 import { userApi, Booking } from '@/lib/dashboardApi';
 import { useSweetAlert } from '@/hooks/useSweetAlert';
+import { useAuth } from '@/hooks/useAuth';
 import { 
   CalendarIcon, 
   UserCircleIcon,
@@ -20,6 +21,7 @@ import {
   ExclamationTriangleIcon,
   StarIcon,
   PhoneIcon,
+  CreditCardIcon,
 } from '@heroicons/react/24/outline';
 
 interface CancelReason {
@@ -39,9 +41,11 @@ const CANCEL_REASONS: CancelReason[] = [
 
 export default function UserBookingsPage() {
   const { successToast, errorToast } = useSweetAlert();
+  const { user } = useAuth();
   
   // State
-  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [allBookings, setAllBookings] = useState<Booking[]>([]); // Store all bookings data
+  const [bookings, setBookings] = useState<Booking[]>([]); // Display bookings (paginated)
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -55,14 +59,58 @@ export default function UserBookingsPage() {
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showPaymentRequestModal, setShowPaymentRequestModal] = useState(false);
+  const [paymentRequestBooking, setPaymentRequestBooking] = useState<Booking | null>(null);
   const [rating, setRating] = useState(0);
   const [ratingComment, setRatingComment] = useState('');
   const [cancelReason, setCancelReason] = useState('');
   const [cancelComment, setCancelComment] = useState('');
   const [hoveredStar, setHoveredStar] = useState(0);
+  const [isPaymentLoading, setIsPaymentLoading] = useState(false);
   
-  // Calculate pending ratings
-  const pendingRatings = bookings.filter(b => b.status === 'COMPLETED' && !b.rating);
+  // Payment form data
+  const [paymentData, setPaymentData] = useState({
+    customerName: '',
+    customerEmail: '',
+    customerPhone: '',
+    customerAddress: '',
+    customerCity: 'Dhaka',
+    customerPostCode: '1000',
+    customerCountry: 'Bangladesh'
+  });
+  
+  // Helper function to check if a booking can be rated
+  const canRateBooking = (booking: Booking) => {
+    const isCompleted = booking.status === 'COMPLETED';
+    const hasNoRating = !booking.rating || booking.rating === null || booking.rating === 0;
+    
+    // Allow rating if:
+    // 1. Trip is completed
+    // 2. No existing rating
+    // 3. Payment is completed (PAID) OR payment just completed (localStorage flag)
+    const isPaymentComplete = booking.paymentStatus === 'PAID' || 
+                             localStorage.getItem('payment_just_completed') === 'true';
+    
+    // Block rating if payment is explicitly requested and not completed
+    const isPaymentBlocked = booking.paymentStatus === 'PAYMENT_REQUESTED' && 
+                           !localStorage.getItem('payment_just_completed');
+    
+    console.log('canRateBooking check:', {
+      bookingId: booking.id?.slice(-6),
+      isCompleted,
+      hasNoRating,
+      paymentStatus: booking.paymentStatus,
+      isPaymentComplete,
+      isPaymentBlocked,
+      result: isCompleted && hasNoRating && !isPaymentBlocked
+    });
+    
+    return isCompleted && hasNoRating && !isPaymentBlocked;
+  };
+
+  // Calculate pending ratings - completed trips that can be rated
+  const pendingRatings = allBookings.filter(canRateBooking);
 
   const fetchBookings = useCallback(async () => {
     try {
@@ -70,6 +118,43 @@ export default function UserBookingsPage() {
       
       // Fetch real booking data from the server
       const bookingsData = await userApi.getRecentBookings();
+      console.log('Fetched bookings data:', bookingsData);
+      
+      // Log specific details about completed bookings
+      const completedBookings = bookingsData.filter(b => b.status === 'COMPLETED');
+      console.log('Completed bookings analysis:', completedBookings.map(b => ({
+        id: b.id.slice(-6),
+        status: b.status,
+        paymentStatus: b.paymentStatus,
+        rating: b.rating,
+        driver: b.driver,
+        canRate: canRateBooking(b)
+      })));
+      
+      // Log rateable bookings specifically
+      const rateableBookings = bookingsData.filter(canRateBooking);
+      console.log(`Found ${rateableBookings.length} rateable bookings out of ${bookingsData.length} total bookings`);
+      console.log('Rateable bookings:', rateableBookings.map(b => ({
+        id: b.id.slice(-6),
+        status: b.status,
+        paymentStatus: b.paymentStatus,
+        rating: b.rating
+      })));
+      
+      // Log paid bookings that should show rate button
+      const paidCompletedBookings = bookingsData.filter(b => 
+        b.status === 'COMPLETED' && 
+        b.paymentStatus === 'PAID'
+      );
+      console.log(`Paid completed bookings: ${paidCompletedBookings.length}`, paidCompletedBookings.map(b => ({
+        id: b.id.slice(-6),
+        paymentStatus: b.paymentStatus,
+        rating: b.rating,
+        canRate: canRateBooking(b)
+      })));
+      
+      // Store all bookings data
+      setAllBookings(bookingsData);
       
       // Filter bookings based on search query and status
       let filteredBookings = bookingsData;
@@ -87,11 +172,12 @@ export default function UserBookingsPage() {
         filteredBookings = filteredBookings.filter(booking => booking.status === filterStatus);
       }
 
-      // Calculate pagination
+      // Calculate pagination for display
       const startIndex = (currentPage - 1) * pageSize;
       const endIndex = startIndex + pageSize;
       const paginatedBookings = filteredBookings.slice(startIndex, endIndex);
 
+      // Update display data
       setBookings(paginatedBookings);
       setTotalBookings(filteredBookings.length);
       setTotalPages(Math.ceil(filteredBookings.length / pageSize));
@@ -99,6 +185,7 @@ export default function UserBookingsPage() {
       console.error('Error fetching bookings:', error);
       errorToast('Failed to fetch bookings');
       // Set empty data on error
+      setAllBookings([]);
       setBookings([]);
       setTotalBookings(0);
       setTotalPages(0);
@@ -110,6 +197,156 @@ export default function UserBookingsPage() {
   useEffect(() => {
     fetchBookings();
   }, [fetchBookings]);
+
+  // Check for payment success in URL params on component mount
+  useEffect(() => {
+    const checkPaymentSuccess = async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const paymentSuccess = urlParams.get('payment_success');
+      const bookingId = urlParams.get('booking_id');
+      const status = urlParams.get('status');
+      const tranId = urlParams.get('tran_id');
+      
+      // Check multiple possible success indicators
+      const isPaymentSuccess = paymentSuccess === 'true' || 
+                              paymentSuccess === '1' || 
+                              status === 'success' || 
+                              status === 'VALID';
+      
+      if (isPaymentSuccess && bookingId) {
+        console.log('Payment success detected for booking:', bookingId, 'Status:', status || paymentSuccess, 'Transaction ID:', tranId);
+        
+        // Store for rating modal trigger
+        localStorage.setItem('pending_rating_booking', bookingId);
+        localStorage.setItem('payment_just_completed', 'true');
+        localStorage.setItem('payment_transaction_id', tranId || '');
+        
+        // Clean up URL immediately to prevent duplicate processing
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, '', newUrl);
+        
+        // Show success message
+        successToast('Payment completed successfully! Your trip is now paid. Refreshing your bookings...');
+        
+        // Force immediate refresh and additional refreshes to ensure backend updates are reflected
+        await fetchBookings();
+        setTimeout(() => fetchBookings(), 1000);
+        setTimeout(() => fetchBookings(), 3000);
+        setTimeout(() => fetchBookings(), 5000);
+      }
+    };
+    
+    checkPaymentSuccess();
+  }, [fetchBookings, successToast]);
+
+  // Check for completed trips that need payment
+  useEffect(() => {
+    const completedTripsNeedingPayment = allBookings.filter(
+      booking => booking.status === 'COMPLETED' && 
+                booking.paymentStatus === 'PAYMENT_REQUESTED' && 
+                !localStorage.getItem(`payment_notified_${booking.id}`)
+    );
+    
+    if (completedTripsNeedingPayment.length > 0) {
+      // Show notification for the first trip needing payment
+      const tripToNotify = completedTripsNeedingPayment[0];
+      setPaymentRequestBooking(tripToNotify);
+      
+      // Small delay before showing modal for better UX
+      setTimeout(() => {
+        setShowPaymentRequestModal(true);
+      }, 500);
+      
+      // Mark as notified to avoid showing again
+      localStorage.setItem(`payment_notified_${tripToNotify.id}`, 'true');
+    }
+  }, [allBookings]);
+
+  // Check for completed payment to show rating modal
+  useEffect(() => {
+    const pendingRatingBookingId = localStorage.getItem('pending_rating_booking');
+    const paymentJustCompleted = localStorage.getItem('payment_just_completed');
+    const transactionId = localStorage.getItem('payment_transaction_id');
+    
+    if (pendingRatingBookingId && allBookings.length > 0) {
+      // Look for the booking in all bookings data
+      const paidBooking = allBookings.find(booking => 
+        booking.id === pendingRatingBookingId
+      );
+      
+      console.log('Checking for paid booking after payment:', {
+        bookingId: pendingRatingBookingId.slice(-6),
+        transactionId: transactionId?.slice(-6),
+        foundBooking: !!paidBooking,
+        bookingDetails: paidBooking ? {
+          id: paidBooking.id.slice(-6),
+          status: paidBooking.status,
+          paymentStatus: paidBooking.paymentStatus,
+          canRate: canRateBooking(paidBooking),
+          rating: paidBooking.rating
+        } : null,
+        totalBookings: allBookings.length,
+        paymentJustCompleted
+      });
+      
+      if (paidBooking) {
+        const isPaymentComplete = paidBooking.paymentStatus === 'PAID' || 
+                                 paymentJustCompleted === 'true';
+        
+        // Check if booking is completed and payment is done
+        const shouldShowRatingModal = paidBooking.status === 'COMPLETED' && 
+                                     isPaymentComplete && 
+                                     canRateBooking(paidBooking);
+        
+        if (shouldShowRatingModal) {
+          console.log('Showing rating modal after successful payment:', {
+            id: paidBooking.id.slice(-6),
+            status: paidBooking.status,
+            paymentStatus: paidBooking.paymentStatus,
+            canRate: canRateBooking(paidBooking),
+            transactionId: transactionId?.slice(-6)
+          });
+          
+          // Clean up localStorage
+          localStorage.removeItem('pending_rating_booking');
+          localStorage.removeItem('payment_just_completed');
+          localStorage.removeItem('payment_transaction_id');
+          
+          // Show rating modal with delay to ensure UI is ready
+          setTimeout(() => {
+            setSelectedBooking(paidBooking);
+            setShowRatingModal(true);
+            successToast('Payment successful! Your trip is now paid. Please rate your driver experience.');
+          }, 800);
+        } else if (paymentJustCompleted === 'true' && paidBooking.status === 'COMPLETED') {
+          // Payment completed but may need more time for status sync
+          console.log('Payment completed, waiting for status sync...');
+          setTimeout(() => {
+            fetchBookings();
+          }, 2000);
+        }
+      } else if (paymentJustCompleted === 'true') {
+        // If payment just completed but booking not found, keep refreshing
+        console.log('Payment completed but booking not found, continuing to refresh...');
+        setTimeout(() => {
+          fetchBookings();
+        }, 1500);
+      }
+    }
+  }, [allBookings, successToast, fetchBookings]);
+
+  // Auto-fill payment form when payment modal opens
+  useEffect(() => {
+    if (showPaymentModal && user && selectedBooking) {
+      setPaymentData(prev => ({
+        ...prev,
+        customerName: user.name || prev.customerName,
+        customerEmail: user.email || prev.customerEmail,
+        customerPhone: user.phone || prev.customerPhone,
+        customerAddress: prev.customerAddress || `${selectedBooking.source} to ${selectedBooking.destination}`
+      }));
+    }
+  }, [showPaymentModal, user, selectedBooking]);
 
   const handleSearch = async (query: string) => {
     setSearchQuery(query);
@@ -166,6 +403,16 @@ export default function UserBookingsPage() {
   };
 
   const handleRateDriver = async (booking: Booking) => {
+    // Enhanced validation with detailed logging
+    console.log('Rating validation for booking:', {
+      id: booking.id,
+      status: booking.status,
+      paymentStatus: booking.paymentStatus,
+      rating: booking.rating,
+      driver: booking.driver,
+      canRate: canRateBooking(booking)
+    });
+
     setSelectedBooking(booking);
     setRating(0);
     setRatingComment('');
@@ -179,14 +426,46 @@ export default function UserBookingsPage() {
       return;
     }
 
+    // Use centralized validation
+    if (!canRateBooking(selectedBooking)) {
+      if (selectedBooking.status !== 'COMPLETED') {
+        errorToast('Can only rate completed trips');
+      } else if (selectedBooking.rating && selectedBooking.rating !== null && selectedBooking.rating !== 0) {
+        errorToast('You have already rated this trip');
+      } else if (selectedBooking.paymentStatus === 'PAYMENT_REQUESTED') {
+        errorToast('Payment must be completed before rating');
+      } else {
+        errorToast('Unable to rate this trip at the moment');
+      }
+      return;
+    }
+
     try {
+      console.log('Submitting rating for booking:', selectedBooking.id, 'Rating:', rating, 'Payment Status:', selectedBooking.paymentStatus);
       await userApi.submitRating(selectedBooking.id, rating, ratingComment);
       successToast('Rating submitted successfully!');
       setShowRatingModal(false);
-      fetchBookings(); // Refresh to show the rating
-    } catch (error) {
+      
+      // Clear rating form
+      setRating(0);
+      setRatingComment('');
+      setHoveredStar(0);
+      
+      // Refresh bookings to show the updated rating
+      await fetchBookings();
+    } catch (error: unknown) {
       console.error('Error submitting rating:', error);
-      errorToast('Failed to submit rating');
+      
+      // Extract specific error message
+      let errorMessage = 'Failed to submit rating';
+      if (error && typeof error === 'object' && 'message' in error) {
+        errorMessage = (error as { message: string }).message;
+      } else if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { data?: { message?: string; error?: string } } };
+        errorMessage = axiosError.response?.data?.message || axiosError.response?.data?.error || errorMessage;
+      }
+      
+      errorToast(errorMessage);
     }
   };
 
@@ -203,6 +482,62 @@ export default function UserBookingsPage() {
     } catch (error) {
       console.error('Error contacting driver:', error);
       errorToast('Failed to contact driver');
+    }
+  };
+
+  const handlePayForTrip = (booking: Booking) => {
+    setSelectedBooking(booking);
+    // Pre-fill payment data with current user info
+    setPaymentData(prev => ({
+      ...prev,
+      customerName: user?.name || '',
+      customerEmail: user?.email || '',
+      customerPhone: user?.phone || '',
+      customerAddress: `${booking.source} to ${booking.destination}`
+    }));
+    setShowPaymentModal(true);
+  };
+
+  const handleSubmitPayment = async () => {
+    if (!selectedBooking) return;
+
+    setIsPaymentLoading(true);
+    try {
+      const response = await userApi.payForCompletedTrip(selectedBooking.id, {
+        customerInfo: {
+          name: paymentData.customerName,
+          email: paymentData.customerEmail,
+          phone: paymentData.customerPhone,
+          address: paymentData.customerAddress,
+          city: paymentData.customerCity,
+          postCode: paymentData.customerPostCode,
+          country: paymentData.customerCountry
+        }
+      });
+
+      if (response.success && response.data?.gatewayUrl) {
+        successToast('Payment initiated! Redirecting to SSLCommerz secure gateway...');
+        
+        // Store booking ID for post-payment rating
+        localStorage.setItem('pending_rating_booking', selectedBooking.id);
+        
+        // Close payment modal
+        setShowPaymentModal(false);
+        
+        // Redirect to payment gateway
+        setTimeout(() => {
+          if (response.data?.gatewayUrl) {
+            window.location.href = response.data.gatewayUrl;
+          }
+        }, 1500);
+      } else {
+        errorToast('Failed to initiate payment. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error initiating payment:', error);
+      errorToast('Payment initiation failed. Please check your information and try again.');
+    } finally {
+      setIsPaymentLoading(false);
     }
   };
 
@@ -295,15 +630,29 @@ export default function UserBookingsPage() {
       render: (value, row) => {
         const statusValue = value as string;
         return (
-          <div className="flex items-center space-x-2">
-            {getStatusIcon(statusValue)}
-            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(statusValue)}`}>
-              {statusValue.replace('_', ' ')}
-            </span>
-            {row.rating && (
-              <div className="flex items-center ml-2">
-                <StarIcon className="h-3 w-3 text-yellow-400" />
-                <span className="text-xs text-gray-600 ml-1">{row.rating}</span>
+          <div className="flex flex-col space-y-1">
+            <div className="flex items-center space-x-2">
+              {getStatusIcon(statusValue)}
+              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(statusValue)}`}>
+                {statusValue.replace('_', ' ')}
+              </span>
+              {row.rating && row.rating !== null && row.rating !== 0 && (
+                <div className="flex items-center ml-2">
+                  <StarIcon className="h-3 w-3 text-yellow-400" />
+                  <span className="text-xs text-gray-600 ml-1">{row.rating}</span>
+                </div>
+              )}
+            </div>
+            {row.paymentStatus === 'PAYMENT_REQUESTED' && (
+              <div className="flex items-center">
+                <CreditCardIcon className="h-3 w-3 text-orange-500 mr-1" />
+                <span className="text-xs text-orange-600 font-medium">Payment Due</span>
+              </div>
+            )}
+            {row.paymentStatus === 'PAID' && (
+              <div className="flex items-center">
+                <CreditCardIcon className="h-3 w-3 text-green-500 mr-1" />
+                <span className="text-xs text-green-600 font-medium">Paid</span>
               </div>
             )}
           </div>
@@ -317,6 +666,68 @@ export default function UserBookingsPage() {
         <div className="text-sm">
           <div className="text-gray-900">{new Date(value as string).toLocaleDateString()}</div>
           <div className="text-gray-500">{new Date(value as string).toLocaleTimeString()}</div>
+        </div>
+      )
+    },
+    {
+      key: 'actions',
+      header: 'Quick Actions',
+      render: (value, row) => (
+        <div className="flex items-center space-x-2">
+          {/* Debug logging for rate button visibility */}
+          {(() => {
+            const canRate = canRateBooking(row);
+            console.log('Quick Actions Debug:', {
+              bookingId: row.id.slice(-6),
+              status: row.status,
+              paymentStatus: row.paymentStatus,
+              rating: row.rating,
+              canRate,
+              driver: row.driver,
+              conditions: {
+                isCompleted: row.status === 'COMPLETED',
+                hasNoRating: !row.rating || row.rating === null || row.rating === 0,
+                paymentAllowsRating: row.paymentStatus !== 'PAYMENT_REQUESTED'
+              }
+            });
+            return null;
+          })()}
+          
+          {/* Make Payment Button - COMPLETED but payment requested */}
+          {row.status === 'COMPLETED' && row.paymentStatus === 'PAYMENT_REQUESTED' && (
+            <Button
+              size="sm"
+              onClick={() => handlePayForTrip(row)}
+              className="bg-green-500 hover:bg-green-600 text-white px-2 py-1 text-xs"
+            >
+              <CreditCardIcon className="h-3 w-3 mr-1" />
+              Pay
+            </Button>
+          )}
+          
+          {/* Rate Driver Button - Use centralized logic */}
+          {canRateBooking(row) && (
+            <Button
+              size="sm"
+              onClick={() => handleRateDriver(row)}
+              className="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 text-xs"
+            >
+              <StarIcon className="h-3 w-3 mr-1" />
+              Rate
+            </Button>
+          )}
+          
+          {/* Contact Driver Button - During active trips */}
+          {['CONFIRMED', 'IN_PROGRESS'].includes(row.status) && row.driver && row.driver !== 'Driver Assigned' && (
+            <Button
+              size="sm"
+              onClick={() => handleContactDriver(row)}
+              className="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 text-xs"
+            >
+              <PhoneIcon className="h-3 w-3 mr-1" />
+              Call
+            </Button>
+          )}
         </div>
       )
     },
@@ -338,6 +749,52 @@ export default function UserBookingsPage() {
     <ProtectedRoute requiredRole="USER">
       <DashboardLayout title="My Bookings" subtitle="View and manage your booking history">
         <div className="space-y-6">
+          {/* Payment Due Alert */}
+          {allBookings.some(b => b.status === 'COMPLETED' && b.paymentStatus === 'PAYMENT_REQUESTED') && (
+            <div className="bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-xl p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <CreditCardIcon className="h-6 w-6 text-orange-600" />
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-orange-800">
+                      Payment Required
+                    </h3>
+                    <div className="text-sm text-orange-700 mt-1">
+                      You have {allBookings.filter(b => b.status === 'COMPLETED' && b.paymentStatus === 'PAYMENT_REQUESTED').length} completed trip(s) awaiting payment.
+                    </div>
+                  </div>
+                </div>
+                <Button
+                  onClick={() => {
+                    const firstPaymentDue = allBookings.find(b => b.status === 'COMPLETED' && b.paymentStatus === 'PAYMENT_REQUESTED');
+                    if (firstPaymentDue) {
+                      handlePayForTrip(firstPaymentDue);
+                    }
+                  }}
+                  size="sm"
+                  className="bg-orange-600 hover:bg-orange-700 text-white"
+                >
+                  Pay Now
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Debug Info - Remove in production */}
+          {localStorage.getItem('pending_rating_booking') && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+              <p className="text-sm text-yellow-800">
+                <strong>Debug:</strong> Waiting for payment confirmation for booking: {localStorage.getItem('pending_rating_booking')?.slice(-6)}
+                <br />
+                All Bookings: {allBookings.length}, Display Bookings: {bookings.length}
+                <br />
+                Rateable Bookings: {pendingRatings.length}
+              </p>
+            </div>
+          )}
+
           {/* Header with Stats */}
           <div className="bg-white rounded-xl shadow-lg p-6">
             <div className="flex items-center justify-between mb-6">
@@ -361,7 +818,7 @@ export default function UserBookingsPage() {
                     <div className="ml-3">
                       <p className="text-sm font-medium text-gray-600">Completed</p>
                       <p className="text-2xl font-bold text-gray-900">
-                        {bookings.filter(b => b.status === 'COMPLETED').length}
+                        {allBookings.filter(b => b.status === 'COMPLETED').length}
                       </p>
                     </div>
                   </div>
@@ -582,6 +1039,20 @@ export default function UserBookingsPage() {
                       <CurrencyDollarIcon className="h-4 w-4 text-gray-400 mr-2" />
                         <span className="text-sm text-gray-600">Fare: ৳{selectedBooking.fare}</span>
                     </div>
+                    {selectedBooking.paymentStatus && (
+                      <div className="flex items-center">
+                        <CreditCardIcon className="h-4 w-4 text-gray-400 mr-2" />
+                        <span className={`text-sm font-medium ${
+                          selectedBooking.paymentStatus === 'PAID' ? 'text-green-600' :
+                          selectedBooking.paymentStatus === 'PAYMENT_REQUESTED' ? 'text-orange-600' :
+                          'text-gray-600'
+                        }`}>
+                          Payment: {selectedBooking.paymentStatus === 'PAID' ? 'Completed' : 
+                                  selectedBooking.paymentStatus === 'PAYMENT_REQUESTED' ? 'Pending' : 
+                                  selectedBooking.paymentStatus.replace('_', ' ')}
+                        </span>
+                      </div>
+                    )}
                     {selectedBooking.distance && (
                       <div className="flex items-center">
                         <span className="text-sm text-gray-600">Distance: {selectedBooking.distance} km</span>
@@ -610,7 +1081,20 @@ export default function UserBookingsPage() {
                     Cancel Booking
                   </Button>
                 )}
-                {selectedBooking.status === 'COMPLETED' && !selectedBooking.rating && (
+
+                {selectedBooking.status === 'COMPLETED' && selectedBooking.paymentStatus === 'PAYMENT_REQUESTED' && (
+                  <Button
+                    onClick={() => {
+                      handlePayForTrip(selectedBooking);
+                      setShowViewModal(false);
+                    }}
+                    className="bg-green-500 hover:bg-green-600 text-white"
+                  >
+                    <CreditCardIcon className="h-4 w-4 mr-2" />
+                    Pay Now ৳{selectedBooking.fare}
+                  </Button>
+                )}
+                {canRateBooking(selectedBooking) && (
                   <Button
                     onClick={() => {
                       handleRateDriver(selectedBooking);
@@ -725,6 +1209,49 @@ export default function UserBookingsPage() {
         >
           {selectedBooking && (
             <div className="space-y-6">
+              {/* Validation Messages */}
+              {selectedBooking.status !== 'COMPLETED' && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <div className="flex items-start">
+                    <ExclamationTriangleIcon className="h-5 w-5 text-yellow-600 mt-0.5 mr-3" />
+                    <div>
+                      <p className="text-sm text-yellow-800 font-medium">Trip Not Completed</p>
+                      <p className="text-sm text-yellow-600 mt-1">
+                        You can only rate completed trips.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {selectedBooking.paymentStatus === 'PAYMENT_REQUESTED' && selectedBooking.status === 'COMPLETED' && (
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                  <div className="flex items-start">
+                    <CreditCardIcon className="h-5 w-5 text-orange-600 mt-0.5 mr-3" />
+                    <div>
+                      <p className="text-sm text-orange-800 font-medium">Payment Required</p>
+                      <p className="text-sm text-orange-600 mt-1">
+                        Please complete your payment before rating the driver.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {selectedBooking.rating && selectedBooking.rating !== null && selectedBooking.rating !== 0 && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-start">
+                    <StarIcon className="h-5 w-5 text-blue-600 mt-0.5 mr-3" />
+                    <div>
+                      <p className="text-sm text-blue-800 font-medium">Already Rated</p>
+                      <p className="text-sm text-blue-600 mt-1">
+                        You have already rated this trip: {selectedBooking.rating}/5 stars
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Driver Info */}
               <div className="bg-gray-50 rounded-lg p-4">
                 <h4 className="text-lg font-medium text-gray-900 mb-2">Driver Information</h4>
@@ -799,11 +1326,259 @@ export default function UserBookingsPage() {
                 </Button>
                 <Button
                   onClick={handleSubmitRating}
-                  disabled={rating === 0}
-                  className={`${rating === 0 ? 'opacity-50 cursor-not-allowed' : 'bg-yellow-500 hover:bg-yellow-600 text-white'}`}
+                  disabled={
+                    rating === 0 || 
+                    !canRateBooking(selectedBooking)
+                  }
+                  className={`${
+                    rating === 0 || 
+                    !canRateBooking(selectedBooking)
+                      ? 'opacity-50 cursor-not-allowed bg-gray-300' 
+                      : 'bg-yellow-500 hover:bg-yellow-600 text-white'
+                  }`}
                 >
                   <StarIcon className="h-4 w-4 mr-2" />
-                  Submit Rating
+                  {selectedBooking.rating && selectedBooking.rating !== null && selectedBooking.rating !== 0 ? 'Already Rated' : 'Submit Rating'}
+                </Button>
+              </div>
+            </div>
+          )}
+        </Modal>
+
+        {/* Payment Modal */}
+        <Modal
+          isOpen={showPaymentModal}
+          onClose={() => setShowPaymentModal(false)}
+          title="Pay for Completed Trip"
+          size="md"
+        >
+          {selectedBooking && (
+            <div className="space-y-6">
+              {/* Trip Summary */}
+              <div className="bg-gradient-to-br from-green-50 to-blue-50 border border-green-200 rounded-lg p-4">
+                <h4 className="text-lg font-medium text-gray-900 mb-2 flex items-center">
+                  <CheckCircleIcon className="h-5 w-5 text-green-600 mr-2" />
+                  Trip Summary
+                </h4>
+                <div className="space-y-2 text-sm text-gray-600">
+                  <div className="flex justify-between">
+                    <span>Booking ID:</span>
+                    <span className="font-medium">#{selectedBooking.id.slice(-8).toUpperCase()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Route:</span>
+                    <span className="font-medium text-right">{selectedBooking.source} → {selectedBooking.destination}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Driver:</span>
+                    <span className="font-medium">{selectedBooking.driver || 'Driver Assigned'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Completed At:</span>
+                    <span className="font-medium">{selectedBooking.completedAt ? new Date(selectedBooking.completedAt).toLocaleDateString() : 'N/A'}</span>
+                  </div>
+                  <div className="flex justify-between items-center pt-2 mt-2 border-t border-green-300">
+                    <span className="text-lg font-bold text-gray-900">Total Amount:</span>
+                    <span className="text-2xl font-bold text-green-600">৳{selectedBooking.fare}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment Form */}
+              <div className="space-y-4">
+                <h4 className="text-lg font-medium text-gray-900">Payment Information</h4>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Full Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={paymentData.customerName}
+                      onChange={(e) => setPaymentData(prev => ({ ...prev, customerName: e.target.value }))}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Email *
+                    </label>
+                    <input
+                      type="email"
+                      value={paymentData.customerEmail}
+                      onChange={(e) => setPaymentData(prev => ({ ...prev, customerEmail: e.target.value }))}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Phone Number *
+                  </label>
+                  <input
+                    type="tel"
+                    value={paymentData.customerPhone}
+                    onChange={(e) => setPaymentData(prev => ({ ...prev, customerPhone: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Address
+                  </label>
+                  <input
+                    type="text"
+                    value={paymentData.customerAddress}
+                    onChange={(e) => setPaymentData(prev => ({ ...prev, customerAddress: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              {/* Payment Notice */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start">
+                  <CreditCardIcon className="h-5 w-5 text-blue-600 mt-0.5 mr-3" />
+                  <div>
+                    <p className="text-sm text-blue-800 font-medium">Secure Payment</p>
+                    <p className="text-sm text-blue-600 mt-1">
+                      You will be redirected to our secure payment gateway (SSLCommerz) to complete your payment safely.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowPaymentModal(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSubmitPayment}
+                  disabled={!paymentData.customerName || !paymentData.customerEmail || !paymentData.customerPhone || isPaymentLoading}
+                  className={`${(!paymentData.customerName || !paymentData.customerEmail || !paymentData.customerPhone || isPaymentLoading) ? 'opacity-50 cursor-not-allowed' : 'bg-green-500 hover:bg-green-600 text-white'}`}
+                >
+                  {isPaymentLoading ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <CreditCardIcon className="h-4 w-4 mr-2" />
+                      Pay ৳{selectedBooking.fare}
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+        </Modal>
+
+        {/* Payment Request Notification Modal */}
+        <Modal
+          isOpen={showPaymentRequestModal}
+          onClose={() => setShowPaymentRequestModal(false)}
+          title="🚛 Trip Completed - Payment Required"
+          size="md"
+        >
+          {paymentRequestBooking && (
+            <div className="space-y-6">
+              {/* Trip Completion Notice */}
+              <div className="text-center">
+                <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-4">
+                  <CheckCircleIcon className="h-8 w-8 text-green-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Your Trip Has Been Completed!
+                </h3>
+                <p className="text-sm text-gray-600">
+                  Your driver has successfully completed the trip and is now requesting payment.
+                </p>
+              </div>
+
+              {/* Trip Details */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h4 className="text-sm font-medium text-gray-700 mb-3">Trip Details</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Booking ID:</span>
+                    <span className="font-medium">#{paymentRequestBooking.id.slice(-8).toUpperCase()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Driver:</span>
+                    <span className="font-medium">{paymentRequestBooking.driver || 'Driver Assigned'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Route:</span>
+                    <span className="font-medium text-right">
+                      {paymentRequestBooking.source} → {paymentRequestBooking.destination}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Completed:</span>
+                    <span className="font-medium">
+                      {paymentRequestBooking.completedAt ? 
+                        new Date(paymentRequestBooking.completedAt).toLocaleString() : 'Just now'
+                      }
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-lg font-bold text-green-600 pt-2 border-t">
+                    <span>Total Fare:</span>
+                    <span>৳{paymentRequestBooking.fare}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment Notice */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start">
+                  <CreditCardIcon className="h-5 w-5 text-blue-600 mt-0.5 mr-3" />
+                  <div>
+                    <p className="text-sm text-blue-800 font-medium">Secure Payment Process</p>
+                    <p className="text-sm text-blue-600 mt-1">
+                      After payment, you&apos;ll be able to rate your driver and provide feedback about your experience.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex space-x-3">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowPaymentRequestModal(false)}
+                  className="flex-1"
+                >
+                  I&apos;ll Pay Later
+                </Button>
+                <Button
+                  onClick={() => {
+                    setSelectedBooking(paymentRequestBooking);
+                    setPaymentData(prev => ({
+                      ...prev,
+                      customerName: user?.name || '',
+                      customerEmail: user?.email || '',
+                      customerPhone: user?.phone || '',
+                      customerAddress: `${paymentRequestBooking.source} to ${paymentRequestBooking.destination}`
+                    }));
+                    setShowPaymentRequestModal(false);
+                    setShowPaymentModal(true);
+                  }}
+                  className="flex-1 bg-green-500 hover:bg-green-600 text-white"
+                >
+                  <CreditCardIcon className="h-4 w-4 mr-2" />
+                  Pay Now ৳{paymentRequestBooking.fare}
                 </Button>
               </div>
             </div>

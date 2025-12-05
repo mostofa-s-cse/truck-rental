@@ -314,4 +314,96 @@ export class BookingController {
       res.status(400).json(response);
     }
   }
+
+  static async payForCompletedTrip(req: Request, res: Response) {
+    try {
+      const { bookingId } = req.params;
+      const userId = (req as any).user.userId;
+      const { customerInfo } = req.body;
+
+      logDatabase('select', 'bookings', { bookingId, userId, operation: 'payment_for_completed_trip' });
+
+      // Verify booking belongs to user and is completed but not paid
+      const prisma = new PrismaClient();
+      const booking = await prisma.booking.findFirst({
+        where: {
+          id: bookingId,
+          userId: userId,
+          status: 'COMPLETED',
+          paymentStatus: { in: ['PAYMENT_REQUESTED', 'PENDING_PAYMENT'] }
+        },
+        include: {
+          driver: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true
+                }
+              }
+            }
+          }
+        }
+      });
+
+      if (!booking) {
+        throw new Error('Booking not found or not eligible for payment');
+      }
+
+      // Import SSLCommerz service for payment processing
+      const { SSLCommerzService } = await import('../services/SSLCommerzService');
+      const sslCommerzService = new SSLCommerzService();
+
+      // Create payment request for completed trip
+      const paymentRequest = {
+        bookingId: booking.id,
+        userId: booking.userId,
+        amount: booking.fare,
+        customerName: customerInfo.name,
+        customerEmail: customerInfo.email,
+        customerPhone: customerInfo.phone,
+        customerAddress: `${booking.source} to ${booking.destination}`,
+        customerCity: customerInfo.city || 'Dhaka',
+        customerPostCode: customerInfo.postCode || '1000',
+        customerCountry: customerInfo.country || 'Bangladesh',
+      };
+
+      console.log('Initiating payment for completed trip:', paymentRequest);
+      const paymentResult = await sslCommerzService.createPaymentSession(paymentRequest);
+
+      logDatabase('insert', 'payments', { 
+        bookingId: booking.id, 
+        userId, 
+        amount: booking.fare,
+        paymentMethod: 'SSLCommerz'
+      });
+
+      const response: ApiResponse = {
+        success: true,
+        message: 'Payment initiated for completed trip',
+        data: paymentResult
+      };
+
+      res.status(200).json(response);
+    } catch (error: any) {
+      const bookingId = req.params.bookingId || 'unknown';
+      const userId = (req as any).user?.userId || 'unknown';
+
+      logError(error, { 
+        operation: 'pay_for_completed_trip', 
+        bookingId,
+        userId,
+        customerInfo: req.body.customerInfo
+      });
+
+      const response: ApiResponse = {
+        success: false,
+        message: error.message || 'Failed to initiate payment for completed trip',
+        error: error.message
+      };
+
+      res.status(400).json(response);
+    }
+  }
 } 

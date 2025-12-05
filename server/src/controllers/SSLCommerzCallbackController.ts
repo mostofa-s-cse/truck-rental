@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { PaymentStatus } from '@prisma/client';
 import { SSLCommerzService } from '../services/SSLCommerzService';
 import { logError } from '../utils/logger';
 import { NotificationIntegrationService } from '../services/notificationIntegrationService';
@@ -67,8 +68,10 @@ export class SSLCommerzCallbackController {
         const encodedTranId = encodeURIComponent(tran_id);
         const encodedAmount = encodeURIComponent(amount || '0');
         const encodedValId = encodeURIComponent(val_id || '');
+        const encodedBookingId = encodeURIComponent(value_a || '');
         
-        return this.redirectToFrontend(req, res, `/payment/success?tran_id=${encodedTranId}&status=VALID&amount=${encodedAmount}&val_id=${encodedValId}`);
+        // Redirect to bookings page with payment success parameters
+        return this.redirectToFrontend(req, res, `/dashboard/user/bookings?payment_success=true&booking_id=${encodedBookingId}&status=VALID&tran_id=${encodedTranId}&amount=${encodedAmount}&val_id=${encodedValId}`);
       } else {
         console.warn('Payment status from callback is not valid:', status);
         console.warn('Available status values:', ['VALID', 'SUCCESS', 'FAILED', 'CANCELLED']);
@@ -249,13 +252,28 @@ export class SSLCommerzCallbackController {
             }
           });
 
+          // Get the current booking to check its status
+          const currentBooking = await tx.booking.findUnique({
+            where: { id: payment.bookingId },
+            select: { status: true }
+          });
+
           // Update the primary booking (the one linked to the payment)
+          // For completed trips (post-trip payment), keep status as COMPLETED
+          // For pending trips (pre-trip payment), change to CONFIRMED
+          const newBookingStatus = status === 'COMPLETED' 
+            ? (currentBooking?.status === 'COMPLETED' ? 'COMPLETED' : 'CONFIRMED')
+            : 'CANCELLED';
+
           await tx.booking.update({
             where: { id: payment.bookingId },
             data: { 
-              status: status === 'COMPLETED' ? 'CONFIRMED' : 'CANCELLED'
+              status: newBookingStatus,
+              paymentStatus: status === 'COMPLETED' ? PaymentStatus.PAID : PaymentStatus.FAILED
             }
           });
+
+          console.log(`Updated booking ${payment.bookingId} status from ${currentBooking?.status} to ${newBookingStatus}, payment status to ${status === 'COMPLETED' ? 'PAID' : 'FAILED'}`);
 
           // Find and update ALL related bookings that were created together
           // These bookings will have the same userId, driverId, and similar creation time
@@ -285,16 +303,25 @@ export class SSLCommerzCallbackController {
 
             // Update all related bookings
             if (relatedBookings.length > 0) {
-              await tx.booking.updateMany({
-                where: {
-                  id: { in: relatedBookings.map(b => b.id) }
-                },
-                data: { 
-                  status: status === 'COMPLETED' ? 'CONFIRMED' : 'CANCELLED'
-                }
-              });
+              // For related bookings, we need to check each booking's current status
+              for (const relatedBooking of relatedBookings) {
+                const newRelatedStatus = status === 'COMPLETED' 
+                  ? (relatedBooking.status === 'COMPLETED' ? 'COMPLETED' : 'CONFIRMED')
+                  : 'CANCELLED';
 
-              console.log(`Updated ${relatedBookings.length} related bookings to status: ${status === 'COMPLETED' ? 'CONFIRMED' : 'CANCELLED'}`);
+                await tx.booking.update({
+                  where: { id: relatedBooking.id },
+                  data: { 
+                    status: newRelatedStatus,
+                    // Only update payment status if it's not already set
+                    ...(relatedBooking.paymentStatus === 'PAYMENT_REQUESTED' && {
+                      paymentStatus: status === 'COMPLETED' ? PaymentStatus.PAID : PaymentStatus.FAILED
+                    })
+                  }
+                });
+              }
+
+              console.log(`Updated ${relatedBookings.length} related bookings with appropriate status preservation`);
             }
           }
         });
