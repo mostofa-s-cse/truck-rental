@@ -376,7 +376,9 @@ export class DashboardService {
             select: {
               id: true,
               name: true,
-              email: true
+              email: true,
+              phone: true,
+              avatar: true
             }
           },
           driver: {
@@ -385,7 +387,9 @@ export class DashboardService {
                 select: {
                   id: true,
                   name: true,
-                  email: true
+                  email: true,
+                  phone: true,
+                  avatar: true
                 }
               }
             }
@@ -486,7 +490,9 @@ export class DashboardService {
           select: {
             id: true,
             name: true,
-            email: true
+            email: true,
+            phone: true,
+            avatar: true
           }
         },
         driver: {
@@ -495,7 +501,9 @@ export class DashboardService {
               select: {
                 id: true,
                 name: true,
-                email: true
+                email: true,
+                phone: true,
+                avatar: true
               }
             }
           }

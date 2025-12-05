@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Image from 'next/image';
 import DashboardLayout from '@/components/ui/DashboardLayout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import DataTable, { Column } from '@/components/ui/DataTable';
@@ -39,6 +40,7 @@ interface Payment {
     driver: {
       user: {
         name: string;
+        avatar?: string;
       };
       truckType: string;
     };
@@ -61,6 +63,20 @@ export default function UserPaymentsPage() {
   // Modal states
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
+
+  // Helper function to get proper image URL
+  const getImageUrl = (imagePath: string | undefined | null): string => {
+    if (!imagePath) return "";
+
+    // If it's already a full URL (http/https), return as is
+    if (imagePath.startsWith("http://") || imagePath.startsWith("https://")) {
+      return imagePath;
+    }
+
+    // For local uploads, ensure the path starts with /
+    const normalizedPath = imagePath.startsWith("/") ? imagePath : `/${imagePath}`;
+    return normalizedPath;
+  };
 
   const fetchPayments = useCallback(async () => {
     try {
@@ -206,21 +222,40 @@ export default function UserPaymentsPage() {
     {
       key: 'booking.driver.user.name',
       header: 'Driver',
-      render: (value, row) => (
-        <div className="flex items-center">
-          <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
-            <UserCircleIcon className="h-5 w-5 text-blue-600" />
-          </div>
-          <div className="ml-3">
-            <div className="text-sm font-medium text-gray-900">
-              {row.booking.driver.user.name}
+      render: (value, row) => {
+        const driverName = row.booking.driver.user.name;
+        const driverAvatar = row.booking.driver.user.avatar;
+        
+        return (
+          <div className="flex items-center">
+            <div className="h-8 w-8 rounded-full overflow-hidden bg-blue-100 flex items-center justify-center">
+              {driverAvatar ? (
+                <Image
+                  src={getImageUrl(driverAvatar)}
+                  alt={driverName}
+                  width={32}
+                  height={32}
+                  className="h-8 w-8 rounded-full object-cover"
+                  unoptimized
+                  onError={() => {
+                    // Fallback will be handled by Next.js
+                  }}
+                />
+              ) : (
+                <UserCircleIcon className="h-5 w-5 text-blue-600" />
+              )}
             </div>
-            <div className="text-sm text-gray-500">
-              {row.booking.driver.truckType.replace('_', ' ')}
+            <div className="ml-3">
+              <div className="text-sm font-medium text-gray-900">
+                {driverName}
+              </div>
+              <div className="text-sm text-gray-500">
+                {row.booking.driver.truckType.replace('_', ' ')}
+              </div>
             </div>
           </div>
-        </div>
-      )
+        );
+      }
     },
     {
       key: 'booking.source',

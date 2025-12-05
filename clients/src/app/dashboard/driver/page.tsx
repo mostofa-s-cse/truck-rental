@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { useAppSelector } from '@/hooks/redux';
 import DashboardLayout from '@/components/ui/DashboardLayout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
@@ -12,7 +13,8 @@ import {
   ClockIcon,
   CheckCircleIcon,
   PlayIcon,
-  PauseIcon
+  PauseIcon,
+  UserCircleIcon
 } from '@heroicons/react/24/outline';
 
 
@@ -23,6 +25,32 @@ export default function DriverDashboard() {
   const [recentBookings, setRecentBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAvailable, setIsAvailable] = useState<boolean>(true);
+
+  // Helper function to get customer name from user object or string
+  const getCustomerName = (user: Booking['user']): string => {
+    if (typeof user === 'string') return user;
+    return user?.name || 'Customer';
+  };
+  
+  // Helper function to get customer avatar from user object
+  const getCustomerAvatar = (user: Booking['user']): string | undefined => {
+    if (typeof user === 'object') return user?.avatar;
+    return undefined;
+  };
+  
+  // Helper function to get proper image URL
+  const getImageUrl = (imagePath: string | undefined | null): string => {
+    if (!imagePath) return "";
+
+    // If it's already a full URL (http/https), return as is
+    if (imagePath.startsWith("http://") || imagePath.startsWith("https://")) {
+      return imagePath;
+    }
+
+    // For local uploads, ensure the path starts with /
+    const normalizedPath = imagePath.startsWith("/") ? imagePath : `/${imagePath}`;
+    return normalizedPath;
+  };
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -38,6 +66,13 @@ export default function DriverDashboard() {
         setEarnings(earningsData);
         setRecentBookings(bookingsData);
         setIsAvailable(availability);
+        
+        // Debug logging to check customer avatar data
+        console.log('Driver dashboard - Recent bookings data:', bookingsData);
+        if (bookingsData.length > 0) {
+          console.log('First booking user data:', bookingsData[0].user);
+          console.log('Customer avatar from first booking:', getCustomerAvatar(bookingsData[0].user));
+        }
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
       } finally {
@@ -219,46 +254,77 @@ export default function DriverDashboard() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {recentBookings.slice(0, 5).map((booking) => (
-                      <div key={booking.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between mb-2">
-                            <p className="font-medium text-gray-900">
-                              {booking.source} → {booking.destination}
-                            </p>
-                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                              booking.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
-                              booking.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
-                              booking.status === 'CANCELLED' ? 'bg-red-100 text-red-800' :
-                              'bg-blue-100 text-blue-800'
-                            }`}>
-                              {booking.status}
-                            </span>
+                    {recentBookings.slice(0, 5).map((booking) => {
+                      const customerName = getCustomerName(booking.user);
+                      const customerAvatar = getCustomerAvatar(booking.user);
+                      
+                      return (
+                        <div key={booking.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                          <div className="flex items-center flex-1">
+                            {/* Customer Avatar */}
+                            <div className="h-10 w-10 rounded-full overflow-hidden bg-green-100 flex items-center justify-center mr-4 flex-shrink-0">
+                              {customerAvatar ? (
+                                <Image
+                                  src={getImageUrl(customerAvatar)}
+                                  alt={customerName}
+                                  width={40}
+                                  height={40}
+                                  className="h-10 w-10 rounded-full object-cover"
+                                  unoptimized
+                                  onError={() => {
+                                    // Fallback will be handled by Next.js
+                                  }}
+                                />
+                              ) : (
+                                <UserCircleIcon className="h-6 w-6 text-green-600" />
+                              )}
+                            </div>
+                            
+                            {/* Booking Details */}
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between mb-2">
+                                <div>
+                                  <p className="font-medium text-gray-900">
+                                    {booking.source} → {booking.destination}
+                                  </p>
+                                  <p className="text-sm text-gray-500">Customer: {customerName}</p>
+                                </div>
+                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                  booking.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
+                                  booking.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                                  booking.status === 'CANCELLED' ? 'bg-red-100 text-red-800' :
+                                  'bg-blue-100 text-blue-800'
+                                }`}>
+                                  {booking.status}
+                                </span>
+                              </div>
+                              <p className="text-sm text-gray-600">৳{booking.fare}</p>
+                              <p className="text-sm text-gray-500">{new Date(booking.date).toLocaleDateString()}</p>
+                              {booking.pickupTime && (
+                                <p className="text-sm text-gray-500">Pickup: {new Date(booking.pickupTime).toLocaleString()}</p>
+                              )}
+                            </div>
                           </div>
-                          <p className="text-sm text-gray-600">৳{booking.fare}</p>
-                          <p className="text-sm text-gray-500">{new Date(booking.date).toLocaleDateString()}</p>
-                          {booking.pickupTime && (
-                            <p className="text-sm text-gray-500">Pickup: {new Date(booking.pickupTime).toLocaleString()}</p>
+                          {/* Action Buttons */}
+                          {booking.status === 'PENDING' && (
+                            <div className="flex space-x-2 ml-4 flex-shrink-0">
+                              <button
+                                onClick={() => handleAcceptBooking(booking.id)}
+                                className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700"
+                              >
+                                Accept
+                              </button>
+                              <button
+                                onClick={() => handleDeclineBooking(booking.id)}
+                                className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
+                              >
+                                Decline
+                              </button>
+                            </div>
                           )}
                         </div>
-                        {booking.status === 'PENDING' && (
-                          <div className="flex space-x-2 ml-4">
-                            <button
-                              onClick={() => handleAcceptBooking(booking.id)}
-                              className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700"
-                            >
-                              Accept
-                            </button>
-                            <button
-                              onClick={() => handleDeclineBooking(booking.id)}
-                              className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
-                            >
-                              Decline
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>

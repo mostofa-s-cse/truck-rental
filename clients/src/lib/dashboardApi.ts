@@ -98,7 +98,10 @@ export interface Booking {
     phone?: string;
     avatar?: string;
   } | string;
-  driver?: string;
+  driver?: {
+    name: string;
+    avatar?: string;
+  } | string;
   driverId?: string; // Add driver ID for contact functionality
   source: string;
   destination: string;
@@ -397,7 +400,10 @@ export const userApi = {
       pickupTime: booking.pickupTime,
       completedAt: booking.completedAt,
       distance: booking.distance,
-      driver: booking.driver?.user?.name || 'Driver Assigned',
+      driver: booking.driver ? {
+        name: booking.driver.user?.name || 'Driver Assigned',
+        avatar: booking.driver.user?.avatar
+      } : 'Driver Assigned',
       driverId: booking.driver?.id, // Add driver ID for contact functionality
       rating: booking.review?.rating || null
     }));
@@ -419,7 +425,10 @@ export const userApi = {
         pickupTime: booking.pickupTime,
         completedAt: booking.completedAt,
         distance: booking.distance,
-        driver: booking.driver?.user?.name || 'Driver Assigned',
+        driver: booking.driver ? {
+          name: booking.driver.user?.name || 'Driver Assigned',
+          avatar: booking.driver.user?.avatar
+        } : 'Driver Assigned',
         driverId: booking.driver?.id, // Add driver ID for contact functionality
         rating: booking.review?.rating
       })),

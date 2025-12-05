@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Image from 'next/image';
 import DashboardLayout from '@/components/ui/DashboardLayout';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import DataTable, { Column } from '@/components/ui/DataTable';
@@ -80,6 +81,32 @@ export default function UserBookingsPage() {
     customerCountry: 'Bangladesh'
   });
   
+  // Helper function to get driver name from driver object or string
+  const getDriverName = (driver: Booking['driver']): string => {
+    if (typeof driver === 'string') return driver;
+    return driver?.name || 'Driver Assigned';
+  };
+  
+  // Helper function to get driver avatar from driver object
+  const getDriverAvatar = (driver: Booking['driver']): string | undefined => {
+    if (typeof driver === 'object') return driver?.avatar;
+    return undefined;
+  };
+  
+  // Helper function to get proper image URL
+  const getImageUrl = (imagePath: string | undefined | null): string => {
+    if (!imagePath) return "";
+
+    // If it's already a full URL (http/https), return as is
+    if (imagePath.startsWith("http://") || imagePath.startsWith("https://")) {
+      return imagePath;
+    }
+
+    // For local uploads, ensure the path starts with /
+    const normalizedPath = imagePath.startsWith("/") ? imagePath : `/${imagePath}`;
+    return normalizedPath;
+  };
+  
   // Helper function to check if a booking can be rated
   const canRateBooking = (booking: Booking) => {
     const isCompleted = booking.status === 'COMPLETED';
@@ -127,7 +154,7 @@ export default function UserBookingsPage() {
         status: b.status,
         paymentStatus: b.paymentStatus,
         rating: b.rating,
-        driver: b.driver,
+        driver: getDriverName(b.driver),
         canRate: canRateBooking(b)
       })));
       
@@ -164,7 +191,7 @@ export default function UserBookingsPage() {
           booking.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
           booking.source.toLowerCase().includes(searchQuery.toLowerCase()) ||
           booking.destination.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (booking.driver && booking.driver.toLowerCase().includes(searchQuery.toLowerCase()))
+          getDriverName(booking.driver).toLowerCase().includes(searchQuery.toLowerCase())
         );
       }
       
@@ -470,7 +497,7 @@ export default function UserBookingsPage() {
   };
 
   const handleContactDriver = async (booking: Booking) => {
-    if (!booking.driver || !booking.driverId) {
+    if (getDriverName(booking.driver) === 'Driver Assigned' || !booking.driverId) {
       errorToast('No driver assigned to this booking yet');
       return;
     }
@@ -585,21 +612,40 @@ export default function UserBookingsPage() {
     {
       key: 'driver',
       header: 'Driver',
-      render: (value, row) => (
-        <div className="flex items-center">
-          <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
-            <UserCircleIcon className="h-5 w-5 text-blue-600" />
-          </div>
-          <div className="ml-3">
-            <div className="text-sm font-medium text-gray-900">
-              {row.driver || 'Driver Assigned'}
+      render: (value, row) => {
+        const driverName = getDriverName(row.driver);
+        const driverAvatar = getDriverAvatar(row.driver);
+        
+        return (
+          <div className="flex items-center">
+            <div className="h-8 w-8 rounded-full overflow-hidden bg-blue-100 flex items-center justify-center">
+              {driverAvatar ? (
+                <Image
+                  src={getImageUrl(driverAvatar)}
+                  alt={driverName}
+                  width={32}
+                  height={32}
+                  className="h-8 w-8 rounded-full object-cover"
+                  unoptimized
+                  onError={() => {
+                    // Fallback will be handled by Next.js
+                  }}
+                />
+              ) : (
+                <UserCircleIcon className="h-5 w-5 text-blue-600" />
+              )}
             </div>
-            <div className="text-sm text-gray-500">
-              {row.driver ? 'Assigned Driver' : 'Awaiting Assignment'}
+            <div className="ml-3">
+              <div className="text-sm font-medium text-gray-900">
+                {driverName}
+              </div>
+              <div className="text-sm text-gray-500">
+                {driverName !== 'Driver Assigned' ? 'Assigned Driver' : 'Awaiting Assignment'}
+              </div>
             </div>
           </div>
-        </div>
-      )
+        );
+      }
     },
     {
       key: 'source',
@@ -718,7 +764,7 @@ export default function UserBookingsPage() {
           )}
           
           {/* Contact Driver Button - During active trips */}
-          {['CONFIRMED', 'IN_PROGRESS'].includes(row.status) && row.driver && row.driver !== 'Driver Assigned' && (
+          {['CONFIRMED', 'IN_PROGRESS'].includes(row.status) && getDriverName(row.driver) !== 'Driver Assigned' && row.driverId && (
             <Button
               size="sm"
               onClick={() => handleContactDriver(row)}
@@ -860,7 +906,9 @@ export default function UserBookingsPage() {
                         <div className="flex items-center">
                           <UserCircleIcon className="h-8 w-8 text-blue-600 mr-3" />
                           <div>
-                            <p className="text-sm font-medium text-gray-900">{booking.driver || 'Driver Assigned'}</p>
+                            <p className="text-sm font-medium text-gray-900">
+                              {typeof booking.driver === 'string' ? booking.driver : booking.driver?.name || 'Driver Assigned'}
+                            </p>
                             <p className="text-xs text-gray-500">Trip #{booking.id.slice(-6).toUpperCase()}</p>
                           </div>
                         </div>
@@ -987,7 +1035,9 @@ export default function UserBookingsPage() {
                   <div className="space-y-3">
                     <div className="flex items-center">
                       <span className="text-sm font-medium text-gray-600 w-20">Name:</span>
-                      <span className="text-sm text-gray-900">{selectedBooking.driver || 'Not Assigned Yet'}</span>
+                      <span className="text-sm text-gray-900">
+                        {typeof selectedBooking.driver === 'string' ? selectedBooking.driver : selectedBooking.driver?.name || 'Not Assigned Yet'}
+                      </span>
                     </div>
                     <div className="flex items-center">
                       <TruckIcon className="h-4 w-4 text-gray-400 mr-2" />
@@ -995,7 +1045,7 @@ export default function UserBookingsPage() {
                         {selectedBooking.driver ? 'Assigned Driver' : 'Driver will be assigned soon'}
                       </span>
                     </div>
-                    {selectedBooking.driver && (
+                    {getDriverName(selectedBooking.driver) !== 'Driver Assigned' && (
                       <div className="flex items-center">
                         <span className="text-sm font-medium text-gray-600 w-20">Status:</span>
                         <span className="text-sm text-gray-900">
@@ -1106,7 +1156,7 @@ export default function UserBookingsPage() {
                     Rate Driver
                   </Button>
                 )}
-                {['CONFIRMED', 'IN_PROGRESS'].includes(selectedBooking.status) && selectedBooking.driver && (
+                {['CONFIRMED', 'IN_PROGRESS'].includes(selectedBooking.status) && getDriverName(selectedBooking.driver) !== 'Driver Assigned' && selectedBooking.driverId && (
                   <Button
                     onClick={() => handleContactDriver(selectedBooking)}
                     className="bg-blue-500 hover:bg-blue-600 text-white"
@@ -1258,7 +1308,9 @@ export default function UserBookingsPage() {
                 <div className="flex items-center">
                   <UserCircleIcon className="h-8 w-8 text-blue-600 mr-3" />
                   <div>
-                    <p className="text-sm font-medium text-gray-900">{selectedBooking.driver || 'Driver Assigned'}</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {typeof selectedBooking.driver === 'string' ? selectedBooking.driver : selectedBooking.driver?.name || 'Driver Assigned'}
+                    </p>
                     <p className="text-sm text-gray-500">Trip: {selectedBooking.source} → {selectedBooking.destination}</p>
                   </div>
                 </div>
@@ -1371,7 +1423,9 @@ export default function UserBookingsPage() {
                   </div>
                   <div className="flex justify-between">
                     <span>Driver:</span>
-                    <span className="font-medium">{selectedBooking.driver || 'Driver Assigned'}</span>
+                    <span className="font-medium">
+                      {typeof selectedBooking.driver === 'string' ? selectedBooking.driver : selectedBooking.driver?.name || 'Driver Assigned'}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span>Completed At:</span>
@@ -1517,7 +1571,9 @@ export default function UserBookingsPage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Driver:</span>
-                    <span className="font-medium">{paymentRequestBooking.driver || 'Driver Assigned'}</span>
+                    <span className="font-medium">
+                      {typeof paymentRequestBooking.driver === 'string' ? paymentRequestBooking.driver : paymentRequestBooking.driver?.name || 'Driver Assigned'}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Route:</span>

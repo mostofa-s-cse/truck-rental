@@ -37,7 +37,9 @@ export class AdminService {
           select: {
             id: true,
             name: true,
-            email: true
+            email: true,
+            phone: true,
+            avatar: true
           }
         },
         driver: {
@@ -46,7 +48,9 @@ export class AdminService {
               select: {
                 id: true,
                 name: true,
-                email: true
+                email: true,
+                phone: true,
+                avatar: true
               }
             }
           }
