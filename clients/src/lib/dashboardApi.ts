@@ -369,6 +369,34 @@ export const driverApi = {
   updateDriverProfile: async (data: UpdateDriverProfileData): Promise<DriverProfile> => {
     const response = await apiClient.getClient().put('/drivers/profile', data);
     return response.data.data;
+  },
+
+  updateCurrentUserProfile: async (data: {
+    name?: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    city?: string;
+    country?: string;
+    bio?: string;
+  }): Promise<{ id: string; name: string; email: string; phone?: string }> => {
+    // Only send fields that are supported by the User model
+    const updateData: Record<string, string> = {};
+    if (data.name) updateData.name = data.name;
+    if (data.email) updateData.email = data.email;
+    if (data.phone) updateData.phone = data.phone;
+    // address, city, country, bio are not part of User model
+    
+    const response = await apiClient.getClient().put('/users/me', updateData);
+    return response.data.data;
+  },
+
+  changePassword: async (data: {
+    currentPassword: string;
+    newPassword: string;
+  }): Promise<{ success: boolean }> => {
+    const response = await apiClient.getClient().post('/auth/change-password', data);
+    return response.data.data;
   }
 };
 
@@ -537,6 +565,33 @@ export const userApi = {
       message,
       bookingId
     });
+    return response.data.data;
+  },
+
+  updateCurrentUserProfile: async (data: {
+    name?: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    city?: string;
+    country?: string;
+    bio?: string;
+  }): Promise<{ id: string; name: string; email: string; phone?: string }> => {
+    // Only send fields that exist on User model
+    const updateData: Record<string, string> = {};
+    if (data.name) updateData.name = data.name;
+    if (data.email) updateData.email = data.email;
+    if (data.phone) updateData.phone = data.phone;
+
+    const response = await apiClient.getClient().put('/users/me', updateData);
+    return response.data.data;
+  },
+
+  changePassword: async (data: {
+    currentPassword: string;
+    newPassword: string;
+  }): Promise<{ success: boolean }> => {
+    const response = await apiClient.getClient().post('/auth/change-password', data);
     return response.data.data;
   },
 

@@ -137,9 +137,31 @@ export class UserService {
   static async updateUser(userId: string, updateData: any) {
     logDatabase('update', 'users', { userId, updateFields: Object.keys(updateData) });
 
+    // Only allow fields that exist on the User model to avoid Prisma unknown argument errors
+    const allowedFields = [
+      'name',
+      'email',
+      'phone',
+      'password',
+      'role',
+      'avatar',
+      'isActive',
+      'isEmailVerified',
+      'emailVerifyToken',
+      'emailVerifyExpiry'
+    ];
+
+    const sanitizedData = Object.fromEntries(
+      Object.entries(updateData).filter(([key]) => allowedFields.includes(key))
+    );
+
+    if (Object.keys(sanitizedData).length === 0) {
+      throw new Error('No valid fields provided for update');
+    }
+
     const user = await prisma.user.update({
       where: { id: userId },
-      data: updateData,
+      data: sanitizedData,
       select: {
         id: true,
         email: true,

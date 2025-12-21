@@ -137,9 +137,9 @@ export default function DriverProfilePage() {
         vehicle: {
           truckType: driverProfile.truckType || "MINI_TRUCK",
           capacity: driverProfile.capacity || 1.5,
-          quality: driverProfile.quality || "GOOD",
-          license: driverProfile.license || "DL123456789",
-          registration: driverProfile.registration || "TRK789012345",
+          quality: "GOOD",
+          license: "DL123456789",
+          registration: "TRK789012345",
           location: driverProfile.location || "Downtown Area",
           truckImage: driverProfile.truckImage || undefined,
           truckImages: Array.isArray(driverProfile.truckImages)
@@ -220,8 +220,16 @@ export default function DriverProfilePage() {
         return;
       }
 
-      // Mock API call (replace with real API call)
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Call real API to update user profile
+      await driverApi.updateCurrentUserProfile({
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        address: formData.address,
+        city: formData.city,
+        country: formData.country,
+        bio: formData.bio,
+      });
 
       // Update profile state
       if (profile) {
@@ -236,6 +244,13 @@ export default function DriverProfilePage() {
           bio: formData.bio,
         });
       }
+
+      // Update Redux auth state
+      dispatch(updateUser({
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+      }));
 
       setEditMode(false);
       successToast("Profile updated successfully");
@@ -262,8 +277,12 @@ export default function DriverProfilePage() {
         return;
       }
 
-      // Mock API call (replace with real API call)
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Call API to update driver profile (vehicle info)
+      await driverApi.updateDriverProfile({
+        truckType: vehicleForm.truckType as 'MINI_TRUCK' | 'PICKUP' | 'LORRY' | 'TRUCK',
+        capacity: vehicleForm.capacity,
+        location: vehicleForm.location,
+      });
 
       // Update profile state
       if (profile) {
@@ -306,8 +325,11 @@ export default function DriverProfilePage() {
         return;
       }
 
-      // Mock API call (replace with real API call)
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Call API to change password
+      await driverApi.changePassword({
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword,
+      });
 
       setShowPasswordModal(false);
       setPasswordForm({
@@ -685,9 +707,11 @@ export default function DriverProfilePage() {
                   <div className="flex items-center gap-4">
                     {vehicleForm.truckImage ? (
                       <div className="relative">
-                        <img
+                        <Image
                           src={vehicleForm.truckImage}
                           alt="Truck"
+                          width={192}
+                          height={128}
                           className="h-32 w-48 object-cover rounded-lg border-2 border-gray-300"
                         />
                         <button
@@ -731,7 +755,7 @@ export default function DriverProfilePage() {
                               if (file) {
                                 try {
                                   setSaving(true);
-                                  const { truckImageUrl, truckImage } =
+                                  const { truckImageUrl } =
                                     await driverApi.uploadTruckImage(file);
                                   const nextSrc = truckImageUrl.replace(
                                     /^https?:\/\/localhost:\d+/,
@@ -782,9 +806,11 @@ export default function DriverProfilePage() {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {(vehicleForm.truckImages || []).map((image, index) => (
                       <div key={index} className="relative">
-                        <img
+                        <Image
                           src={image}
                           alt={`Truck ${index + 1}`}
+                          width={200}
+                          height={96}
                           className="h-24 w-full object-cover rounded-lg border-2 border-gray-300"
                         />
                         <button

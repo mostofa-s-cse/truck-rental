@@ -449,6 +449,28 @@ server/src/
 
 ---
 
+## 🔮 System Future
+
+### System Workflow & Features
+
+- **Authentication** - User registration/login with JWT sessions
+- **User Role** - Users assigned USER/DRIVER/ADMIN roles
+- **Admin Approval** - Pending drivers reviewed before access granted
+- **Driver Profile Creation** - Drivers manage truck information, documents, and availability
+- **Truck Search & Discovery** - Users search available trucks by location, type, and capacity
+- **Fare Calculation** - Real-time pricing based on distance, truck type, weight, and urgency
+- **Booking Process** - Custom booking system with driver acceptance workflow
+- **Payment Process** - Custom checkout with SSL Commerz gateway integration
+- **Payment Verification** - Backend tracks PENDING → COMPLETED/FAILED status
+- **Booking Status Tracking** - Complete lifecycle: PENDING → ACCEPTED → IN_PROGRESS → COMPLETED → CANCELLED
+- **Access Control** - Features unlocked based on role, verification status, and booking state
+- **Real-time Tracking** - GPS location updates during active trips via Socket.IO
+- **Trip Management** - Drivers start and complete trips with status updates
+- **Review System** - Users rate and review drivers after completed trips
+- **Results & Analytics** - Booking attempts recorded with completion rates, ratings, and performance feedback
+
+---
+
 ## 🚀 Future Enhancements
 
 ### **Phase 2 Features (6-12 months)**

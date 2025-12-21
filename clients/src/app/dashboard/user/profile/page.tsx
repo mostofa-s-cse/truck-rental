@@ -161,8 +161,16 @@ export default function UserProfilePage() {
         return;
       }
 
-      // TODO: Implement real API call to update user profile
-      // await apiClient.updateUserProfile(formData);
+      // Call real API to update user profile
+      await userApi.updateCurrentUserProfile({
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        address: formData.address,
+        city: formData.city,
+        country: formData.country,
+        bio: formData.bio
+      });
       
       // Update profile state
       if (profile) {
@@ -177,6 +185,13 @@ export default function UserProfilePage() {
           bio: formData.bio
         });
       }
+
+      // Update Redux auth state
+      dispatch(updateUser({
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone
+      }));
       
       setEditMode(false);
       successToast('Profile updated successfully');
@@ -208,11 +223,11 @@ export default function UserProfilePage() {
         return;
       }
 
-      // TODO: Implement real API call to change password
-      // await apiClient.changePassword({
-      //   oldPassword: passwordForm.currentPassword,
-      //   newPassword: passwordForm.newPassword
-      // });
+      // Call API to change password
+      await userApi.changePassword({
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword
+      });
       
       setShowPasswordModal(false);
       setPasswordForm({
