@@ -323,11 +323,11 @@ export default function DriverBookingsPage() {
       key: 'source',
       header: 'Route',
       render: (value, row) => (
-        <div className="flex items-center">
-          <MapPinIcon className="h-4 w-4 text-gray-400 mr-1" />
+        <div className="flex items-start">
+          <MapPinIcon className="h-4 w-4 text-gray-400 mr-1 mt-0.5" />
           <div className="text-sm">
-            <div className="text-gray-900">{row.source}</div>
-            <div className="text-gray-500">→ {row.destination}</div>
+            <div className="text-gray-900 break-words" title={row.source}>{row.source}</div>
+            <div className="text-gray-500 break-words" title={row.destination}>→ {row.destination}</div>
           </div>
         </div>
       )
@@ -606,11 +606,11 @@ export default function DriverBookingsPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700">From</label>
-                    <p className="text-sm text-gray-900">{selectedBooking.source}</p>
+                    <p className="text-sm text-gray-900 break-words">{selectedBooking.source}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">To</label>
-                    <p className="text-sm text-gray-900">{selectedBooking.destination}</p>
+                    <p className="text-sm text-gray-900 break-words">{selectedBooking.destination}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Date</label>

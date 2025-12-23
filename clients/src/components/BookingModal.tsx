@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
+import type { SyntheticEvent } from 'react';
 import { X, Truck, MapPin, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import Image from 'next/image';
 import Button from '@/components/ui/Button';
@@ -27,6 +28,15 @@ interface BookingFormData {
   sourceLng?: number;
   destLat?: number;
   destLng?: number;
+  // Detailed address parts (optional)
+  sourceHouse?: string;
+  sourceRoad?: string;
+  sourceAreaDetail?: string;
+  sourceCity?: string;
+  destHouse?: string;
+  destRoad?: string;
+  destAreaDetail?: string;
+  destCity?: string;
 }
 
 interface AreaData {
@@ -45,6 +55,8 @@ interface ServerArea {
   longitude: number;
   address: string;
 }
+
+type TruckImageItem = string | { url?: string; path?: string; src?: string };
 
 export default function BookingModal({
   driver,
@@ -73,6 +85,70 @@ export default function BookingModal({
     return normalizedPath;
   };
 
+  // Normalize possible shapes of truckImages coming from API
+  const normalizeTruckImages = (
+    imgs: TruckImageItem | TruckImageItem[] | null | undefined
+  ): string[] => {
+    if (!imgs) return [];
+    const toStringUrl = (item: TruckImageItem): string | null => {
+      if (typeof item === 'string') return item;
+      if (item.url) return item.url;
+      if (item.path) return item.path;
+      if (item.src) return item.src;
+      return null;
+    };
+    if (Array.isArray(imgs)) {
+      return imgs.map(toStringUrl).filter((v): v is string => typeof v === 'string');
+    }
+    const single = toStringUrl(imgs);
+    return single ? [single] : [];
+  };
+
+  // Compose a full address using detailed parts and base label
+  const formatFullAddress = (
+    baseLabel: string,
+    house?: string,
+    road?: string,
+    area?: string,
+    city?: string
+  ): string => {
+    const clean = (s?: string) => (s || "").trim();
+    const splitTokens = (s?: string) => {
+      const c = clean(s);
+      return c ? c.split(",").map((t) => t.trim()).filter(Boolean) : [];
+    };
+
+    const orderedTokens: string[] = [];
+
+    if (house && house.trim()) orderedTokens.push(`House ${house.trim()}`);
+    if (road && road.trim()) orderedTokens.push(`Road ${road.trim()}`);
+
+    // Area may include comma-separated parts (e.g., "Nikunja 2, Khilkhet, Dhaka")
+    orderedTokens.push(...splitTokens(area));
+
+    if (city && city.trim()) orderedTokens.push(city.trim());
+
+    // Base label often includes area + city (e.g., "Khilkhet, Dhaka").
+    const baseTokens = splitTokens(baseLabel);
+
+    // Ordered de-duplication (case-insensitive)
+    const seen = new Set<string>();
+    const result: string[] = [];
+    const add = (token: string) => {
+      const key = token.toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        result.push(token);
+      }
+    };
+
+    for (const t of orderedTokens) add(t);
+    for (const t of baseTokens) add(t);
+
+    // Fallback: if nothing after cleaning, return original base label
+    return result.length ? result.join(", ") : clean(baseLabel);
+  };
+
   // Form states
   const [bookingData, setBookingData] = useState<BookingFormData>({
     source: "",
@@ -80,6 +156,14 @@ export default function BookingModal({
     pickupTime: "",
     fare: 0,
     distance: 0,
+    sourceHouse: "",
+    sourceRoad: "",
+    sourceAreaDetail: "",
+    sourceCity: "Dhaka",
+    destHouse: "",
+    destRoad: "",
+    destAreaDetail: "",
+    destCity: "Dhaka",
   });
 
   // UI states
@@ -114,6 +198,14 @@ export default function BookingModal({
         pickupTime: "",
         fare: 0,
         distance: 0,
+        sourceHouse: "",
+        sourceRoad: "",
+        sourceAreaDetail: "",
+        sourceCity: "Dhaka",
+        destHouse: "",
+        destRoad: "",
+        destAreaDetail: "",
+        destCity: "Dhaka",
       });
       setCalculatedFare(0);
       setSelectedSourceArea(null);
@@ -154,16 +246,31 @@ export default function BookingModal({
         return;
       }
 
+      const sourceAddressFull = formatFullAddress(
+        bookingData.source,
+        bookingData.sourceHouse,
+        bookingData.sourceRoad,
+        bookingData.sourceAreaDetail,
+        bookingData.sourceCity
+      );
+      const destAddressFull = formatFullAddress(
+        bookingData.destination,
+        bookingData.destHouse,
+        bookingData.destRoad,
+        bookingData.destAreaDetail,
+        bookingData.destCity
+      );
+
       const response = await apiClient.getRouteDetails(
         {
           latitude: selectedSourceArea.latitude,
           longitude: selectedSourceArea.longitude,
-          address: bookingData.source,
+          address: sourceAddressFull,
         },
         {
           latitude: selectedDestinationArea.latitude,
           longitude: selectedDestinationArea.longitude,
-          address: bookingData.destination,
+          address: destAddressFull,
         }
       );
       if (response.success && response.data) {
@@ -177,6 +284,14 @@ export default function BookingModal({
     selectedDestinationArea,
     bookingData.source,
     bookingData.destination,
+    bookingData.sourceHouse,
+    bookingData.sourceRoad,
+    bookingData.sourceAreaDetail,
+    bookingData.sourceCity,
+    bookingData.destHouse,
+    bookingData.destRoad,
+    bookingData.destAreaDetail,
+    bookingData.destCity,
   ]);
 
   const calculateFare = useCallback(async () => {
@@ -189,16 +304,31 @@ export default function BookingModal({
       // Fetch route details for map display
       await fetchRouteDetails();
 
+      const sourceAddressFull = formatFullAddress(
+        bookingData.source,
+        bookingData.sourceHouse,
+        bookingData.sourceRoad,
+        bookingData.sourceAreaDetail,
+        bookingData.sourceCity
+      );
+      const destAddressFull = formatFullAddress(
+        bookingData.destination,
+        bookingData.destHouse,
+        bookingData.destRoad,
+        bookingData.destAreaDetail,
+        bookingData.destCity
+      );
+
       const response = await apiClient.calculateFare({
         source: {
           latitude: selectedSourceArea.latitude,
           longitude: selectedSourceArea.longitude,
-          address: bookingData.source,
+          address: sourceAddressFull,
         },
         destination: {
           latitude: selectedDestinationArea.latitude,
           longitude: selectedDestinationArea.longitude,
-          address: bookingData.destination,
+          address: destAddressFull,
         },
         truckType: driver!.truckType,
       });
@@ -233,6 +363,14 @@ export default function BookingModal({
     bookingData.destination,
     driver,
     fetchRouteDetails,
+    bookingData.sourceHouse,
+    bookingData.sourceRoad,
+    bookingData.sourceAreaDetail,
+    bookingData.sourceCity,
+    bookingData.destHouse,
+    bookingData.destRoad,
+    bookingData.destAreaDetail,
+    bookingData.destCity,
   ]);
 
   // Calculate fare when selected areas change
@@ -278,8 +416,20 @@ export default function BookingModal({
     try {
       const response = await apiClient.createBooking({
         driverId: driver.id,
-        source: bookingData.source,
-        destination: bookingData.destination,
+        source: formatFullAddress(
+          bookingData.source,
+          bookingData.sourceHouse,
+          bookingData.sourceRoad,
+          bookingData.sourceAreaDetail,
+          bookingData.sourceCity
+        ),
+        destination: formatFullAddress(
+          bookingData.destination,
+          bookingData.destHouse,
+          bookingData.destRoad,
+          bookingData.destAreaDetail,
+          bookingData.destCity
+        ),
         sourceLat: bookingData.sourceLat,
         sourceLng: bookingData.sourceLng,
         destLat: bookingData.destLat,
@@ -363,15 +513,16 @@ export default function BookingModal({
         {/* Content */}
         <div className="p-6">
           {/* Main Truck Image */}
-          {driver.truckImage && (
+          {driver?.truckImage && (
             <div className="mb-4">
               <div className="relative h-40 sm:h-48 rounded-lg overflow-hidden bg-gray-100">
                 <Image
                   src={getImageUrl(driver.truckImage) || "/placeholder-truck.jpg"}
-                  alt={`${driver.user.name}'s truck`}
+                  alt={`${driver?.user?.name ?? 'Driver'}'s truck`}
                   fill
                   className="object-cover"
-                  onError={(e) => {
+                  unoptimized
+                  onError={(e: SyntheticEvent<HTMLImageElement>) => {
                     // Hide container on error
                     const container = (e.target as HTMLImageElement).closest(
                       ".mb-4"
@@ -387,16 +538,14 @@ export default function BookingModal({
           )}
 
           {/* Additional Truck Images Gallery */}
-          {driver.truckImages &&
-            Array.isArray(driver.truckImages) &&
-            driver.truckImages.length > 0 && (
+          {normalizeTruckImages(driver?.truckImages).length > 0 && (
               <div className="mb-4">
                 <p className="text-xs font-semibold text-gray-700 mb-2 flex items-center">
                   <Truck className="w-3 h-3 mr-1" />
                   More Views:
                 </p>
                 <div className="flex gap-2 overflow-x-auto pb-2">
-                  {driver.truckImages.map((image, idx) => (
+                  {normalizeTruckImages(driver?.truckImages).map((image, idx) => (
                     <div
                       key={idx}
                       className="flex-shrink-0 w-20 h-16 sm:w-24 sm:h-20 rounded-lg overflow-hidden border-2 border-gray-200 hover:border-blue-500 transition-colors bg-gray-100 relative"
@@ -406,11 +555,12 @@ export default function BookingModal({
                         alt={`Truck view ${idx + 1}`}
                         fill
                         className="object-cover hover:scale-110 transition-transform duration-300 cursor-pointer"
-                        onError={(e) => {
+                        unoptimized
+                        onError={(e: SyntheticEvent<HTMLImageElement>) => {
                           // Hide this specific image on error
-                          const container = (
-                            e.target as HTMLImageElement
-                          ).closest(".flex-shrink-0") as HTMLElement;
+                          const container = (e.target as HTMLImageElement).closest(
+                            ".flex-shrink-0"
+                          ) as HTMLElement;
                           if (container) container.style.display = "none";
                         }}
                       />
@@ -428,15 +578,15 @@ export default function BookingModal({
               </div>
               <div>
                 <h3 className="font-semibold text-gray-900">
-                  {driver.user.name}
+                  {driver?.user?.name ?? 'Driver'}
                 </h3>
                 <p className="text-sm text-gray-600">
-                  {driver.truckType.replace("_", " ")} • {driver.capacity} tons
+                  {(driver?.truckType || '').replace("_", " ")}{driver?.capacity ? ` • ${driver.capacity} tons` : ''}
                 </p>
                 <div className="flex items-center gap-2 mt-1">
                   <MapPin className="w-4 h-4 text-gray-400" />
                   <span className="text-sm text-gray-600">
-                    {driver.location}
+                    {driver?.location ?? 'Unknown location'}
                   </span>
                 </div>
               </div>
@@ -494,6 +644,51 @@ export default function BookingModal({
                       </div>
                     )}
                   </div>
+                  {/* Detailed Pickup Address */}
+                  <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <input
+                      type="text"
+                      value={bookingData.sourceHouse || ''}
+                      onChange={(e) =>
+                        setBookingData((prev) => ({ ...prev, sourceHouse: e.target.value }))
+                      }
+                      disabled={isLoading}
+                      placeholder="House/Basa No. (e.g., 13)"
+                      className={`w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${isLoading ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                    />
+                    <input
+                      type="text"
+                      value={bookingData.sourceRoad || ''}
+                      onChange={(e) =>
+                        setBookingData((prev) => ({ ...prev, sourceRoad: e.target.value }))
+                      }
+                      disabled={isLoading}
+                      placeholder="Road No. (e.g., 10)"
+                      className={`w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${isLoading ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                    />
+                  </div>
+                  <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <input
+                      type="text"
+                      value={bookingData.sourceAreaDetail || ''}
+                      onChange={(e) =>
+                        setBookingData((prev) => ({ ...prev, sourceAreaDetail: e.target.value }))
+                      }
+                      disabled={isLoading}
+                      placeholder="Area/Sector (e.g., Nikunja 2)"
+                      className={`w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${isLoading ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                    />
+                    <input
+                      type="text"
+                      value={bookingData.sourceCity || ''}
+                      onChange={(e) =>
+                        setBookingData((prev) => ({ ...prev, sourceCity: e.target.value }))
+                      }
+                      disabled={isLoading}
+                      placeholder="City (e.g., Dhaka)"
+                      className={`w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${isLoading ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                    />
+                  </div>
                 </div>
 
                 {/* Destination */}
@@ -542,6 +737,51 @@ export default function BookingModal({
                           ))}
                       </div>
                     )}
+                  </div>
+                  {/* Detailed Destination Address */}
+                  <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <input
+                      type="text"
+                      value={bookingData.destHouse || ''}
+                      onChange={(e) =>
+                        setBookingData((prev) => ({ ...prev, destHouse: e.target.value }))
+                      }
+                      disabled={isLoading}
+                      placeholder="House/Basa No. (e.g., 13)"
+                      className={`w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${isLoading ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                    />
+                    <input
+                      type="text"
+                      value={bookingData.destRoad || ''}
+                      onChange={(e) =>
+                        setBookingData((prev) => ({ ...prev, destRoad: e.target.value }))
+                      }
+                      disabled={isLoading}
+                      placeholder="Road No. (e.g., 10)"
+                      className={`w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${isLoading ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                    />
+                  </div>
+                  <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <input
+                      type="text"
+                      value={bookingData.destAreaDetail || ''}
+                      onChange={(e) =>
+                        setBookingData((prev) => ({ ...prev, destAreaDetail: e.target.value }))
+                      }
+                      disabled={isLoading}
+                      placeholder="Area/Sector (e.g., Nikunja 2)"
+                      className={`w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${isLoading ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                    />
+                    <input
+                      type="text"
+                      value={bookingData.destCity || ''}
+                      onChange={(e) =>
+                        setBookingData((prev) => ({ ...prev, destCity: e.target.value }))
+                      }
+                      disabled={isLoading}
+                      placeholder="City (e.g., Dhaka)"
+                      className={`w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${isLoading ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                    />
                   </div>
                 </div>
               </div>
